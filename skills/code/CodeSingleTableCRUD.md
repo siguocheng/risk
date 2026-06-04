@@ -493,7 +493,7 @@ public Boolean deleteWithValidByIds({EntityName}Bo bo,Boolean isValid){
 - **使用 `WYObjectUtils.convert()` 进行 BO → Entity 转换**（项目工具类）
 - **使用 `WYStringUtils.isNotBlank()` 进行字符串判空**（项目工具类）
 - **使用 `WYObjectUtils.isNotNull()` 进行对象判空**（项目工具类）
-- 逻辑删除通过 `is_deleted` 字段实现
+- 逻辑删除通过 `deleted` 字段实现
 - **Mapper 接口位于 `com.riskcontrol.dao` 包**
 
 ### 4. Mapper 接口规范
@@ -629,12 +629,12 @@ public class {EntityName}Vo implements Serializable {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Schema(description = "创建时间")
     @TableField(value = "gmt_create")
-    private LocalDateTime gmtCreate;
+    private LocalDateTime createTime;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Schema(description = "更新时间")
     @TableField(value = "gmt_modified")
-    private LocalDateTime gmtModified;
+    private LocalDateTime modifiedTime;
 
     // 支持 Excel 导出注解
 }
@@ -694,7 +694,7 @@ public class {EntityName}Bo extends BasePageQuery {
 ```
 {EntityName} (Entity)
     ↑
-    CurrencyEntity (包含公共字段: id, isDeleted, createBy, gmtCreate, updateBy, gmtModified)
+    BaseEntity (包含公共字段: id, deleted, createId, createTime, modifiedId, modifiedTime)
 {EntityName}Bo
     ↑
     BasePageQuery (包含分页参数)
@@ -713,7 +713,7 @@ public class {EntityName}Bo extends BasePageQuery {
 - code_name (varchar(100), 代码名称)
 - code_content (text, 代码内容)
 - code_state (int, 代码状态：1-未保存 2-已保存)
-- is_deleted (bit, 是否删除)
+- deleted (bit, 是否删除)
 - create_by (varchar(64), 创建人)
 - gmt_create (datetime, 创建时间)
 - update_by (varchar(64), 更新人)
@@ -779,7 +779,7 @@ src/main/java/com/wuyuan/industry/
 2. **通用性**：代码生成逻辑要通用，适应不同的表结构
 3. **已有文件**：必须检查文件是否存在，询问用户是覆盖还是修改
 4. **字段映射**：正确处理 Java 类型与数据库类型的映射
-5. **公共字段**：自动包含继承自父类的公共字段（id, isDeleted, createBy, gmtCreate, updateBy, gmtModified）
+5. **公共字段**：自动包含继承自父类的公共字段（id, deleted, createId, createTime, modifiedId, modifiedTime）
 6. **作者信息**：所有生成的类必须添加 `@author zpc` 注释
 7. **日期信息**：所有生成的类必须添加 `@date {currentDate}` 注释（使用当前日期）
 8. **方法注释**：所有 public 和 protected 方法必须添加完整的 Javadoc 注释，包括：

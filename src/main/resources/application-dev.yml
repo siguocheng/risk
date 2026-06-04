@@ -24,6 +24,10 @@ logging:
   level:
     com.riskcontrol.mapper: DEBUG
 
+init:
+  permission: true
+  permissionResource: true
+
 mybatis-plus:
   mapper-locations: classpath:/com/riskcontrol/mapper/**.xml
   global-config:

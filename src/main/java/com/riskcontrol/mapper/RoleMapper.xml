@@ -14,7 +14,7 @@
         <result column="is_default_role" property="isDefaultRole" />
     </resultMap>
 
-    <select id="queryPage" resultType="com.wuyuan.robot.domain.vo.role.RolePage">
+    <select id="queryPage" resultType="com.riskcontrol.domain.vo.role.RolePage">
         SELECT
             r.id,
             r.name,
