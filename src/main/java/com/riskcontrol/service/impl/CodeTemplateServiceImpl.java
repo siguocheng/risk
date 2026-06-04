@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.toolkit.ChainWrappers;
+import com.riskcontrol.domain.BaseEntity;
 import com.riskcontrol.domain.bo.codetemplate.CodeTemplateBo;
 import com.riskcontrol.dao.CodeTemplateMapper;
 import com.riskcontrol.domain.CodeTemplate;
@@ -74,7 +75,7 @@ public class CodeTemplateServiceImpl implements ICodeTemplateService {
         Map<String, Object> params = bo.getParams();
         LambdaQueryWrapper<CodeTemplate> lqw = Wrappers.lambdaQuery();
         lqw.orderByAsc(CodeTemplate::getId);
-        lqw.eq(CodeTemplate::getIsDeleted, Boolean.FALSE);
+        lqw.eq(CodeTemplate::getDeleted, Boolean.FALSE);
         lqw.eq(WYObjectUtils.isNotNull(bo.getCodeId()), CodeTemplate::getCodeId, bo.getCodeId());
         lqw.eq(WYObjectUtils.isNotNull(bo.getCodeState()), CodeTemplate::getCodeState, bo.getCodeState());
         lqw.like(WYStringUtils.isNotBlank(bo.getCodeName()), CodeTemplate::getCodeName, bo.getCodeName());
@@ -85,7 +86,7 @@ public class CodeTemplateServiceImpl implements ICodeTemplateService {
         lqw.eq(WYStringUtils.isNotBlank(bo.getCodeText()), CodeTemplate::getCodeText, bo.getCodeText());
         lqw.eq(WYObjectUtils.isNotNull(bo.getNumberProductionRod()), CodeTemplate::getNumberProductionRod, bo.getNumberProductionRod());
         lqw.eq(WYStringUtils.isNotBlank(bo.getRemark()), CodeTemplate::getRemark, bo.getRemark());
-        lqw.between(WYObjectUtils.isNotNull(params.get("beginTime"))  && WYObjectUtils.isNotNull(params.get("endTime")),CodeTemplate::getGmtCreate, params.get("beginTime"), params.get("endTime"));
+        lqw.between(WYObjectUtils.isNotNull(params.get("beginTime"))  && WYObjectUtils.isNotNull(params.get("endTime")),CodeTemplate::getCreateTime, params.get("beginTime"), params.get("endTime"));
         return lqw;
     }
 
@@ -139,7 +140,7 @@ public class CodeTemplateServiceImpl implements ICodeTemplateService {
         }
         return ChainWrappers.lambdaUpdateChain(baseMapper)
                 .in(CodeTemplate::getId, bo.getIdList())
-                .set(CurrencyEntity::getIsDeleted, Boolean.TRUE)
+                .set(BaseEntity::getDeleted, Boolean.TRUE)
                 .update();
     }
 }

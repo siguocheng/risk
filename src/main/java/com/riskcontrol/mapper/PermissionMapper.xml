@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.riskcontrol.dao.PermissionMapper">
+
+    <!-- 通用查询映射结果 -->
+    <resultMap id="BaseResultMap" type="com.riskcontrol.domain.Permission">
+        <result column="id" property="id" />
+        <result column="deleted" property="deleted" />
+        <result column="create_id" property="createId" />
+        <result column="create_time" property="createTime" />
+        <result column="modified_id" property="modifiedId" />
+        <result column="modified_time" property="modifiedTime" />
+        <result column="parent_id" property="parentId" />
+        <result column="permission_code" property="permissionCode" />
+        <result column="name" property="name" />
+        <result column="platform_type" property="platformType" />
+        <result column="category" property="category" />
+        <result column="remark" property="remark" />
+    </resultMap>
+
+    <delete id="deleteAll">
+        delete from permission
+    </delete>
+
+    <select id="getAllPermissionCode" resultType="java.lang.String">
+        select distinct p.permission_code
+        from permission p
+        where p.deleted = 0
+          and p.permission_code is not null
+    </select>
+
+    <select id="getPermissionCodeByUserId" resultType="java.lang.String">
+        select p.permission_code
+        from user u
+                 inner join user_role ur on ur.user_id = u.id
+                 inner join permission_role pr on ur.role_id = pr.role_id
+                 inner join permission p on p.id = pr.permission_id
+        where u.id = #{userId}
+          and p.deleted = 0
+          and p.permission_code is not null
+        group by p.permission_code
+    </select>
+
+
+    <select id="getPermissions" resultType="com.riskcontrol.domain.vo.permisssion.PermissionTableVO">
+        select id, parent_id, permission_code, name, platform_type
+        from permission
+        where deleted=0 AND platform_type = #{platformType}
+        order by id
+    </select>
+
+</mapper>

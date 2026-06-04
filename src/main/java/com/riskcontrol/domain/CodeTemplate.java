@@ -18,7 +18,7 @@ import java.math.BigDecimal;
 @Data
 @TableName("code_template")
 @EqualsAndHashCode()
-public class CodeTemplate extends CurrencyEntity implements Serializable {
+public class CodeTemplate extends BaseEntity implements Serializable {
 
     private static final long serialVersionUID = 1L;
 

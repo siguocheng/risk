@@ -44,7 +44,7 @@
 | Service实现 | `service/impl/{EntityName}ServiceImpl.java` | 实现业务逻辑，继承 BaseMapperPlus |
 | Mapper接口 | `dao/{EntityName}Mapper.java` | 继承 BaseMapperPlus |
 | Mapper XML | `mapper/{EntityName}Mapper.xml` | MyBatis 映射文件（位于 src/main/java/com/wuyuan/industry/mapper 目录） |
-| Entity | `domain/{EntityName}.java` | 继承 CurrencyEntity |
+| Entity | `domain/{EntityName}.java` | 继承 BaseEntity |
 | VO | `domain/vo/{moduleName}/{EntityName}Vo.java` | 视图对象，支持 Excel 导出 |
 | BO | `domain/bo/{moduleName}/{EntityName}Bo.java` | 业务对象，继承 BasePageQuery，支持分页 |
 
@@ -417,13 +417,12 @@ private LambdaQueryWrapper<{EntityName}>buildQueryWrapper({EntityName}Bo bo){
         LambdaQueryWrapper<{EntityName}>lqw=Wrappers.lambdaQuery();
         lqw.orderByAsc({EntityName}::getId);
 
-        lqw.eq({EntityName}::getSubscriptionId,bo.getSubscriptionId());
-        lqw.eq({EntityName}::getIsDeleted,Boolean.FALSE);
+        lqw.eq({EntityName}::getDeleted,Boolean.FALSE);
         // 动态条件构建示例：
         // lqw.eq(WYObjectUtils.isNotNull(bo.getXxx()), {EntityName}::getXxx, bo.getXxx());
         // lqw.like(WYStringUtils.isNotBlank(bo.getXxx()), {EntityName}::getXxx, bo.getXxx());
         // lqw.between(WYObjectUtils.isNotNull(params.get("beginTime")) && WYObjectUtils.isNotNull(params.get("endTime")), 
-        //             {EntityName}::getGmtCreate, params.get("beginTime"), params.get("endTime"));
+        //             {EntityName}::getCreateTime, params.get("beginTime"), params.get("endTime"));
         return lqw;
         }
 
@@ -482,7 +481,7 @@ public Boolean deleteWithValidByIds({EntityName}Bo bo,Boolean isValid){
         return ChainWrappers.lambdaUpdateChain(baseMapper)
         .eq(CurrencySubEntity::getSubscriptionId,bo.getSubscriptionId())
         .in({EntityName}::getId,bo.getIdList())
-        .set(CurrencyEntity::getIsDeleted,Boolean.TRUE)
+        .set(CurrencyEntity::getDeleted,Boolean.TRUE)
         .update();
         }
         }
@@ -568,7 +567,7 @@ import java.io.Serializable;
 @Data
 @TableName("{tableName}")
 @EqualsAndHashCode(callSuper = true)
-public class {EntityName} extends CurrencyEntity implements Serializable {
+public class {EntityName} extends BaseEntity implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
