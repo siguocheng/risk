@@ -28,6 +28,12 @@ init:
   permission: true
   permissionResource: true
 
+ibkr:
+  host: 127.0.0.1
+  port: 4002
+  clientid: 1
+  timeout: 5000
+
 mybatis-plus:
   mapper-locations: classpath:/com/riskcontrol/mapper/**.xml
   global-config:

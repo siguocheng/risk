@@ -2,14 +2,7 @@ package com.riskcontrol.enums;
 
 import java.util.Arrays;
 
-/**
- * 业务操作类型
- * 常量顺序不能修改，后面增加常量在最后添加!!!
- * businessType().ordinal() 获取枚举常量在代码中定义的顺序: 第一个常量 → 0，第二个 → 1，第三个 → 2，以此类推
- * 操作类型（0其它 1新增 2批量新增 3修改 4批量修改 5删除 6批量删除 7授权 8下载 9批量下载 10导出 11导入 12强退 13生成代码 14清空数据）
- *
- * @author fallrain
- */
+
 public enum BusinessType {
     /**
      * 其它-0

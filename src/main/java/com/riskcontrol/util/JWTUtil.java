@@ -19,7 +19,7 @@ public class JWTUtil {
     public static final int EXPIRE_TIME_30 = 60 * 60 * 24 * 30;
     public static final int EXPIRE_TIME_15 = 60 * 15;
     // 密钥
-    private static final String SECRET = "SHIRO+JWT";
+    private static final String SECRET = "abcd999efghabcdefghabcdefghabcdefgh";
 
     private static final String userId= "userId";
     private static final String username = "username";
@@ -113,7 +113,10 @@ public class JWTUtil {
 
     public static Long getUserId(String token) {
         Claims claims = parseToken(token);
-        return (Long)claims.get(userId);
+
+        Integer uId = (Integer)(claims.get(userId));
+
+        return uId.longValue();
     }
 
 }

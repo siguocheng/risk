@@ -8,17 +8,14 @@ import com.riskcontrol.service.IPermissionService;
 import com.riskcontrol.util.JWTUtil;
 import com.riskcontrol.util.RedisUtil;
 import jakarta.annotation.Resource;
-import jakarta.servlet.ServletRequest;
+import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebFilter;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.core.annotation.Order;
 
-import jakarta.annotation.Resource;
-import jakarta.servlet.*;
-import jakarta.servlet.annotation.WebFilter;
-import jakarta.servlet.http.HttpServletRequest;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -26,7 +23,7 @@ import java.util.List;
 import java.util.Map;
 
 @Order(1)
-@WebFilter(filterName = "noLoginFilter", urlPatterns = "/*")
+//@WebFilter(filterName = "noLoginFilter", urlPatterns = "/*")
 @Slf4j
 public class NoLoginFilter implements Filter {
 

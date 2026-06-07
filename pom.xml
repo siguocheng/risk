@@ -131,6 +131,24 @@
             <groupId>redis.clients</groupId>
             <artifactId>jedis</artifactId>
         </dependency>
+        <!-- 10.45-->
+        <dependency>
+            <groupId>com.ibkr</groupId>
+            <artifactId>twsapi</artifactId>
+            <version>10.25</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.google.protobuf</groupId>
+            <artifactId>protobuf-java</artifactId>
+            <version>4.29.5</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+            <!-- version 3.3.5，和boot版本保持一致 -->
+        </dependency>
     </dependencies>
 
     <build>
