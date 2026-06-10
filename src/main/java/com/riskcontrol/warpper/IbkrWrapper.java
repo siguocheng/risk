@@ -1,15 +1,20 @@
 package com.riskcontrol.warpper;
 
 
+import com.alibaba.fastjson2.JSONObject;
 import com.ib.client.*;
 import com.ib.client.protobuf.*;
 import com.riskcontrol.config.IbkrSynConfig;
-import com.riskcontrol.domain.vo.ibkr.PositionItem;
+import com.riskcontrol.domain.vo.ibkr.AccountSummaryCallbackVO;
+import com.riskcontrol.domain.vo.ibkr.BarData;
+import com.riskcontrol.domain.vo.ibkr.ContractVo;
+import com.riskcontrol.domain.vo.ibkr.PositionVo;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.json.JSONObject;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -73,21 +78,75 @@ public class IbkrWrapper implements EWrapper {
     @Override
     public void updateAccountValue(String key, String value, String currency, String accountName) {
 
+        Map<String, Object> dataMap = accTempMap.computeIfAbsent(accountName, k-> new ConcurrentHashMap<>());
+        if (StringUtils.isNotEmpty(currency)) {
+            key = key + "_" + currency;
+        }
+        dataMap.put(key, value);
+
+        System.out.println("updateAccountValue:" + key + "" + ":" + value);
     }
 
     @Override
     public void updatePortfolio(Contract contract, Decimal position, double marketPrice, double marketValue, double averageCost, double unrealizedPNL, double realizedPNL, String accountName) {
 
+        List<PositionVo> list = posProtoMap.computeIfAbsent(accountName, k -> new CopyOnWriteArrayList<>());
+
+        PositionVo item = new PositionVo();
+        item.setAccountCode(accountName);
+        item.setPosition(position.value());
+        item.setAvgCost(averageCost);
+        item.setMarketPrice(marketPrice);
+        item.setMarketValue(marketValue);
+        item.setUnrealizedPnl(unrealizedPNL);
+        item.setRealizedPnl(realizedPNL);
+
+        ContractVo contractData = this.convertProtoToContract(contract);
+
+        item.setContract(contractData);
+
+        list.add(item);
+    }
+
+    // proto合约 -> Contract 转换
+    private ContractVo convertProtoToContract(Contract contract){
+        ContractVo c = new ContractVo();
+        c.setConId(contract.conid());
+        c.setSymbol(contract.symbol());
+        c.setSecType(contract.getSecType());
+        c.setExchange(contract.exchange());
+        c.setCurrency(contract.currency());
+        c.setStrike(contract.strike());
+        c.setRight(contract.getRight());
+        c.setLastTradeDateOrContractMonth(contract.lastTradeDateOrContractMonth());
+        c.setLastTradeDate(contract.lastTradeDate());
+        c.setMultiplier(contract.multiplier());
+        c.setPrimaryExch(contract.primaryExch());
+        c.setLocalSymbol(contract.localSymbol());
+        c.setTradingClass(contract.tradingClass());
+        c.setSecIdType(contract.getSecIdType());
+        c.setSecId(contract.secId());
+        c.setDescription(contract.description());
+        c.setComboLegs(contract.comboLegs());
+
+        return c;
     }
 
     @Override
     public void updateAccountTime(String timeStamp) {
-
+        System.out.println("updateAccountTime:" + timeStamp);
     }
 
     @Override
     public void accountDownloadEnd(String accountName) {
-
+        System.out.println("accountDownloadEnd:" + accountName);
+        CompletableFuture<Object> future = ibkrSynConfig.FUTURE_MAP.remove(accountName);
+        List<PositionVo> data = posProtoMap.remove(accountName);
+        Map<String, Object> accountData = accTempMap.remove(accountName);
+        accountData.put("position", data);
+        if (future != null) {
+            future.complete(accountData);
+        }
     }
 
     @Override
@@ -147,7 +206,17 @@ public class IbkrWrapper implements EWrapper {
 
     @Override
     public void historicalData(int reqId, Bar bar) {
+        BarData data = new BarData();
+        data.time = bar.time();
+        data.open = bar.open();
+        data.high = bar.high();
+        data.low = bar.low();
+        data.close = bar.close();
+        data.volume = bar.volume().longValue();
+        data.wap = bar.wap().longValue();
+        data.count = bar.count();
 
+        System.out.println("historicalData:" + JSONObject.toJSONString(data));
     }
 
     @Override
@@ -210,24 +279,29 @@ public class IbkrWrapper implements EWrapper {
 
     }
 
-    public final Map<Integer, Map<String, Object>> accTempMap = new ConcurrentHashMap<>();
+    public final Map<Object, Map<String, Object>> accTempMap = new ConcurrentHashMap<>();
+
+    public final Map<Object, List<AccountSummaryCallbackVO>> accountSummaryTempMap = new ConcurrentHashMap<>();
 
     @Override
     public void accountSummary(int reqId, String account, String tag, String value, String currency) {
-        Map<String,Object> dataMap = accTempMap.computeIfAbsent(reqId, k-> new ConcurrentHashMap<>());
-        // key=tag+币种，避免同tag多币种覆盖
-//        String key = tag + "_" + currency;
-        String key = tag;
-        dataMap.put(key, value);
-        dataMap.put("ACCOUNT_ID", account);
+        List<AccountSummaryCallbackVO> dataList = accountSummaryTempMap.computeIfAbsent(reqId, k-> new ArrayList<>());
+
+        AccountSummaryCallbackVO accountSummaryCallbackVO = new AccountSummaryCallbackVO();
+        accountSummaryCallbackVO.setAccount(account);
+        accountSummaryCallbackVO.setTag(tag);
+        accountSummaryCallbackVO.setValue(value);
+        accountSummaryCallbackVO.setCurrency(currency);
+
+        dataList.add(accountSummaryCallbackVO);
     }
 
     @Override
     public void accountSummaryEnd(int reqId) {
         CompletableFuture<Object> future = ibkrSynConfig.FUTURE_MAP.remove(reqId);
-        Map<String,Object> result = accTempMap.remove(reqId);
+        List<AccountSummaryCallbackVO> dataList = accountSummaryTempMap.remove(reqId);
         if(future != null){
-            future.complete(result);
+            future.complete(dataList);
         }
     }
 
@@ -304,12 +378,12 @@ public class IbkrWrapper implements EWrapper {
 
     @Override
     public void accountUpdateMulti(int reqId, String account, String modelCode, String key, String value, String currency) {
-
+        System.out.println("accountUpdateMulti:" + key + ":" + value);
     }
 
     @Override
     public void accountUpdateMultiEnd(int reqId) {
-
+        System.out.println("accountUpdateMultiEnd");
     }
 
     @Override
@@ -339,7 +413,7 @@ public class IbkrWrapper implements EWrapper {
 
     @Override
     public void historicalDataEnd(int reqId, String startDateStr, String endDateStr) {
-
+        System.out.println("historicalDataEnd:" + startDateStr + "-" + endDateStr);
     }
 
     @Override
@@ -428,7 +502,7 @@ public class IbkrWrapper implements EWrapper {
 
     @Override
     public void pnlSingle(int reqId, Decimal pos, double dailyPnL, double unrealizedPnL, double realizedPnL, double value) {
-
+        System.out.println("pnlSingle");
     }
 
     @Override
@@ -618,17 +692,17 @@ public class IbkrWrapper implements EWrapper {
 
     @Override
     public void updateAccountValueProtoBuf(AccountValueProto.AccountValue accounValueProto) {
-
+//        System.out.println("updateAccountValueProtoBuf");
     }
 
     @Override
     public void updatePortfolioProtoBuf(PortfolioValueProto.PortfolioValue portfolioValueProto) {
-
+        System.out.println("updatePortfolioProtoBuf");
     }
 
     @Override
     public void updateAccountTimeProtoBuf(AccountUpdateTimeProto.AccountUpdateTime accountUpdateTimeProto) {
-
+        System.out.println("updateAccountTimeProtoBuf");
     }
 
     @Override
@@ -664,38 +738,36 @@ public class IbkrWrapper implements EWrapper {
     }
 
     // reqId -> 持仓列表缓存
-    public final Map<Integer, List<PositionItem>> posProtoMap = new ConcurrentHashMap<>();
+    public final Map<Object, List<PositionVo>> posProtoMap = new ConcurrentHashMap<>();
 
     @Override
     public void positionMultiProtoBuf(PositionMultiProto.PositionMulti positionMultiProto) {
         int reqId = positionMultiProto.getReqId();
-        List<PositionItem> list = posProtoMap.computeIfAbsent(reqId, k -> new CopyOnWriteArrayList<>());
+        List<PositionVo> list = posProtoMap.computeIfAbsent(reqId, k -> new CopyOnWriteArrayList<>());
 
-        PositionItem item = new PositionItem();
-        item.setAccount(positionMultiProto.getAccount());
+        PositionVo item = new PositionVo();
+        item.setAccountCode(positionMultiProto.getAccount());
         item.setModelCode(positionMultiProto.getModelCode());
-        item.setPosition(positionMultiProto.getPosition());
+        item.setPosition(new BigDecimal(positionMultiProto.getPosition()));
         item.setAvgCost(positionMultiProto.getAvgCost());
 
         // proto合约转IB Contract
-        Contract contract = convertProtoToContract(positionMultiProto.getContract());
+        ContractVo contract = convertProtoToContract(positionMultiProto.getContract());
         item.setContract(contract);
-        list.add(item);
-
         list.add(item);
     }
 
     // proto合约 -> Contract 转换
-    private Contract convertProtoToContract(ContractProto.Contract protoContract){
-        Contract c = new Contract();
-        c.conid(protoContract.getConId());
-        c.symbol(protoContract.getSymbol());
-        c.secType(protoContract.getSecType());
-        c.exchange(protoContract.getExchange());
-        c.currency(protoContract.getCurrency());
-        c.strike(protoContract.getStrike());
-        c.right(protoContract.getRight());
-        c.lastTradeDateOrContractMonth(protoContract.getLastTradeDate());
+    private ContractVo convertProtoToContract(ContractProto.Contract protoContract){
+        ContractVo c = new ContractVo();
+        c.setConId(protoContract.getConId());
+        c.setSymbol(protoContract.getSymbol());
+        c.setSecType(protoContract.getSecType());
+        c.setExchange(protoContract.getExchange());
+        c.setCurrency(protoContract.getCurrency());
+        c.setStrike(protoContract.getStrike());
+        c.setRight(protoContract.getRight());
+        c.setLastTradeDateOrContractMonth(protoContract.getLastTradeDate());
 
         return c;
     }
@@ -704,7 +776,7 @@ public class IbkrWrapper implements EWrapper {
     public void positionMultiEndProtoBuf(PositionMultiEndProto.PositionMultiEnd positionMultiEndProto) {
         int reqId = positionMultiEndProto.getReqId();
         CompletableFuture<Object> future = ibkrSynConfig.FUTURE_MAP.remove(reqId);
-        List<PositionItem> data = posProtoMap.remove(reqId);
+        List<PositionVo> data = posProtoMap.remove(reqId);
         if (future != null) {
             future.complete(data == null ? new ArrayList<>() : data);
         }
@@ -712,12 +784,13 @@ public class IbkrWrapper implements EWrapper {
 
     @Override
     public void accountUpdateMultiProtoBuf(AccountUpdateMultiProto.AccountUpdateMulti accountUpdateMultiProto) {
-
+        System.out.println(accountUpdateMultiProto.getKey() + ":"  +accountUpdateMultiProto.getValue());
+        System.out.println("accountUpdateMultiProtoBuf");
     }
 
     @Override
     public void accountUpdateMultiEndProtoBuf(AccountUpdateMultiEndProto.AccountUpdateMultiEnd accountUpdateMultiEndProto) {
-
+        System.out.println("accountUpdateMultiEndProtoBuf");
     }
 
     @Override

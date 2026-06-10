@@ -31,7 +31,7 @@ import java.util.Map;
  * @since 2023/10/30
  */
 @Slf4j
-@Component
+//@Component
 public class PermissionResourceInit implements ApplicationContextAware, ApplicationRunner {
 
     @Value(value = "${init.permissionResource}")

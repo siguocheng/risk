@@ -25,22 +25,25 @@ public class AccountSummaryVo {
     @Schema(description = "账户类型名称")
     private String AccountTypName;
 
-    @Schema(description = "净流动性")
+    @Schema(description = "账户总资产(账户总资产)")
     private String NetLiquidation; // 净流动性
 
     @Schema(description = "总现金")
     private String TotalCashValue; // 总现金
 
+    @Schema(description = "已结算现金")
     private String SettledCash;
 
-    @Schema(description = "应计现金：应付 / 应收利息净额")
+    @Schema(description = "应计现金（净利息）")
     private String AccruedCash; // 应计现金：应付 / 应收利息净额
 
     @Schema(description = "购买力")
     private String BuyingPower; // 购买力
 
+    @Schema(description = "含贷款权益（保证金账户 “总资产”）EWLV")
     private String EquityWithLoanValue;
 
+    @Schema(description = "上一交易日收盘 EWLV")
     private String PreviousEquityWithLoanValue;
 
     @Schema(description = "持仓总市值")

@@ -1,5 +1,6 @@
 package com.riskcontrol.controller;
 
+import com.ib.client.Contract;
 import com.ib.client.EClientSocket;
 import com.ib.client.protobuf.PositionMultiProto;
 import com.ib.client.protobuf.PositionsMultiRequestProto;
@@ -8,8 +9,10 @@ import com.riskcontrol.common.ResultBean;
 import com.riskcontrol.config.IbkrConfig;
 import com.riskcontrol.config.IbkrSynConfig;
 import com.riskcontrol.domain.bo.ibkr.AccountSummaryBo;
+import com.riskcontrol.domain.bo.ibkr.PositionBo;
 import com.riskcontrol.domain.vo.ibkr.AccountSummaryVo;
 import com.riskcontrol.domain.vo.ibkr.PositionItem;
+import com.riskcontrol.domain.vo.ibkr.PositionVo;
 import com.riskcontrol.service.IbkrService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -51,32 +54,39 @@ public class IbkrController {
     @Operation(summary = "持仓列表", description = "持仓列表")
     @PostMapping(value = {"/pc/position"})
     @ResourceMethod(btnCode = "btn-pc-ibkr-account-summary", level = 3)
-    public List<PositionItem> reqPosition() throws ExecutionException, InterruptedException, TimeoutException {
+    public ResultBean<List<PositionVo>> reqPosition(@RequestBody PositionBo positionBo) throws ExecutionException, InterruptedException, TimeoutException {
+        return new ResultBean<>(ibkrService.reqPosition(positionBo));
+    }
 
-        // 1.生成全局唯一reqId
-        int reqId = ibkrSynConfig.nextReqId();
-        CompletableFuture<Object> future = new CompletableFuture<>();
-        ibkrSynConfig.FUTURE_MAP.put(reqId, future);
+    @Operation(summary = "投资组合", description = "投资组合")
+    @PostMapping(value = {"/pc/portfolio"})
+    @ResourceMethod(btnCode = "btn-pc-ibkr-account-summary", level = 3)
+    public ResultBean<List<PositionVo>> reqPortfolio(@RequestBody PositionBo positionBo) throws ExecutionException, InterruptedException, TimeoutException {
+        return new ResultBean<>(ibkrService.reqPortfolio(positionBo));
+    }
 
-        // 2.组装新版请求对象 PositionsMultiRequest
-        PositionsMultiRequestProto.PositionsMultiRequest req = PositionsMultiRequestProto.PositionsMultiRequest.newBuilder()
-                .setReqId(reqId)
-                .setAccount("")
-//                .setModelCode("Core")
-                .build();
+    @Operation(summary = "历史数据", description = "历史数据")
+    @PostMapping(value = {"/pc/history-data"})
+    @ResourceMethod(btnCode = "btn-pc-ibkr-account-summary", level = 3)
+    public ResultBean<List<PositionVo>> historyData(@RequestBody PositionBo positionBo) throws ExecutionException, InterruptedException, TimeoutException {
 
-        // 场景1：查【全部模型/全部持仓】 → 只setReqId+Account，删掉setModelCode("")
-//        PositionsMultiRequest reqAll = PositionsMultiRequest.newBuilder()
-//                .setReqId(reqId)
-//                .setAccount(account)
-//                // .setModelCode("") 删掉这行！！空串非法
-//                .build();
+        int reqId = 996;
+        Contract contract = new Contract();
+        contract.symbol("AAPL");
+        contract.secType("STK");   // 股票 STK，期货 FUT，期权 OPT
+        contract.exchange("SMART"); // NASDAQ
+        contract.currency("USD");
 
-        m_client.reqPositionsMultiProtoBuf(req);
+        String endDateTime = "";          // 空 = 取最新数据 20260608 23:59:59
+        String durationStr = "1 M";       // 回溯 1 个月 1 D(1 天)、1 W(1 周)、1 M(1 月)、1 Y(1 年)
+        String barSize = "1 day";         // 日K线 1 secs / 1 min / 5 mins / 1 hour / 1 day
+        String whatToShow = "TRADES";     // 取成交价格 MIDPOINT(中间价)、BID、ASK、TRADES(成交)
+        int useRTH = 1;                   // 1仅常规交易时段 0包含盘前盘后交易时段
 
-        List<PositionItem> resList = (List<PositionItem>) future.get(5* 1000, TimeUnit.MILLISECONDS);
-        m_client.cancelPositionsMulti(reqId);
+        int formatDate = 1;
+        boolean keepUpToDate = false;// 不持续更新
+        m_client.reqHistoricalData(reqId, contract, endDateTime, durationStr, barSize, whatToShow, useRTH, formatDate, keepUpToDate, null);
 
-        return resList;
+        return new ResultBean<>(null);
     }
 }

@@ -25,6 +25,7 @@ public class LoggingAspect {
     public Object logAround(ProceedingJoinPoint joinPoint) throws Throwable {
         long startTime = System.currentTimeMillis();
 
+        StringBuilder sb = new StringBuilder();
         // 获取请求信息
         ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
         String uuid = UUID.randomUUID().toString();
@@ -39,8 +40,8 @@ public class LoggingAspect {
             log.info("{}:Args: {}", uuid, getArgsLog(joinPoint.getArgs()));
         }
 
-        ResultBean<?> result;
-        long executionTime;
+        ResultBean<?> result = null;
+        Long executionTime = null;
         try {
             // 执行方法
             result = (ResultBean<?>)joinPoint.proceed();
@@ -50,12 +51,12 @@ public class LoggingAspect {
             log.error("Exception in method: {}", joinPoint.getSignature().getName(), e);
             result = handlerException(joinPoint, e);
         } finally {
+            log.info("{}:Result: {}", uuid, JSONObject.toJSONString(result));
+            log.info("{}:Execution Time: {} ms", uuid, executionTime);
             executionTime = System.currentTimeMillis() - startTime;
         }
         // 记录响应
 //        log.info("=== HTTP Response ===", uuid);
-        log.info("{}:Result: {}", uuid, JSONObject.toJSONString(result));
-        log.info("{}:Execution Time: {} ms", uuid, executionTime);
 //        log.info("=== Request Completed ===\n");
         return result;
     }

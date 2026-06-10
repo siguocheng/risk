@@ -15,7 +15,7 @@ public class IbkrSynConfig {
     public Long timeout;
 
     // reqId -> Future 全局映射，解决多并发请求回调匹配
-    public static final Map<Integer, CompletableFuture<Object>> FUTURE_MAP = new ConcurrentHashMap<>();
+    public static final Map<Object, CompletableFuture<Object>> FUTURE_MAP = new ConcurrentHashMap<>();
     // 自增reqId生成器
     private final AtomicInteger reqIdGen = new AtomicInteger(1000);
 

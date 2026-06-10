@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.riskcontrol.dao.PositionMapper">
+    <resultMap id="BaseResultMap" type="com.riskcontrol.domain.Position">
+        <id column="id" jdbcType="BIGINT" property="id" />
+        <result column="conid" jdbcType="BIGINT" property="conId" />
+        <result column="account_code" jdbcType="VARCHAR" property="accountCode" />
+        <result column="model_code" jdbcType="VARCHAR" property="modelCode" />
+        <result column="position" jdbcType="DECIMAL" property="positionQty" />
+        <result column="avg_cost" jdbcType="DECIMAL" property="avgCost" />
+        <result column="unrealized_pnl" jdbcType="DECIMAL" property="unrealizedPnl" />
+        <result column="market_price" jdbcType="DECIMAL" property="marketPrice" />
+        <result column="market_value" jdbcType="DECIMAL" property="marketValue" />
+        <result column="realized_pnl" jdbcType="DECIMAL" property="realizedPnl" />
+        <result column="deleted" jdbcType="TINYINT" property="deleted" />
+        <result column="create_id" jdbcType="BIGINT" property="createId" />
+        <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
+        <result column="modified_id" jdbcType="BIGINT" property="modifiedId" />
+        <result column="update_time" jdbcType="TIMESTAMP" property="modifiedTime" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, conid, account_code, model_code, position, avg_cost, unrealized_pnl,
+        market_price, market_value, realized_pnl, deleted, create_id, create_time,
+        modified_id, update_time
+    </sql>
+</mapper>
