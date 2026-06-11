@@ -25,7 +25,7 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
     public boolean saveOrUpdatePosition(Position position) {
         LambdaQueryWrapper<Position> queryWrapper = new LambdaQueryWrapper();
         queryWrapper.eq(Position::getAccountCode, position.getAccountCode());
-        queryWrapper.eq(Position::getConId, position.getConId());
+        queryWrapper.eq(Position::getConid, position.getConid());
 
         long count = this.count(queryWrapper);
         if (count > 0) {

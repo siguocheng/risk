@@ -21,7 +21,7 @@ public class AccountSummary extends BaseEntity {
 
     @Schema(description = "账户是否就绪")
     @TableField(value = "account_ready")
-    private Boolean accountReady;
+    private String accountReady;
 
     @Schema(description = "账户类型")
     @TableField(value = "account_type")
@@ -117,7 +117,7 @@ public class AccountSummary extends BaseEntity {
 
     @Schema(description = "净资产与保证金是否待复核")
     @TableField(value = "nlv_and_margin_in_review")
-    private Boolean nlvAndMarginInReview;
+    private String nlvAndMarginInReview;
 
     @Schema(description = "净清算价值(账户净资产)")
     @TableField(value = "net_liquidation")

@@ -28,6 +28,7 @@ public class AccountKey {
         singleKey.add("FullExcessLiquidity");
         singleKey.add("FullInitMarginReq");
         singleKey.add("FullMaintMarginReq");
+        singleKey.add("GrossPositionValue");
         singleKey.add("Guarantee");
         singleKey.add("IncentiveCoupons");
         singleKey.add("IndianStockHaircut");
@@ -46,6 +47,8 @@ public class AccountKey {
         singleKey.add("TotalCashValue");
         singleKey.add("TotalDebitCardPendingCharges");
         singleKey.add("BuyingPower");
+
+
 
         multiKey.add("AccountOrGroup");
         multiKey.add("AccruedCash");

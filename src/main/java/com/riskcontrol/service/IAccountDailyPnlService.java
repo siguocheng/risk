@@ -11,5 +11,5 @@ import com.riskcontrol.domain.AccountDailyPnl;
  */
 public interface IAccountDailyPnlService extends IService<AccountDailyPnl> {
 
-
+    boolean saveOrUpdateAccountDailyPnl(AccountDailyPnl accountDailyPnl);
 }

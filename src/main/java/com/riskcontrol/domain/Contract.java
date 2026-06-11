@@ -18,7 +18,7 @@ public class Contract extends BaseEntity {
     private int conid;
 
     @Schema(description = "股票简称")
-    @TableField(value = "conid")
+    @TableField(value = "symbol")
     private String symbol;
 
     @Schema(description = "类型 STK = 股票（Stock）、OPT期权、FUT期货、FX外汇")

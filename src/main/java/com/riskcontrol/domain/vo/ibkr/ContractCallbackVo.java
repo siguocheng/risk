@@ -11,7 +11,7 @@ import java.util.List;
 public class ContractCallbackVo {
 
     @Schema(description = "合约唯一 ID")
-    private int conId;
+    private int conid;
 
     @Schema(description = "股票简称")
     private String symbol;

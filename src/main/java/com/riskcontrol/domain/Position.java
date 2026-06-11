@@ -27,7 +27,7 @@ public class Position extends BaseEntity implements Serializable {
 
     @Schema(description = "合约id")
     @TableField(value = "conid")
-    private Long conId;
+    private Integer conid;
 
     @Schema(description = "账号编号")
     @TableField(value = "account_code")
@@ -38,7 +38,7 @@ public class Position extends BaseEntity implements Serializable {
     private String modelCode;
 
     @Schema(description = "持仓股数")
-    @TableField(value = "`position`")
+    @TableField(value = "position_qty")
     private BigDecimal positionQty;
 
     @Schema(description = "平均成本价")

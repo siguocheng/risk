@@ -17,19 +17,22 @@ public class PositionCallbackVo {
     private BigDecimal position;
 
     @Schema(description = "平均成本价")
-    private BigDecimal avgCost;
+    private Double avgCost;
 
     @Schema(description = "未实现盈亏")
-    private BigDecimal unrealizedPnl;
+    private Double unrealizedPnl;
 
     private ContractCallbackVo contract;
 
     @Schema(description = "市场价格")
-    private BigDecimal marketPrice;
+    private Double marketPrice;
 
     @Schema(description = "市场值")
-    private BigDecimal marketValue;
+    private Double marketValue;
 
     @Schema(description = "实现盈亏")
-    private BigDecimal realizedPnl;
+    private Double realizedPnl;
+
+    @Schema(description = "合约唯一 ID")
+    private Integer conid;
 }

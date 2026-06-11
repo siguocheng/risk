@@ -5,10 +5,7 @@ import com.alibaba.fastjson2.JSONObject;
 import com.ib.client.*;
 import com.ib.client.protobuf.*;
 import com.riskcontrol.config.IbkrSynConfig;
-import com.riskcontrol.domain.vo.ibkr.AccountSummaryCallbackVO;
-import com.riskcontrol.domain.vo.ibkr.BarData;
-import com.riskcontrol.domain.vo.ibkr.ContractCallbackVo;
-import com.riskcontrol.domain.vo.ibkr.PositionCallbackVo;
+import com.riskcontrol.domain.vo.ibkr.*;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -100,6 +97,7 @@ public class IbkrWrapper implements EWrapper {
         item.setMarketValue(marketValue);
         item.setUnrealizedPnl(unrealizedPNL);
         item.setRealizedPnl(realizedPNL);
+        item.setConid(contract.conid());
 
         ContractCallbackVo contractData = this.convertProtoToContract(contract);
 
@@ -111,7 +109,7 @@ public class IbkrWrapper implements EWrapper {
     // proto合约 -> Contract 转换
     private ContractCallbackVo convertProtoToContract(Contract contract){
         ContractCallbackVo c = new ContractCallbackVo();
-        c.setConId(contract.conid());
+        c.setConid(contract.conid());
         c.setSymbol(contract.symbol());
         c.setSecType(contract.getSecType());
         c.setExchange(contract.exchange());
@@ -488,21 +486,38 @@ public class IbkrWrapper implements EWrapper {
 
     @Override
     public void pnl(int reqId, double dailyPnL, double unrealizedPnL, double realizedPnL) {
-        Map<String, Object> dataMap = new ConcurrentHashMap<>();
-        dataMap.put("dailyPnL", dailyPnL);
-        dataMap.put("unrealizedPnL", unrealizedPnL);
-        dataMap.put("realizedPnL", realizedPnL);
-
+        PnlCallbackVo pnlCallbackVo = new PnlCallbackVo();
+        pnlCallbackVo.setDailyPnL(dailyPnL);
+        pnlCallbackVo.setUnrealizedPnL(unrealizedPnL);
+        pnlCallbackVo.setRealizedPnL(realizedPnL);
         CompletableFuture<Object> future = ibkrSynConfig.FUTURE_MAP.remove(reqId);
 
         if(future != null){
-            future.complete(dataMap);
+            future.complete(pnlCallbackVo);
         }
     }
 
     @Override
     public void pnlSingle(int reqId, Decimal pos, double dailyPnL, double unrealizedPnL, double realizedPnL, double value) {
         System.out.println("pnlSingle");
+        ContractSinglePnlCallbackVo singlePnlCallbackVo = new ContractSinglePnlCallbackVo();
+
+        if (Math.abs(realizedPnL - Double.MAX_VALUE) < 1e-15) {
+            System.out.println("【警告】realizedPnL 无有效数据，为IB占位值");
+            // 业务赋值：0
+            realizedPnL = 0.0;
+        }
+
+        singlePnlCallbackVo.setPos(pos);
+        singlePnlCallbackVo.setDailyPnL(dailyPnL);
+        singlePnlCallbackVo.setUnrealizedPnL(unrealizedPnL);
+        singlePnlCallbackVo.setRealizedPnL(realizedPnL);
+        singlePnlCallbackVo.setValue(value);
+        CompletableFuture<Object> future = ibkrSynConfig.FUTURE_MAP.remove(reqId);
+
+        if(future != null){
+            future.complete(singlePnlCallbackVo);
+        }
     }
 
     @Override
@@ -749,7 +764,7 @@ public class IbkrWrapper implements EWrapper {
         item.setAccountCode(positionMultiProto.getAccount());
         item.setModelCode(positionMultiProto.getModelCode());
         item.setPosition(new BigDecimal(positionMultiProto.getPosition()));
-        item.setAvgCost(positionMultiProto.getAvgCost());
+//        item.setAvgCost(positionMultiProto.getAvgCost());
 
         // proto合约转IB Contract
         ContractCallbackVo contract = convertProtoToContract(positionMultiProto.getContract());
@@ -760,7 +775,7 @@ public class IbkrWrapper implements EWrapper {
     // proto合约 -> Contract 转换
     private ContractCallbackVo convertProtoToContract(ContractProto.Contract protoContract){
         ContractCallbackVo c = new ContractCallbackVo();
-        c.setConId(protoContract.getConId());
+        c.setConid(protoContract.getConId());
         c.setSymbol(protoContract.getSymbol());
         c.setSecType(protoContract.getSecType());
         c.setExchange(protoContract.getExchange());

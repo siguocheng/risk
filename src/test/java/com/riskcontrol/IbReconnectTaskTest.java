@@ -19,4 +19,19 @@ public class IbReconnectTaskTest {
     public void accountCurrency() throws ExecutionException, InterruptedException, TimeoutException {
         ibReconnectTask.synAccountCurrency();
     }
+
+    @Test
+    public void synAccount() throws ExecutionException, InterruptedException, TimeoutException {
+        ibReconnectTask.synAccount();
+    }
+
+    @Test
+    public void synPnl() throws ExecutionException, InterruptedException, TimeoutException {
+        ibReconnectTask.synPnl("DUQ346350","");
+    }
+
+    @Test
+    public void synSinglePnl() throws ExecutionException, InterruptedException, TimeoutException {
+        ibReconnectTask.synSinglePnl("DUQ346350","", 265598);
+    }
 }
