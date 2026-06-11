@@ -6,7 +6,7 @@ import lombok.Data;
 import java.math.BigDecimal;
 
 @Data
-public class PositionVo {
+public class PositionCallbackVo {
 
     @Schema(description = "账号编号")
     private String accountCode;
@@ -17,19 +17,19 @@ public class PositionVo {
     private BigDecimal position;
 
     @Schema(description = "平均成本价")
-    private Double avgCost;
+    private BigDecimal avgCost;
 
     @Schema(description = "未实现盈亏")
-    private Double unrealizedPnl;
+    private BigDecimal unrealizedPnl;
 
-    private ContractVo contract;
+    private ContractCallbackVo contract;
 
     @Schema(description = "市场价格")
-    private Double marketPrice;
+    private BigDecimal marketPrice;
 
     @Schema(description = "市场值")
-    private Double marketValue;
+    private BigDecimal marketValue;
 
     @Schema(description = "实现盈亏")
-    private Double realizedPnl;
+    private BigDecimal realizedPnl;
 }

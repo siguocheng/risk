@@ -17,13 +17,11 @@ public class AccountSummary extends BaseEntity {
     @TableField(value = "account_code")
     private String accountCode;
 
-    @Schema(description = "账户/分组标识")
-    @TableField(value = "account_or_group")
-    private String accountOrGroup;
+
 
     @Schema(description = "账户是否就绪")
     @TableField(value = "account_ready")
-    private String accountReady;
+    private Boolean accountReady;
 
     @Schema(description = "账户类型")
     @TableField(value = "account_type")
@@ -111,7 +109,7 @@ public class AccountSummary extends BaseEntity {
 
     @Schema(description = "前瞻数据下次更新时间戳")
     @TableField(value = "look_ahead_next_change")
-    private BigDecimal lookAheadNextChange;
+    private Long lookAheadNextChange;
 
     @Schema(description = "维持保证金要求")
     @TableField(value = "maint_margin_req")
@@ -119,7 +117,7 @@ public class AccountSummary extends BaseEntity {
 
     @Schema(description = "净资产与保证金是否待复核")
     @TableField(value = "nlv_and_margin_in_review")
-    private String nlvAndMarginInReview;
+    private Boolean nlvAndMarginInReview;
 
     @Schema(description = "净清算价值(账户净资产)")
     @TableField(value = "net_liquidation")
@@ -147,7 +145,7 @@ public class AccountSummary extends BaseEntity {
 
     @Schema(description = "当日结算现金")
     @TableField(value = "settled_cash_by_date")
-    private BigDecimal settledCashByDate;
+    private String settledCashByDate;
 
     @Schema(description = "现金总额")
     @TableField(value = "total_cash_value")

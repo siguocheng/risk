@@ -2,16 +2,13 @@ package com.riskcontrol.service.impl;
 
 import com.alibaba.fastjson2.JSONObject;
 import com.ib.client.EClientSocket;
-import com.ib.client.protobuf.AccountUpdatesMultiRequestProto;
-import com.ib.client.protobuf.CancelAccountUpdatesMultiProto;
 import com.ib.client.protobuf.CancelPositionsMultiProto;
 import com.ib.client.protobuf.PositionsMultiRequestProto;
 import com.riskcontrol.config.IbkrSynConfig;
 import com.riskcontrol.domain.bo.ibkr.AccountSummaryBo;
 import com.riskcontrol.domain.bo.ibkr.PositionBo;
 import com.riskcontrol.domain.vo.ibkr.AccountSummaryVo;
-import com.riskcontrol.domain.vo.ibkr.PositionItem;
-import com.riskcontrol.domain.vo.ibkr.PositionVo;
+import com.riskcontrol.domain.vo.ibkr.PositionCallbackVo;
 import com.riskcontrol.service.IbkrService;
 import com.riskcontrol.util.ReflectMapToObjUtil;
 import jakarta.annotation.Resource;
@@ -74,7 +71,7 @@ public class IbkrServiceImpl implements IbkrService {
     }
 
     @Override
-    public List<PositionVo> reqPosition(PositionBo positionBo) throws ExecutionException, InterruptedException, TimeoutException {
+    public List<PositionCallbackVo> reqPosition(PositionBo positionBo) throws ExecutionException, InterruptedException, TimeoutException {
 
         // 1.生成全局唯一reqId
         int reqId = 998;
@@ -97,7 +94,7 @@ public class IbkrServiceImpl implements IbkrService {
 
         m_client.reqPositionsMultiProtoBuf(req);
 
-        List<PositionVo> resList = (List<PositionVo>) future.get(ibkrSynConfig.timeout, TimeUnit.MILLISECONDS);
+        List<PositionCallbackVo> resList = (List<PositionCallbackVo>) future.get(ibkrSynConfig.timeout, TimeUnit.MILLISECONDS);
 
         CancelPositionsMultiProto.CancelPositionsMulti cancelPositionsMulti = CancelPositionsMultiProto.CancelPositionsMulti.newBuilder().setReqId(reqId).build();
         m_client.cancelPositionsMultiProtoBuf(cancelPositionsMulti);
@@ -106,7 +103,7 @@ public class IbkrServiceImpl implements IbkrService {
     }
 
     @Override
-    public List<PositionVo> reqPortfolio(PositionBo positionBo) throws ExecutionException, InterruptedException, TimeoutException {
+    public List<PositionCallbackVo> reqPortfolio(PositionBo positionBo) throws ExecutionException, InterruptedException, TimeoutException {
         int reqId = 997;
 //        CompletableFuture<Object> future = new CompletableFuture<>();
 //        ibkrSynConfig.FUTURE_MAP.put(reqId, future);

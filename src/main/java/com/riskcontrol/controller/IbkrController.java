@@ -2,17 +2,13 @@ package com.riskcontrol.controller;
 
 import com.ib.client.Contract;
 import com.ib.client.EClientSocket;
-import com.ib.client.protobuf.PositionMultiProto;
-import com.ib.client.protobuf.PositionsMultiRequestProto;
 import com.riskcontrol.annotation.ResourceMethod;
 import com.riskcontrol.common.ResultBean;
-import com.riskcontrol.config.IbkrConfig;
 import com.riskcontrol.config.IbkrSynConfig;
 import com.riskcontrol.domain.bo.ibkr.AccountSummaryBo;
 import com.riskcontrol.domain.bo.ibkr.PositionBo;
 import com.riskcontrol.domain.vo.ibkr.AccountSummaryVo;
-import com.riskcontrol.domain.vo.ibkr.PositionItem;
-import com.riskcontrol.domain.vo.ibkr.PositionVo;
+import com.riskcontrol.domain.vo.ibkr.PositionCallbackVo;
 import com.riskcontrol.service.IbkrService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -23,10 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 @Tag(description = "IB接口", name = "IB接口")
@@ -54,21 +47,21 @@ public class IbkrController {
     @Operation(summary = "持仓列表", description = "持仓列表")
     @PostMapping(value = {"/pc/position"})
     @ResourceMethod(btnCode = "btn-pc-ibkr-account-summary", level = 3)
-    public ResultBean<List<PositionVo>> reqPosition(@RequestBody PositionBo positionBo) throws ExecutionException, InterruptedException, TimeoutException {
+    public ResultBean<List<PositionCallbackVo>> reqPosition(@RequestBody PositionBo positionBo) throws ExecutionException, InterruptedException, TimeoutException {
         return new ResultBean<>(ibkrService.reqPosition(positionBo));
     }
 
     @Operation(summary = "投资组合", description = "投资组合")
     @PostMapping(value = {"/pc/portfolio"})
     @ResourceMethod(btnCode = "btn-pc-ibkr-account-summary", level = 3)
-    public ResultBean<List<PositionVo>> reqPortfolio(@RequestBody PositionBo positionBo) throws ExecutionException, InterruptedException, TimeoutException {
+    public ResultBean<List<PositionCallbackVo>> reqPortfolio(@RequestBody PositionBo positionBo) throws ExecutionException, InterruptedException, TimeoutException {
         return new ResultBean<>(ibkrService.reqPortfolio(positionBo));
     }
 
     @Operation(summary = "历史数据", description = "历史数据")
     @PostMapping(value = {"/pc/history-data"})
     @ResourceMethod(btnCode = "btn-pc-ibkr-account-summary", level = 3)
-    public ResultBean<List<PositionVo>> historyData(@RequestBody PositionBo positionBo) throws ExecutionException, InterruptedException, TimeoutException {
+    public ResultBean<List<PositionCallbackVo>> historyData(@RequestBody PositionBo positionBo) throws ExecutionException, InterruptedException, TimeoutException {
 
         int reqId = 996;
         Contract contract = new Contract();

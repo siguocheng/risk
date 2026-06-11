@@ -19,6 +19,10 @@ public class AccountSummaryCurrency extends BaseEntity {
     @TableField(value = "account_code")
     private String accountCode;
 
+    @Schema(description = "账户/分组标识")
+    @TableField(value = "account_or_group")
+    private String accountOrGroup;
+
     @Schema(description = "应计现金")
     @TableField(value = "accrued_cash")
     private BigDecimal accruedCash;

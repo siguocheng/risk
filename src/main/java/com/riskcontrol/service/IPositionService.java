@@ -1,6 +1,7 @@
 package com.riskcontrol.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.riskcontrol.domain.AccountCurrency;
 import com.riskcontrol.domain.Position;
 
 /**
@@ -11,5 +12,5 @@ import com.riskcontrol.domain.Position;
  */
 public interface IPositionService extends IService<Position>  {
 
-
+    boolean saveOrUpdatePosition(Position position);
 }

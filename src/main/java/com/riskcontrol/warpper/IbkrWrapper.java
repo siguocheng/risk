@@ -7,8 +7,8 @@ import com.ib.client.protobuf.*;
 import com.riskcontrol.config.IbkrSynConfig;
 import com.riskcontrol.domain.vo.ibkr.AccountSummaryCallbackVO;
 import com.riskcontrol.domain.vo.ibkr.BarData;
-import com.riskcontrol.domain.vo.ibkr.ContractVo;
-import com.riskcontrol.domain.vo.ibkr.PositionVo;
+import com.riskcontrol.domain.vo.ibkr.ContractCallbackVo;
+import com.riskcontrol.domain.vo.ibkr.PositionCallbackVo;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -90,9 +90,9 @@ public class IbkrWrapper implements EWrapper {
     @Override
     public void updatePortfolio(Contract contract, Decimal position, double marketPrice, double marketValue, double averageCost, double unrealizedPNL, double realizedPNL, String accountName) {
 
-        List<PositionVo> list = posProtoMap.computeIfAbsent(accountName, k -> new CopyOnWriteArrayList<>());
+        List<PositionCallbackVo> list = posProtoMap.computeIfAbsent(accountName, k -> new CopyOnWriteArrayList<>());
 
-        PositionVo item = new PositionVo();
+        PositionCallbackVo item = new PositionCallbackVo();
         item.setAccountCode(accountName);
         item.setPosition(position.value());
         item.setAvgCost(averageCost);
@@ -101,7 +101,7 @@ public class IbkrWrapper implements EWrapper {
         item.setUnrealizedPnl(unrealizedPNL);
         item.setRealizedPnl(realizedPNL);
 
-        ContractVo contractData = this.convertProtoToContract(contract);
+        ContractCallbackVo contractData = this.convertProtoToContract(contract);
 
         item.setContract(contractData);
 
@@ -109,8 +109,8 @@ public class IbkrWrapper implements EWrapper {
     }
 
     // proto合约 -> Contract 转换
-    private ContractVo convertProtoToContract(Contract contract){
-        ContractVo c = new ContractVo();
+    private ContractCallbackVo convertProtoToContract(Contract contract){
+        ContractCallbackVo c = new ContractCallbackVo();
         c.setConId(contract.conid());
         c.setSymbol(contract.symbol());
         c.setSecType(contract.getSecType());
@@ -141,7 +141,7 @@ public class IbkrWrapper implements EWrapper {
     public void accountDownloadEnd(String accountName) {
         System.out.println("accountDownloadEnd:" + accountName);
         CompletableFuture<Object> future = ibkrSynConfig.FUTURE_MAP.remove(accountName);
-        List<PositionVo> data = posProtoMap.remove(accountName);
+        List<PositionCallbackVo> data = posProtoMap.remove(accountName);
         Map<String, Object> accountData = accTempMap.remove(accountName);
         accountData.put("position", data);
         if (future != null) {
@@ -738,28 +738,28 @@ public class IbkrWrapper implements EWrapper {
     }
 
     // reqId -> 持仓列表缓存
-    public final Map<Object, List<PositionVo>> posProtoMap = new ConcurrentHashMap<>();
+    public final Map<Object, List<PositionCallbackVo>> posProtoMap = new ConcurrentHashMap<>();
 
     @Override
     public void positionMultiProtoBuf(PositionMultiProto.PositionMulti positionMultiProto) {
         int reqId = positionMultiProto.getReqId();
-        List<PositionVo> list = posProtoMap.computeIfAbsent(reqId, k -> new CopyOnWriteArrayList<>());
+        List<PositionCallbackVo> list = posProtoMap.computeIfAbsent(reqId, k -> new CopyOnWriteArrayList<>());
 
-        PositionVo item = new PositionVo();
+        PositionCallbackVo item = new PositionCallbackVo();
         item.setAccountCode(positionMultiProto.getAccount());
         item.setModelCode(positionMultiProto.getModelCode());
         item.setPosition(new BigDecimal(positionMultiProto.getPosition()));
         item.setAvgCost(positionMultiProto.getAvgCost());
 
         // proto合约转IB Contract
-        ContractVo contract = convertProtoToContract(positionMultiProto.getContract());
+        ContractCallbackVo contract = convertProtoToContract(positionMultiProto.getContract());
         item.setContract(contract);
         list.add(item);
     }
 
     // proto合约 -> Contract 转换
-    private ContractVo convertProtoToContract(ContractProto.Contract protoContract){
-        ContractVo c = new ContractVo();
+    private ContractCallbackVo convertProtoToContract(ContractProto.Contract protoContract){
+        ContractCallbackVo c = new ContractCallbackVo();
         c.setConId(protoContract.getConId());
         c.setSymbol(protoContract.getSymbol());
         c.setSecType(protoContract.getSecType());
@@ -776,7 +776,7 @@ public class IbkrWrapper implements EWrapper {
     public void positionMultiEndProtoBuf(PositionMultiEndProto.PositionMultiEnd positionMultiEndProto) {
         int reqId = positionMultiEndProto.getReqId();
         CompletableFuture<Object> future = ibkrSynConfig.FUTURE_MAP.remove(reqId);
-        List<PositionVo> data = posProtoMap.remove(reqId);
+        List<PositionCallbackVo> data = posProtoMap.remove(reqId);
         if (future != null) {
             future.complete(data == null ? new ArrayList<>() : data);
         }

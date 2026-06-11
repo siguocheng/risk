@@ -17,6 +17,6 @@ public class IbReconnectTaskTest {
 
     @Test
     public void accountCurrency() throws ExecutionException, InterruptedException, TimeoutException {
-        ibReconnectTask.accountCurrency();
+        ibReconnectTask.synAccountCurrency();
     }
 }

@@ -11,4 +11,5 @@ import com.riskcontrol.domain.AccountCurrency;
  */
 public interface IAccountCurrencyService extends IService<AccountCurrency> {
 
+    boolean saveOrUpdateAccountCurrency(AccountCurrency accountCurrency);
 }

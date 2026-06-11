@@ -8,7 +8,7 @@ import lombok.Data;
 import java.util.List;
 
 @Data
-public class ContractVo {
+public class ContractCallbackVo {
 
     @Schema(description = "合约唯一 ID")
     private int conId;
