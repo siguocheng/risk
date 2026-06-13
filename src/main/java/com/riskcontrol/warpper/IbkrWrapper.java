@@ -202,8 +202,15 @@ public class IbkrWrapper implements EWrapper {
 
     }
 
+    public final Map<Object, List<BarData>> historicalDataMap = new ConcurrentHashMap<>();
+
     @Override
     public void historicalData(int reqId, Bar bar) {
+
+        System.out.println("historicalData");
+        List<BarData> list = historicalDataMap.computeIfAbsent(reqId, k -> new CopyOnWriteArrayList<>());
+
+
         BarData data = new BarData();
         data.time = bar.time();
         data.open = bar.open();
@@ -213,6 +220,8 @@ public class IbkrWrapper implements EWrapper {
         data.volume = bar.volume().longValue();
         data.wap = bar.wap().longValue();
         data.count = bar.count();
+
+        list.add(data);
 
         System.out.println("historicalData:" + JSONObject.toJSONString(data));
     }
@@ -411,6 +420,11 @@ public class IbkrWrapper implements EWrapper {
 
     @Override
     public void historicalDataEnd(int reqId, String startDateStr, String endDateStr) {
+        CompletableFuture<Object> future = ibkrSynConfig.FUTURE_MAP.remove(reqId);
+        List<BarData> data = historicalDataMap.remove(reqId);
+        if (future != null) {
+            future.complete(data == null ? new ArrayList<>() : data);
+        }
         System.out.println("historicalDataEnd:" + startDateStr + "-" + endDateStr);
     }
 

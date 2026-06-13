@@ -1,6 +1,7 @@
 package com.riskcontrol.task;
 
 import com.ib.client.EClientSocket;
+import com.ib.client.TagValue;
 import com.riskcontrol.config.IbkrSynConfig;
 import com.riskcontrol.constant.AccountKey;
 import com.riskcontrol.constant.ReqIdConstant;
@@ -8,6 +9,7 @@ import com.riskcontrol.domain.*;
 import com.riskcontrol.domain.vo.ibkr.*;
 import com.riskcontrol.service.*;
 import com.riskcontrol.util.BigDecimalUtil;
+import com.riskcontrol.util.DateUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -17,6 +19,10 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -60,6 +66,8 @@ public class IbReconnectTask {
     @Resource
     IContractDailyPnlService contractDailyPnlService;
 
+    @Resource
+    IContractHistoryService contractHistoryService;
 
     @Resource
     IbkrSynConfig ibkrSynConfig;
@@ -99,6 +107,7 @@ public class IbReconnectTask {
         log.info("synAccountCurrency end");
     }
 
+    // 维护账号总的信息和持仓信息
     public void synAccount() throws ExecutionException, InterruptedException, TimeoutException {
 
         log.info("synAccount synAccount");
@@ -293,7 +302,75 @@ public class IbReconnectTask {
         contractDailyPnl.setDailyDate(LocalDate.now());
 
         contractDailyPnlService.saveOrUpdateContractDailyPnl(contractDailyPnl);
-
     }
 
+    public void synContractHistory() throws ExecutionException, InterruptedException, TimeoutException {
+
+        List<Contract> list = contractService.list();
+
+        LocalDate yesterday = LocalDate.now().minusDays(1);
+
+        String endDateTime = DateUtil.toIbkrUtcEndTime(yesterday);          // 空 = 取最新数据 20260608 23:59:59
+        String durationStr = "1 Y";       // 回溯 1 个月 1 D(1 天)、1 W(1 周)、1 M(1 月)、1 Y(1 年)
+        String barSize = "1 day";         // 日K线 1 secs / 1 min / 5 mins / 1 hour / 1 day
+        String whatToShow = "TRADES";     // 取成交价格 MIDPOINT(中间价)、BID、ASK、TRADES(成交)
+        int useRTH = 1;                   // 1仅常规交易时段 0包含盘前盘后交易时段
+
+        int formatDate = 1;
+        boolean keepUpToDate = false;// 不持续更新
+
+        for (Contract contract : list) {
+            com.ib.client.Contract ibContract = new com.ib.client.Contract();
+            int conid = contract.getConid();
+            ibContract.conid(conid);
+            ibContract.symbol(contract.getSymbol());
+            ibContract.exchange(contract.getExchange());
+            ibContract.secType(contract.getSecType());
+            ibContract.currency(contract.getCurrency());
+
+            List<TagValue> tagList = null;
+
+            LocalDate contractHistoryLastDate = contract.getContractHistoryLastDate();
+            if (contractHistoryLastDate != null) {
+                LocalDate now = LocalDate.now().minusDays(1);
+                long days = ChronoUnit.DAYS.between(contractHistoryLastDate, now);
+                if (days == 0){
+                    continue;
+                }
+                durationStr = days + " D";
+            }
+
+            CompletableFuture<Object> future = new CompletableFuture<>();
+            ibkrSynConfig.FUTURE_MAP.put(ReqIdConstant.HistoricalDataReqId, future);
+
+            m_client.reqHistoricalData(ReqIdConstant.HistoricalDataReqId, ibContract, endDateTime, durationStr, barSize, whatToShow, useRTH, formatDate, keepUpToDate, tagList);
+            Object obj = future.get(60 * 1000, TimeUnit.MILLISECONDS);
+
+            m_client.cancelHistogramData(conid);
+
+            List<BarData> result = (List<BarData>) obj;
+
+            List<ContractHistory> historyList = new ArrayList<>();
+            for (BarData barData : result) {
+                ContractHistory history = new ContractHistory();
+                history.setConid(conid);
+                history.setTime(barData.getTime());
+                history.setPriceOpen(BigDecimalUtil.doubleToDecimal(barData.getOpen()));
+                history.setPriceHigh(BigDecimalUtil.doubleToDecimal(barData.getHigh()));
+                history.setPriceLow(BigDecimalUtil.doubleToDecimal(barData.getLow()));
+                history.setPriceClose(BigDecimalUtil.doubleToDecimal(barData.getClose()));
+                history.setPriceWap(BigDecimalUtil.doubleToDecimal(barData.getWap()));
+
+                history.setDealCount(barData.getCount());
+                history.setDealVolume(barData.getVolume());
+                historyList.add(history);
+
+                contractHistoryService.saveOrUpdateContractHistory(history);
+            }
+
+            contract.setContractHistoryLastDate(yesterday);
+
+            contractService.updateById(contract);
+        }
+    }
 }

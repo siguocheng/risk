@@ -8,5 +8,7 @@ public class ReqIdConstant {
 
     public final static int reqAccountSummaryId = 999;
 
+    public final static int HistoricalDataReqId = 996;
+
 
 }

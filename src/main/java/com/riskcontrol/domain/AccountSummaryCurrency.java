@@ -1,17 +1,17 @@
 package com.riskcontrol.domain;
 
-import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
-import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 /**
  * IBKR账户分币种资产明细
  */
 @Data
+@TableName("account_summary_currency")
 @Schema(description = "IBKR账户分币种资产明细")
 public class AccountSummaryCurrency extends BaseEntity {
 

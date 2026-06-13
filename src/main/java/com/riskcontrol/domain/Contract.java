@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Data
 public class Contract extends BaseEntity {
@@ -40,8 +41,8 @@ public class Contract extends BaseEntity {
     private BigDecimal strike;
 
     @Schema(description = "期权类型：C看涨 / P看跌；股票留空字符串")
-    @TableField(value = "right")
-    private String right;
+    @TableField(value = "opt_right")
+    private String optRight;
 
     @Schema(description = "到期日 / 合约月份，仅期货、期权有效；股票留空")
     @TableField(value = "last_trade_date_or_contract_month")
@@ -92,4 +93,8 @@ public class Contract extends BaseEntity {
     @Schema(description = "发行方 ID")
     @TableField(value = "issuer_id")
     private String issuerId;
+
+    @Schema(description = "历史数据最新的时间")
+    @TableField(value = "contract_history_last_date")
+    private LocalDate contractHistoryLastDate;
 }

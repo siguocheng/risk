@@ -63,7 +63,7 @@ public class IbkrController {
     @ResourceMethod(btnCode = "btn-pc-ibkr-account-summary", level = 3)
     public ResultBean<List<PositionCallbackVo>> historyData(@RequestBody PositionBo positionBo) throws ExecutionException, InterruptedException, TimeoutException {
 
-        int reqId = 996;
+        int reqId = 777;
         Contract contract = new Contract();
         contract.symbol("AAPL");
         contract.secType("STK");   // 股票 STK，期货 FUT，期权 OPT
@@ -71,7 +71,7 @@ public class IbkrController {
         contract.currency("USD");
 
         String endDateTime = "";          // 空 = 取最新数据 20260608 23:59:59
-        String durationStr = "1 M";       // 回溯 1 个月 1 D(1 天)、1 W(1 周)、1 M(1 月)、1 Y(1 年)
+        String durationStr = "1 Y";       // 回溯 1 个月 1 D(1 天)、1 W(1 周)、1 M(1 月)、1 Y(1 年)
         String barSize = "1 day";         // 日K线 1 secs / 1 min / 5 mins / 1 hour / 1 day
         String whatToShow = "TRADES";     // 取成交价格 MIDPOINT(中间价)、BID、ASK、TRADES(成交)
         int useRTH = 1;                   // 1仅常规交易时段 0包含盘前盘后交易时段

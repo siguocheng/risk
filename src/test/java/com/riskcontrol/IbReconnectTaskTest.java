@@ -34,4 +34,10 @@ public class IbReconnectTaskTest {
     public void synSinglePnl() throws ExecutionException, InterruptedException, TimeoutException {
         ibReconnectTask.synSinglePnl("DUQ346350","", 265598);
     }
+
+    @Test
+    public void synContractHistory() throws ExecutionException, InterruptedException, TimeoutException {
+        ibReconnectTask.synContractHistory();
+    }
+
 }
