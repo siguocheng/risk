@@ -10,6 +10,7 @@ import com.riskcontrol.domain.vo.ibkr.*;
 import com.riskcontrol.service.*;
 import com.riskcontrol.util.BigDecimalUtil;
 import com.riskcontrol.util.DateUtil;
+import com.riskcontrol.util.RiskMetricsUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -371,6 +372,59 @@ public class IbReconnectTask {
             contract.setContractHistoryLastDate(yesterday);
 
             contractService.updateById(contract);
+        }
+    }
+    
+    public void calcVar(){
+        for (Position position : positionService.list()) {
+            double marketValue = position.getMarketValue().doubleValue();// 市值
+            int conid = position.getConid();
+            System.out.printf("conid:" + conid);
+            // 取得日价格
+            double[] prices = contractHistoryService.queryContractHistoryPriceCloseByConid(conid);
+            // 95% var
+            double calcParamVarValue95 = RiskMetricsUtil.calcParamVar(prices, marketValue, RiskMetricsUtil.Z_95);
+            double calcHistoryVarValue95 = RiskMetricsUtil.calcHistoryVar(prices, marketValue, RiskMetricsUtil.Z_ALPHA_95);
+            double calcMonteCarloVarValue95 = RiskMetricsUtil.calcMonteCarloVar(prices, marketValue, RiskMetricsUtil.Z_ALPHA_95);
+
+            // 99% var
+            double calcParamVarValue99 = RiskMetricsUtil.calcParamVar(prices, marketValue, RiskMetricsUtil.Z_99);
+            double calcHistoryVarValue99 = RiskMetricsUtil.calcHistoryVar(prices, marketValue, RiskMetricsUtil.Z_ALPHA_99);
+            double calcMonteCarloVarValue99 = RiskMetricsUtil.calcMonteCarloVar(prices, marketValue, RiskMetricsUtil.Z_ALPHA_99);
+
+            // 95% cvar
+            double calcParamCVaRValue95 = RiskMetricsUtil.calcParamCVaR(prices, marketValue, RiskMetricsUtil.Z_95, RiskMetricsUtil.Z_ALPHA_95);
+            double calcHistoryCVaRValue95 = RiskMetricsUtil.calcHistoryCVaR(prices, marketValue, RiskMetricsUtil.Z_ALPHA_95);
+            double calcMonteCarloCVaRValue95 = RiskMetricsUtil.calcMonteCarloCVaR(prices, marketValue, RiskMetricsUtil.Z_ALPHA_95);
+
+            // 99% cvar
+            double calcParamCVaRValue99 = RiskMetricsUtil.calcParamCVaR(prices, marketValue, RiskMetricsUtil.Z_99, RiskMetricsUtil.Z_ALPHA_99);
+            double calcHistoryCVaRValue99 = RiskMetricsUtil.calcHistoryCVaR(prices, marketValue, RiskMetricsUtil.Z_ALPHA_99);
+            double calcMonteCarloCVaRValue99 = RiskMetricsUtil.calcMonteCarloCVaR(prices, marketValue, RiskMetricsUtil.Z_ALPHA_99);
+
+            System.out.printf("参数法 | 95%%置信 1日VaR: %.2f 美元%n", calcParamVarValue95);
+            System.out.printf("历史模拟 | 95%%置信 1日VaR: %.2f 美元%n", calcHistoryVarValue95);
+            System.out.printf("蒙特卡洛 | 95%%置信 1日VaR: %.2f 美元%n", calcMonteCarloVarValue95);
+
+            System.out.printf("参数法 | 99%%置信 1日VaR: %.2f 美元%n", calcParamVarValue99);
+            System.out.printf("历史模拟 | 99%%置信 1日VaR: %.2f 美元%n", calcHistoryVarValue99);
+            System.out.printf("蒙特卡洛 | 99%%置信 1日VaR: %.2f 美元%n%n", calcMonteCarloVarValue99);
+
+            System.out.printf("历史模拟 | 95%%置信 1日CVaR: %.2f 美元%n", calcParamCVaRValue95);
+            System.out.printf("参数法   | 95%%置信 1日CVaR: %.2f 美元%n", calcHistoryCVaRValue95);
+            System.out.printf("蒙特卡洛 | 95%%置信 1日CVaR: %.2f 美元%n", calcMonteCarloCVaRValue95);
+
+            System.out.printf("历史模拟 | 99%%置信 1日CVaR: %.2f 美元%n", calcParamCVaRValue99);
+            System.out.printf("参数法   | 99%%置信 1日CVaR: %.2f 美元%n", calcHistoryCVaRValue99);
+            System.out.printf("蒙特卡洛 | 99%%置信 1日CVaR: %.2f 美元%n%n", calcMonteCarloCVaRValue99);
+
+            // 计算 10日
+            int holdDay = 10;
+            double tenDayVar = RiskMetricsUtil.convertToTDay(calcParamVarValue95, holdDay);
+            double tenDayCvar = RiskMetricsUtil.convertToTDay(calcParamCVaRValue95, holdDay);
+
+            System.out.printf("【%d日持有期】95%%置信 VaR: %.2f 美元%n", holdDay, tenDayVar);
+            System.out.printf("【%d日持有期】95%%置信 CVaR: %.2f 美元%n", holdDay, tenDayCvar);
         }
     }
 }

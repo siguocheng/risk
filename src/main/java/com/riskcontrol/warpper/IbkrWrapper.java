@@ -29,17 +29,17 @@ public class IbkrWrapper implements EWrapper {
 
     @Override
     public void tickPrice(int tickerId, int field, double price, TickAttrib attrib) {
-
+        System.out.println("tickPrice");
     }
 
     @Override
     public void tickSize(int tickerId, int field, Decimal size) {
-
+        System.out.println("tickSize");
     }
 
     @Override
     public void tickOptionComputation(int tickerId, int field, int tickAttrib, double impliedVol, double delta, double optPrice, double pvDividend, double gamma, double vega, double theta, double undPrice) {
-
+        System.out.println("tickOptionComputation");
     }
 
     @Override
@@ -207,9 +207,7 @@ public class IbkrWrapper implements EWrapper {
     @Override
     public void historicalData(int reqId, Bar bar) {
 
-        System.out.println("historicalData");
         List<BarData> list = historicalDataMap.computeIfAbsent(reqId, k -> new CopyOnWriteArrayList<>());
-
 
         BarData data = new BarData();
         data.time = bar.time();

@@ -11,6 +11,9 @@ import com.riskcontrol.service.IContractService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
+import java.util.List;
+
 /**
  * 代码模板Service业务层处理
  *
@@ -36,5 +39,28 @@ public class ContractHistoryServiceImpl extends ServiceImpl<ContractHistoryMappe
             // 不存在则新增
             return this.save(contractHistory);
         }
+    }
+
+    @Override
+    public double[] queryContractHistoryPriceCloseByConid(int conid) {
+
+        LambdaQueryWrapper<ContractHistory> queryWrapper = new LambdaQueryWrapper();
+        queryWrapper.eq(ContractHistory::getConid, conid);
+
+        List<ContractHistory> list = this.list(queryWrapper);
+
+        // 转 Double 包装类型数组
+        Double[] doubleObjArr = list.stream()
+                .map(ContractHistory::getPriceClose)
+                .map(BigDecimal::doubleValue)
+                .toArray(Double[]::new);
+
+        // 再转 基本类型 double[]
+        double[] doubleArr = java.util.Arrays.stream(doubleObjArr)
+                .mapToDouble(Double::doubleValue)
+                .toArray();
+
+
+        return doubleArr;
     }
 }

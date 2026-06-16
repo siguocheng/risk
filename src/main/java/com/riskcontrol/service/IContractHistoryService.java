@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.riskcontrol.domain.Contract;
 import com.riskcontrol.domain.ContractHistory;
 
+import java.util.List;
+
 /**
  * 代码模板Service接口
  *
@@ -12,4 +14,6 @@ import com.riskcontrol.domain.ContractHistory;
  */
 public interface IContractHistoryService extends IService<ContractHistory> {
     boolean saveOrUpdateContractHistory(ContractHistory contractHistory);
+
+    double[] queryContractHistoryPriceCloseByConid(int conid);
 }

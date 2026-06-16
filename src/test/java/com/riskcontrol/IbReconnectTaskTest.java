@@ -40,4 +40,9 @@ public class IbReconnectTaskTest {
         ibReconnectTask.synContractHistory();
     }
 
+    @Test
+    public void calcVar() throws ExecutionException, InterruptedException, TimeoutException {
+        ibReconnectTask.calcVar();
+    }
+
 }
