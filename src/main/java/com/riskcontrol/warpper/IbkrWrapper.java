@@ -5,7 +5,9 @@ import com.alibaba.fastjson2.JSONObject;
 import com.ib.client.*;
 import com.ib.client.protobuf.*;
 import com.riskcontrol.config.IbkrSynConfig;
+import com.riskcontrol.domain.ContractOption;
 import com.riskcontrol.domain.vo.ibkr.*;
+import com.riskcontrol.service.IContractOptionService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -27,6 +29,9 @@ public class IbkrWrapper implements EWrapper {
     @Resource
     IbkrSynConfig ibkrSynConfig;
 
+    @Resource
+    IContractOptionService contractOptionService;
+
     /**
      * 统一空方法打印自身方法名
      */
@@ -47,7 +52,29 @@ public class IbkrWrapper implements EWrapper {
 
     @Override
     public void tickOptionComputation(int tickerId, int field, int tickAttrib, double impliedVol, double delta, double optPrice, double pvDividend, double gamma, double vega, double theta, double undPrice) {
-        System.out.println("tickOptionComputation");
+        log.info("tickOptionComputation: tickerId={}, field={}, impliedVol={}, delta={}, optPrice={}, undPrice={}",
+                tickerId, field, impliedVol, delta, optPrice, undPrice);
+
+        // 检查是否有有效数据（impliedVol为Double.MAX_VALUE表示无数据）
+        if (impliedVol == Double.MAX_VALUE || impliedVol < 0) {
+            log.warn("tickOptionComputation: 无有效期权数据, tickerId={}", tickerId);
+            return;
+        }
+
+        CompletableFuture<Object> future = ibkrSynConfig.FUTURE_MAP.get(tickerId);
+        if (future != null) {
+            ContractOptionCallbackVo callbackVo = new ContractOptionCallbackVo();
+            callbackVo.setTickerId(tickerId);
+            callbackVo.setImpliedVol(impliedVol);
+            callbackVo.setDelta(delta);
+            callbackVo.setOptPrice(optPrice);
+            callbackVo.setPvDividend(pvDividend);
+            callbackVo.setGamma(gamma);
+            callbackVo.setVega(vega);
+            callbackVo.setTheta(theta);
+            callbackVo.setUndPrice(undPrice);
+            future.complete(callbackVo);
+        }
     }
 
     @Override

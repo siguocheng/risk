@@ -2,6 +2,7 @@ package com.riskcontrol.task;
 
 import com.ib.client.EClientSocket;
 import com.ib.client.TagValue;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.riskcontrol.config.IbkrSynConfig;
 import com.riskcontrol.constant.AccountKey;
 import com.riskcontrol.constant.ReqIdConstant;
@@ -71,6 +72,9 @@ public class IbReconnectTask {
     IContractHistoryService contractHistoryService;
 
     @Resource
+    IContractOptionService contractOptionService;
+
+    @Resource
     IbkrSynConfig ibkrSynConfig;
 
     // 30秒检测一次连接状态
@@ -108,7 +112,12 @@ public class IbReconnectTask {
         log.info("synAccountCurrency end");
     }
 
-    // 维护账号总的信息和持仓信息
+    /**
+     * 同步账号整体信息、持仓列表、收益信息
+     * @throws ExecutionException
+     * @throws InterruptedException
+     * @throws TimeoutException
+     */
     public void synAccount() throws ExecutionException, InterruptedException, TimeoutException {
 
         log.info("synAccount synAccount");
@@ -216,6 +225,11 @@ public class IbReconnectTask {
         }
     }
 
+    /**
+     *
+     * @param accountCode
+     * @param singleKeyMap
+     */
     public void handleAccountSummary(String accountCode, Map<String,Object> singleKeyMap){
         AccountSummary accountSummary = new AccountSummary();
         accountSummary.setAccountCode(accountCode);
@@ -258,7 +272,14 @@ public class IbReconnectTask {
         accountSummaryService.saveOrUpdateAccountSummary(accountSummary);
     }
 
-
+    /**
+     * 同步账号的收益
+     * @param accountCode
+     * @param modelCode
+     * @throws ExecutionException
+     * @throws InterruptedException
+     * @throws TimeoutException
+     */
     public void synPnl(String accountCode, String modelCode) throws ExecutionException, InterruptedException, TimeoutException {
 
         int reqId = ReqIdConstant.reqPnLId;
@@ -283,6 +304,15 @@ public class IbReconnectTask {
 
     }
 
+    /**
+     * 同步合约的收益
+     * @param accountCode
+     * @param modelCode
+     * @param conid
+     * @throws ExecutionException
+     * @throws InterruptedException
+     * @throws TimeoutException
+     */
     public void synSinglePnl(String accountCode, String modelCode, int conid) throws ExecutionException, InterruptedException, TimeoutException {
         int reqId = ReqIdConstant.reqPnLSingleId;
         CompletableFuture<Object> future = new CompletableFuture<>();
@@ -374,7 +404,10 @@ public class IbReconnectTask {
             contractService.updateById(contract);
         }
     }
-    
+
+    /**
+     * 计算var
+     */
     public void calcVar(){
         for (Position position : positionService.list()) {
             double marketValue = position.getMarketValue().doubleValue();// 市值
@@ -426,5 +459,101 @@ public class IbReconnectTask {
             System.out.printf("【%d日持有期】95%%置信 VaR: %.2f 美元%n", holdDay, tenDayVar);
             System.out.printf("【%d日持有期】95%%置信 CVaR: %.2f 美元%n", holdDay, tenDayCvar);
         }
+    }
+
+    /**
+     * 同步期权希腊值数据
+     * @param conid 合约ID
+     * @param symbol 股票代码
+     * @param exchange 交易所
+     * @param currency 币种
+     * @param lastTradeDateOrContractMonth 到期日
+     * @param strike 行权价
+     * @param right 期权类型 C=看涨 P=看跌
+     * @throws ExecutionException
+     * @throws InterruptedException
+     * @throws TimeoutException
+     */
+    public void synContractOption(int conid, String symbol, String exchange, String currency,
+                                  String lastTradeDateOrContractMonth, BigDecimal strike, String right) throws ExecutionException, InterruptedException, TimeoutException {
+
+        log.info("synContractOption start, conid={}", conid);
+
+        // 构建期权合约
+        com.ib.client.Contract ibContract = new com.ib.client.Contract();
+        ibContract.conid(conid);
+        ibContract.symbol(symbol);
+        ibContract.secType("OPT");
+        ibContract.exchange(exchange);
+        ibContract.currency(currency);
+        ibContract.lastTradeDateOrContractMonth(lastTradeDateOrContractMonth);
+        ibContract.strike(strike.doubleValue());
+        ibContract.right(right);
+
+        int reqId = ibkrSynConfig.nextReqId();
+        CompletableFuture<Object> future = ibkrSynConfig.setAndGetCompletableFuture(reqId);
+
+        // 请求期权希腊值数据
+        // genericTickList: 106 表示请求期权希腊值数据
+        String genericTickList = "106";
+        boolean snapshot = false;
+        boolean regulatorySnapshot = false;
+        List<TagValue> mktDataOptions = null;
+
+        m_client.reqMktData(reqId, ibContract, genericTickList, snapshot, regulatorySnapshot, mktDataOptions);
+
+        Object obj = future.get(ibkrSynConfig.timeout, TimeUnit.MILLISECONDS);
+        m_client.cancelMktData(reqId);
+
+        ContractOptionCallbackVo result = (ContractOptionCallbackVo) obj;
+
+        // 保存到数据库
+        ContractOption contractOption = new ContractOption();
+        contractOption.setConid(conid);
+        contractOption.setImpliedVol(BigDecimal.valueOf(result.getImpliedVol()));
+        contractOption.setDelta(BigDecimal.valueOf(result.getDelta()));
+        contractOption.setOptPrice(BigDecimal.valueOf(result.getOptPrice()));
+        contractOption.setPvDividend(BigDecimal.valueOf(result.getPvDividend()));
+        contractOption.setGamma(BigDecimal.valueOf(result.getGamma()));
+        contractOption.setVega(BigDecimal.valueOf(result.getVega()));
+        contractOption.setTheta(BigDecimal.valueOf(result.getTheta()));
+        contractOption.setUndPrice(BigDecimal.valueOf(result.getUndPrice()));
+
+        contractOptionService.saveOrUpdateContractOption(contractOption);
+
+        log.info("synContractOption end, conid={}, impliedVol={}", conid, result.getImpliedVol());
+    }
+
+    /**
+     * 同步所有期权合约的希腊值数据
+     * @throws ExecutionException
+     * @throws InterruptedException
+     * @throws TimeoutException
+     */
+    public void synAllContractOptions() throws ExecutionException, InterruptedException, TimeoutException {
+        log.info("synAllContractOptions start");
+
+        // 查询所有期权类型的合约
+        LambdaQueryWrapper<Contract> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Contract::getSecType, "OPT");
+        List<Contract> optionContracts = contractService.list(queryWrapper);
+
+        for (Contract contract : optionContracts) {
+            try {
+                this.synContractOption(
+                        contract.getConid(),
+                        contract.getSymbol(),
+                        contract.getExchange(),
+                        contract.getCurrency(),
+                        contract.getLastTradeDateOrContractMonth(),
+                        contract.getStrike(),
+                        contract.getOptRight()
+                );
+            } catch (Exception e) {
+                log.error("synContractOption error, conid={}", contract.getConid(), e);
+            }
+        }
+
+        log.info("synAllContractOptions end, total={}", optionContracts.size());
     }
 }
