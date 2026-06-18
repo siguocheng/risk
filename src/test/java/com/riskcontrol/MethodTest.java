@@ -2,6 +2,7 @@ package com.riskcontrol;
 
 import com.ib.client.Contract;
 import com.ib.client.EClientSocket;
+import com.ib.client.ExecutionFilter;
 import com.riskcontrol.enums.GenericTickListEnum;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
@@ -55,6 +56,14 @@ public class MethodTest {
 //                false, // 美国监管快照,给false就可以
 //                new ArrayList<>()
 //        );
+
+        System.in.read();
+    }
+
+    @Test
+    public void reqExecutions() throws IOException {
+        int reqId = 567;
+        m_client.reqExecutions(reqId, new ExecutionFilter());
 
         System.in.read();
     }

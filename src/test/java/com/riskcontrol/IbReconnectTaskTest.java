@@ -45,4 +45,19 @@ public class IbReconnectTaskTest {
         ibReconnectTask.calcVar();
     }
 
+    @Test
+    public void synAllOrders() throws ExecutionException, InterruptedException, TimeoutException {
+
+        ibReconnectTask.synCompletedOrders();
+        // ibReconnectTask.synAllOrders();
+    }
+
+    @Test
+    public void synExecutions() throws ExecutionException, InterruptedException, TimeoutException {
+
+        ibReconnectTask.synExecutions();
+        // ibReconnectTask.synAllOrders();
+    }
+
+
 }

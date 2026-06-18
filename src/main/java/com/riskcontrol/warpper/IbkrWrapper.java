@@ -5,19 +5,22 @@ import com.alibaba.fastjson2.JSONObject;
 import com.ib.client.*;
 import com.ib.client.protobuf.*;
 import com.riskcontrol.config.IbkrSynConfig;
+import com.riskcontrol.constant.ReqIdConstant;
+import com.riskcontrol.dao.IbOrderMapper;
 import com.riskcontrol.domain.ContractOption;
+import com.riskcontrol.domain.IbOrder;
+import com.riskcontrol.domain.vo.CommissionAndFeesReportCallbackVo;
+import com.riskcontrol.domain.vo.ExecutionCallbackVo;
 import com.riskcontrol.domain.vo.ibkr.*;
 import com.riskcontrol.service.IContractOptionService;
+import com.riskcontrol.service.IIbOrderService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -31,6 +34,9 @@ public class IbkrWrapper implements EWrapper {
 
     @Resource
     IContractOptionService contractOptionService;
+
+    @Resource
+    IIbOrderService ibOrderService;
 
     /**
      * 统一空方法打印自身方法名
@@ -92,19 +98,65 @@ public class IbkrWrapper implements EWrapper {
         printCurrentMethod();
     }
 
+    public final Map<Object, List<OrderStatusCallbackVo>> orderStatusMap = new ConcurrentHashMap<>();
+
     @Override
     public void orderStatus(int orderId, String status, Decimal filled, Decimal remaining, double avgFillPrice, long permId, int parentId, double lastFillPrice, int clientId, String whyHeld, double mktCapPrice) {
-        printCurrentMethod();
+        log.info("orderStatus: orderId={}, status={}, filled={}, remaining={}, avgFillPrice={}, permId={}", 
+                orderId, status, filled, remaining, avgFillPrice, permId);
+
+        List<OrderStatusCallbackVo> list = orderStatusMap.computeIfAbsent(ReqIdConstant.openOrderReqId,k -> new CopyOnWriteArrayList<>());
+        OrderStatusCallbackVo orderStatusCallbackVo = new OrderStatusCallbackVo(orderId, status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice);
+
+        list.add(orderStatusCallbackVo);
     }
+
+    public final Map<Object, List<IbOrderCallbackVo>> orderMap = new ConcurrentHashMap<>();
 
     @Override
     public void openOrder(int orderId, Contract contract, Order order, OrderState orderState) {
-        printCurrentMethod();
+        log.info("openOrder: orderId={}, symbol={}, action={}, orderType={}, totalQuantity={}", 
+                orderId, contract.symbol(), order.action(), order.orderType(), order.totalQuantity());
+
+        List<IbOrderCallbackVo> list = orderMap.computeIfAbsent(ReqIdConstant.openOrderReqId,k -> new CopyOnWriteArrayList<>());
+
+        list.add(new IbOrderCallbackVo(orderId, contract, order, orderState));
     }
 
     @Override
     public void openOrderEnd() {
-        printCurrentMethod();
+        log.info("openOrderEnd");
+        CompletableFuture<Object> future = ibkrSynConfig.FUTURE_MAP.remove(ReqIdConstant.openOrderReqId);
+        List<IbOrderCallbackVo> orders = orderMap.remove(ReqIdConstant.openOrderReqId);
+        List<OrderStatusCallbackVo> orderStatus = orderStatusMap.remove(ReqIdConstant.openOrderReqId);
+        Map<String, Object> orderMap = new HashMap<>();
+        orderMap.put("order", orders);
+        orderMap.put("orderStatus", orderStatus);
+        if (future != null) {
+            future.complete(orderMap);
+        }
+
+    }
+
+    @Override
+    public void completedOrder(Contract contract, Order order, OrderState orderState) {
+        log.info("completedOrder: permId={}, symbol={}, action={}, status={}", 
+                order.permId(), contract.symbol(), order.action(), orderState.status());
+        List<IbOrderCallbackVo> list = orderMap.computeIfAbsent(ReqIdConstant.completedOrderReqId, k -> new CopyOnWriteArrayList<>());
+        IbOrderCallbackVo ibOrderCallbackVo = new IbOrderCallbackVo(-1, contract, order, orderState);
+
+        list.add(ibOrderCallbackVo);
+    }
+
+    @Override
+    public void completedOrdersEnd() {
+        log.info("completedOrdersEnd");
+        // 遍历所有等待中的Future并完成
+        CompletableFuture<Object> future = ibkrSynConfig.FUTURE_MAP.remove(ReqIdConstant.completedOrderReqId);
+        List<IbOrderCallbackVo> ibOrderCallbackVos = orderMap.get(ReqIdConstant.completedOrderReqId);
+        if (future != null) {
+            future.complete(ibOrderCallbackVos);
+        }
     }
 
     @Override
@@ -205,14 +257,27 @@ public class IbkrWrapper implements EWrapper {
         printCurrentMethod();
     }
 
+    public final Map<Object, List<Object>> listDataMap = new ConcurrentHashMap<>();
+
     @Override
     public void execDetails(int reqId, Contract contract, Execution execution) {
         printCurrentMethod();
+        List<Object> dataList = listDataMap.computeIfAbsent(reqId, k-> new ArrayList<>());
+
+        ExecutionCallbackVo executionCallbackVo = new ExecutionCallbackVo(contract, execution);
+        dataList.add(executionCallbackVo);
     }
 
     @Override
     public void execDetailsEnd(int reqId) {
         printCurrentMethod();
+        CompletableFuture<Object> future = ibkrSynConfig.FUTURE_MAP.remove(reqId);
+        List<Object> dataList1 = listDataMap.remove(reqId);
+        List<Object> dataList2 = listDataMap.remove(ReqIdConstant.commissionAndFeesReportReqId);
+        dataList1.addAll(dataList2);
+        if(future != null){
+            future.complete(dataList1);
+        }
     }
 
     @Override
@@ -310,6 +375,12 @@ public class IbkrWrapper implements EWrapper {
     @Override
     public void commissionAndFeesReport(CommissionAndFeesReport commissionAndFeesReport) {
         printCurrentMethod();
+
+        CommissionAndFeesReportCallbackVo commissionAndFeesReportCallbackVo= new CommissionAndFeesReportCallbackVo(commissionAndFeesReport);
+
+        List<Object> dataList = listDataMap.computeIfAbsent(ReqIdConstant.commissionAndFeesReportReqId, k-> new ArrayList<>());
+
+        dataList.add(commissionAndFeesReportCallbackVo);
     }
 
     @Override
@@ -602,16 +673,6 @@ public class IbkrWrapper implements EWrapper {
 
     @Override
     public void orderBound(long permId, int clientId, int orderId) {
-        printCurrentMethod();
-    }
-
-    @Override
-    public void completedOrder(Contract contract, Order order, OrderState orderState) {
-        printCurrentMethod();
-    }
-
-    @Override
-    public void completedOrdersEnd() {
         printCurrentMethod();
     }
 

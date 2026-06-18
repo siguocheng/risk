@@ -1,12 +1,16 @@
 package com.riskcontrol.task;
 
+import com.alibaba.fastjson2.JSONObject;
 import com.ib.client.EClientSocket;
+import com.ib.client.ExecutionFilter;
 import com.ib.client.TagValue;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.riskcontrol.config.IbkrSynConfig;
 import com.riskcontrol.constant.AccountKey;
 import com.riskcontrol.constant.ReqIdConstant;
 import com.riskcontrol.domain.*;
+import com.riskcontrol.domain.vo.CommissionAndFeesReportCallbackVo;
+import com.riskcontrol.domain.vo.ExecutionCallbackVo;
 import com.riskcontrol.domain.vo.ibkr.*;
 import com.riskcontrol.service.*;
 import com.riskcontrol.util.BigDecimalUtil;
@@ -73,6 +77,12 @@ public class IbReconnectTask {
 
     @Resource
     IContractOptionService contractOptionService;
+
+    @Resource
+    IIbOrderService ibOrderService;
+
+    @Resource
+    IContractExecutionService contractExecutionService;
 
     @Resource
     IbkrSynConfig ibkrSynConfig;
@@ -555,5 +565,171 @@ public class IbReconnectTask {
         }
 
         log.info("synAllContractOptions end, total={}", optionContracts.size());
+    }
+
+    /**
+     * 同步当前客户端的开放订单
+     * @throws ExecutionException
+     * @throws InterruptedException
+     * @throws TimeoutException
+     */
+    public void synOpenOrders() throws ExecutionException, InterruptedException, TimeoutException {
+        log.info("synOpenOrders start");
+
+        int reqId = ibkrSynConfig.nextReqId();
+        CompletableFuture<Object> future = ibkrSynConfig.setAndGetCompletableFuture(reqId);
+
+        // 请求当前客户端的开放订单
+        m_client.reqOpenOrders();
+
+        Object obj = future.get(ibkrSynConfig.timeout, TimeUnit.MILLISECONDS);
+        List<IbOrderCallbackVo> result = (List<IbOrderCallbackVo>) obj;
+
+        log.info("synOpenOrders end, total={}", result != null ? result.size() : 0);
+    }
+
+    /**
+     * 同步所有账户的开放订单
+     * @throws ExecutionException
+     * @throws InterruptedException
+     * @throws TimeoutException
+     */
+    public void synAllOpenOrders() throws ExecutionException, InterruptedException, TimeoutException {
+        log.info("synAllOpenOrders start");
+
+        int reqId = ReqIdConstant.openOrderReqId;
+        CompletableFuture<Object> future = ibkrSynConfig.setAndGetCompletableFuture(reqId);
+
+        // 请求所有账户的开放订单
+        // openOrder
+        //orderStatus
+        //openOrderEnd
+        m_client.reqAllOpenOrders();
+
+        Object obj = future.get(ibkrSynConfig.timeout, TimeUnit.MILLISECONDS);
+        List<IbOrderCallbackVo> result = (List<IbOrderCallbackVo>) obj;
+
+        log.info("synAllOpenOrders end, total={}", result != null ? result.size() : 0);
+    }
+
+    /**
+     * 同步已完成的订单
+     * @throws ExecutionException
+     * @throws InterruptedException
+     * @throws TimeoutException
+     */
+    public void synCompletedOrders() throws ExecutionException, InterruptedException, TimeoutException {
+        log.info("synCompletedOrders start");
+
+        int reqId = ReqIdConstant.completedOrderReqId;
+        CompletableFuture<Object> future = ibkrSynConfig.setAndGetCompletableFuture(reqId);
+
+        // 请求已完成的订单
+        // completedOrder
+        // completedOrdersEnd
+        m_client.reqCompletedOrders(false); // true:只返回当前这条 API 连接（当前 clientId） 发起成交的订单 false:当日账户下全部已完成订单
+
+        Object obj = future.get(ibkrSynConfig.timeout, TimeUnit.MILLISECONDS);
+        List<IbOrderCallbackVo> result = (List<IbOrderCallbackVo>) obj;
+
+        log.info("synCompletedOrders end, total={}", result != null ? result.size() : 0);
+    }
+
+    /**
+     * 同步所有订单（开放订单 + 已完成订单）
+     * @throws ExecutionException
+     * @throws InterruptedException
+     * @throws TimeoutException
+     */
+    public void synAllOrders() throws ExecutionException, InterruptedException, TimeoutException {
+        log.info("synAllOrders start");
+
+        // 先同步所有开放订单
+        this.synAllOpenOrders();
+
+        // 再同步已完成订单
+        this.synCompletedOrders();
+
+        log.info("synAllOrders end");
+    }
+
+    public void synExecutions() throws ExecutionException, InterruptedException, TimeoutException {
+        log.info("synExecutions start");
+
+        int reqId = ReqIdConstant.reqExecutions;
+        CompletableFuture<Object> future = ibkrSynConfig.setAndGetCompletableFuture(reqId);
+
+        m_client.reqExecutions(reqId, new ExecutionFilter());
+
+        Object obj = future.get(ibkrSynConfig.timeout, TimeUnit.MILLISECONDS);
+        List<Object> result = (List<Object>) obj;
+
+        List<ExecutionCallbackVo> executions = new ArrayList<>();
+        List<CommissionAndFeesReportCallbackVo> commissionAndFeesReports = new ArrayList<>();
+
+        for (Object o : result) {
+            if (o instanceof ExecutionCallbackVo){
+                executions.add((ExecutionCallbackVo)o);
+            } else if (o instanceof CommissionAndFeesReportCallbackVo) {
+                commissionAndFeesReports.add((CommissionAndFeesReportCallbackVo)o);
+            }
+        }
+
+        // 将commissionAndFeesReports按execId建立索引
+        Map<String, CommissionAndFeesReportCallbackVo> commissionMap = new HashMap<>();
+        for (CommissionAndFeesReportCallbackVo report : commissionAndFeesReports) {
+            commissionMap.put(report.getExecId(), report);
+        }
+
+        // 合并数据并保存到数据库
+        List<ContractExecution> executionList = new ArrayList<>();
+        for (ExecutionCallbackVo execution : executions) {
+            ContractExecution contractExecution = new ContractExecution();
+
+            // 从ExecutionCallbackVo设置字段
+            contractExecution.setOrderId(execution.getOrderId());
+            contractExecution.setClientId(execution.getClientId());
+            contractExecution.setExecId(execution.getExecId());
+            contractExecution.setTime(execution.getTime());
+            contractExecution.setAcctNumber(execution.getAcctNumber());
+            contractExecution.setExchange(execution.getExchange());
+            contractExecution.setSide(execution.getSide());
+            contractExecution.setShares(execution.getShares().value());
+            contractExecution.setPrice(BigDecimal.valueOf(execution.getPrice()));
+            contractExecution.setPermId(execution.getPermId());
+            contractExecution.setLiquidation(execution.getLiquidation());
+            contractExecution.setCumQty(execution.getCumQty().value());
+            contractExecution.setAvgPrice(BigDecimal.valueOf(execution.getAvgPrice()));
+            contractExecution.setOrderRef(execution.getOrderRef());
+            contractExecution.setEvRule(execution.getEvRule());
+            contractExecution.setEvMultiplier(BigDecimal.valueOf(execution.getEvMultiplier()));
+            contractExecution.setModelCode(execution.getModelCode());
+            contractExecution.setLastLiquidity(execution.getLastLiquidity() != null ? execution.getLastLiquidity().name() : "");
+            contractExecution.setPendingPriceRevision(execution.isPendingPriceRevision());
+            contractExecution.setSubmitter(execution.getSubmitter());
+            contractExecution.setOptExerciseOrLapseType(execution.getOptExerciseOrLapseType() != null ? execution.getOptExerciseOrLapseType().name() : "");
+
+            // 从CommissionAndFeesReportCallbackVo合并字段
+            CommissionAndFeesReportCallbackVo commissionReport = commissionMap.get(execution.getExecId());
+            if (commissionReport != null) {
+                contractExecution.setCommissionAndFees(BigDecimal.valueOf(commissionReport.getCommissionAndFees()));
+                contractExecution.setCurrency(commissionReport.getCurrency());
+                contractExecution.setRealizedPnl(BigDecimal.valueOf(commissionReport.getRealizedPNL()));
+                contractExecution.setYield(BigDecimal.valueOf(commissionReport.getYield()));
+                contractExecution.setYieldRedemptionDate((long) commissionReport.getYieldRedemptionDate());
+            }
+
+            executionList.add(contractExecution);
+        }
+
+        // 批量保存到数据库
+        if (!executionList.isEmpty()) {
+            for (ContractExecution execution : executionList) {
+                contractExecutionService.saveOrUpdateByExecId(execution);
+            }
+            log.info("synExecutions saved {} records", executionList.size());
+        }
+
+        log.info("synExecutions end, total executions={}, total commissions={}", executions.size(), commissionAndFeesReports.size());
     }
 }
