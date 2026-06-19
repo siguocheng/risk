@@ -615,7 +615,28 @@ public class IbOrder extends BaseEntity {
     private String submitter;
 
     @TableField(value = "status")
+
     @Schema(description = "订单状态")
+    /** API 预创建，仅本地存在，未发往IB */
+    //ApiPending,
+    /** API本地已发起撤销，但IB尚未确认 */
+    //ApiCancelled,
+    /** 预提交：订单已构建，等待发送/校验 */
+   //PreSubmitted,
+    /** 待撤销：已向IB发送撤单请求，等待交易所确认 */
+    //PendingCancel,
+    /** 已撤销：撤单成功，无剩余挂单 */
+    //Cancelled,
+    /** 已提交：订单成功送达交易所，正在挂单等待成交 */
+    //Submitted,
+    /** 全部成交，订单生命周期结束 */
+    //Filled,
+    /** 失效：条件单未触发、过期、父单取消导致子单失效 */
+    //Inactive,
+    /** 待提交：已调用placeOrder，但IB尚未转发至交易所 */
+    //PendingSubmit,
+    /** 未知状态，IB返回无法识别的状态字符串 */
+    //Unknown;
     private String status;
 
     @TableField(value = "reject_reason")

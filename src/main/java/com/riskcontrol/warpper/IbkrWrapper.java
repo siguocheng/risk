@@ -183,9 +183,7 @@ public class IbkrWrapper implements EWrapper {
         item.setRealizedPnl(realizedPNL);
         item.setConid(contract.conid());
 
-        ContractCallbackVo contractData = this.convertProtoToContract(contract);
-
-        item.setContract(contractData);
+        item.setContract(contract);
 
         list.add(item);
 
@@ -864,44 +862,12 @@ public class IbkrWrapper implements EWrapper {
 
     @Override
     public void positionMultiProtoBuf(PositionMultiProto.PositionMulti positionMultiProto) {
-        int reqId = positionMultiProto.getReqId();
-        List<PositionCallbackVo> list = posProtoMap.computeIfAbsent(reqId, k -> new CopyOnWriteArrayList<>());
-
-        PositionCallbackVo item = new PositionCallbackVo();
-        item.setAccountCode(positionMultiProto.getAccount());
-        item.setModelCode(positionMultiProto.getModelCode());
-        item.setPosition(new BigDecimal(positionMultiProto.getPosition()));
-//        item.setAvgCost(positionMultiProto.getAvgCost());
-
-        // proto合约转IB Contract
-        ContractCallbackVo contract = convertProtoToContract(positionMultiProto.getContract());
-        item.setContract(contract);
-        list.add(item);
-    }
-
-    // proto合约 -> Contract 转换
-    private ContractCallbackVo convertProtoToContract(ContractProto.Contract protoContract){
-        ContractCallbackVo c = new ContractCallbackVo();
-        c.setConid(protoContract.getConId());
-        c.setSymbol(protoContract.getSymbol());
-        c.setSecType(protoContract.getSecType());
-        c.setExchange(protoContract.getExchange());
-        c.setCurrency(protoContract.getCurrency());
-        c.setStrike(protoContract.getStrike());
-        c.setRight(protoContract.getRight());
-        c.setLastTradeDateOrContractMonth(protoContract.getLastTradeDate());
-
-        return c;
+        printCurrentMethod();
     }
 
     @Override
     public void positionMultiEndProtoBuf(PositionMultiEndProto.PositionMultiEnd positionMultiEndProto) {
-        int reqId = positionMultiEndProto.getReqId();
-        CompletableFuture<Object> future = ibkrSynConfig.FUTURE_MAP.remove(reqId);
-        List<PositionCallbackVo> data = posProtoMap.remove(reqId);
-        if (future != null) {
-            future.complete(data == null ? new ArrayList<>() : data);
-        }
+        printCurrentMethod();
     }
 
     @Override

@@ -1,5 +1,6 @@
 package com.riskcontrol.domain.vo.ibkr;
 
+import com.ib.client.Contract;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -22,8 +23,6 @@ public class PositionCallbackVo {
     @Schema(description = "未实现盈亏")
     private Double unrealizedPnl;
 
-    private ContractCallbackVo contract;
-
     @Schema(description = "市场价格")
     private Double marketPrice;
 
@@ -35,4 +34,7 @@ public class PositionCallbackVo {
 
     @Schema(description = "合约唯一 ID")
     private Integer conid;
+
+    @Schema(description = "合约唯一 ID")
+    private Contract contract;
 }

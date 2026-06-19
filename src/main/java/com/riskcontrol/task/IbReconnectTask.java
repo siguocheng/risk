@@ -1,6 +1,7 @@
 package com.riskcontrol.task;
 
 import com.alibaba.fastjson2.JSONObject;
+import com.ib.client.DeltaNeutralContract;
 import com.ib.client.EClientSocket;
 import com.ib.client.ExecutionFilter;
 import com.ib.client.TagValue;
@@ -15,6 +16,7 @@ import com.riskcontrol.domain.vo.ibkr.*;
 import com.riskcontrol.service.*;
 import com.riskcontrol.util.BigDecimalUtil;
 import com.riskcontrol.util.DateUtil;
+import com.riskcontrol.util.IbValueUtil;
 import com.riskcontrol.util.RiskMetricsUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -164,10 +166,9 @@ public class IbReconnectTask {
                 position.setConid(positionCallbackVo.getConid());
                 positionService.saveOrUpdatePosition(position);
 
-                ContractCallbackVo contractCallbackVo = positionCallbackVo.getContract();
+                com.ib.client.Contract ibContract = positionCallbackVo.getContract();
 
-                Contract contract = new Contract();
-                BeanUtils.copyProperties(contractCallbackVo, contract);
+                Contract contract = new Contract(ibContract);
                 contract.setAccountCode(accountCode);
                 contractService.saveOrUpdateContract(contract);
 
