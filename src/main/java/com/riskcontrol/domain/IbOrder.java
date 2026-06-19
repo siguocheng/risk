@@ -2,8 +2,9 @@ package com.riskcontrol.domain;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
-import com.ib.client.Order;
-import com.ib.client.OrderState;
+import com.ib.client.Contract;
+import com.riskcontrol.domain.vo.ibkr.IbOrderCallbackVo;
+import com.riskcontrol.util.IbValueUtil;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -16,6 +17,10 @@ import java.math.BigDecimal;
 @TableName("ib_order")
 @Schema(description = "IB TWS订单主表")
 public class IbOrder extends BaseEntity {
+
+    @TableField(value = "conid")
+    @Schema(description = "合约ID")
+    private Integer conid;
 
     @TableField(value = "client_id")
     @Schema(description = "客户端ID")
@@ -36,50 +41,6 @@ public class IbOrder extends BaseEntity {
     @TableField(value = "parent_perm_id")
     @Schema(description = "父单永久ID")
     private Long parentPermId;
-
-    @TableField(value = "conid")
-    @Schema(description = "合约id")
-    private int conid;
-
-    @TableField(value = "sl_order_id")
-    @Schema(description = "止损关联订单ID")
-    private Integer slOrderId;
-
-    @TableField(value = "sl_order_type")
-    @Schema(description = "止损单类型")
-    private String slOrderType;
-
-    @TableField(value = "pt_order_id")
-    @Schema(description = "止盈关联订单ID")
-    private Integer ptOrderId;
-
-    @TableField(value = "pt_order_type")
-    @Schema(description = "止盈单类型")
-    private String ptOrderType;
-
-    @TableField(value = "order_ref")
-    @Schema(description = "自定义订单备注")
-    private String orderRef;
-
-    @TableField(value = "oca_group")
-    @Schema(description = "OCA分组标识")
-    private String ocaGroup;
-
-    @TableField(value = "oca_type")
-    @Schema(description = "OCA类型")
-    private Integer ocaType;
-
-    @TableField(value = "model_code")
-    @Schema(description = "模型编码")
-    private String modelCode;
-
-    @TableField(value = "ext_operator")
-    @Schema(description = "外部操作员")
-    private String extOperator;
-
-    @TableField(value = "submitter")
-    @Schema(description = "提交人")
-    private String submitter;
 
     @TableField(value = "action")
     @Schema(description = "买卖方向")
@@ -243,7 +204,7 @@ public class IbOrder extends BaseEntity {
 
     @TableField(value = "fa_percentage")
     @Schema(description = "FA分配比例")
-    private BigDecimal faPercentage;
+    private String faPercentage;
 
     @TableField(value = "bond_accrued_interest")
     @Schema(description = "债券应计利息")
@@ -275,31 +236,31 @@ public class IbOrder extends BaseEntity {
 
     @TableField(value = "all_or_none")
     @Schema(description = "全部成交否则取消")
-    private Boolean allOrNone;
+    private Boolean allOrNone = false;
 
     @TableField(value = "block_order")
     @Schema(description = "大宗订单")
-    private Boolean blockOrder;
+    private Boolean blockOrder = false;
 
     @TableField(value = "hidden")
     @Schema(description = "隐藏订单")
-    private Boolean hidden;
+    private Boolean hidden = false;
 
     @TableField(value = "outside_rth")
     @Schema(description = "允许盘外交易")
-    private Boolean outsideRth;
+    private Boolean outsideRth = false;
 
     @TableField(value = "sweep_to_fill")
     @Schema(description = "扫单立即成交")
-    private Boolean sweepToFill;
+    private Boolean sweepToFill = false;
 
     @TableField(value = "transmit")
     @Schema(description = "是否直接推送交易所")
-    private Boolean transmit;
+    private Boolean transmit = true;
 
     @TableField(value = "what_if")
     @Schema(description = "仅试算不提交订单")
-    private Boolean whatIf;
+    private Boolean whatIf = false;
 
     @TableField(value = "what_if_type")
     @Schema(description = "试算类型")
@@ -307,79 +268,79 @@ public class IbOrder extends BaseEntity {
 
     @TableField(value = "override_percentage_constraints")
     @Schema(description = "覆盖比例限制")
-    private Boolean overridePercentageConstraints;
+    private Boolean overridePercentageConstraints = false;
 
     @TableField(value = "opt_out_smart_routing")
     @Schema(description = "关闭智能路由")
-    private Boolean optOutSmartRouting;
+    private Boolean optOutSmartRouting = false;
 
     @TableField(value = "not_held")
     @Schema(description = "Not Held交易指令")
-    private Boolean notHeld;
+    private Boolean notHeld = false;
 
     @TableField(value = "solicited")
     @Schema(description = "主动推介订单")
-    private Boolean solicited;
+    private Boolean solicited = false;
 
     @TableField(value = "randomize_size")
     @Schema(description = "随机委托数量")
-    private Boolean randomizeSize;
+    private Boolean randomizeSize = false;
 
     @TableField(value = "randomize_price")
     @Schema(description = "随机委托价格")
-    private Boolean randomizePrice;
+    private Boolean randomizePrice = false;
 
     @TableField(value = "dont_use_auto_price_for_hedge")
     @Schema(description = "对冲不使用自动价格")
-    private Boolean dontUseAutoPriceForHedge;
+    private Boolean dontUseAutoPriceForHedge = false;
 
     @TableField(value = "is_oms_container")
     @Schema(description = "OMS容器订单")
-    private Boolean isOmsContainer;
+    private Boolean isOmsContainer = false;
 
     @TableField(value = "discretionary_up_to_limit_price")
     @Schema(description = "自主价不超过限价")
-    private Boolean discretionaryUpToLimitPrice;
+    private Boolean discretionaryUpToLimitPrice = false;
 
     @TableField(value = "auto_cancel_parent")
     @Schema(description = "父单取消自动撤子单")
-    private Boolean autoCancelParent;
+    private Boolean autoCancelParent = false;
 
     @TableField(value = "imbalance_only")
     @Schema(description = "仅失衡撮合")
-    private Boolean imbalanceOnly;
+    private Boolean imbalanceOnly = false;
 
     @TableField(value = "include_overnight")
     @Schema(description = "包含隔夜交易")
-    private Boolean includeOvernight;
+    private Boolean includeOvernight = false;
 
     @TableField(value = "professional_customer")
     @Schema(description = "专业客户标识")
-    private Boolean professionalCustomer;
+    private Boolean professionalCustomer = false;
 
     @TableField(value = "post_only")
     @Schema(description = "仅挂单不主动成交")
-    private Boolean postOnly;
+    private Boolean postOnly = false;
 
     @TableField(value = "allow_pre_open")
     @Schema(description = "允许盘前交易")
-    private Boolean allowPreOpen;
+    private Boolean allowPreOpen = false;
 
     @TableField(value = "ignore_open_auction")
     @Schema(description = "忽略开盘集合竞价")
-    private Boolean ignoreOpenAuction;
+    private Boolean ignoreOpenAuction = false;
 
     @TableField(value = "deactivate")
     @Schema(description = "暂停订单")
-    private Boolean deactivate;
+    private Boolean deactivate = false;
 
     @TableField(value = "conditions_cancel_order")
     @Schema(description = "条件触发后撤单")
-    private Boolean conditionsCancelOrder;
+    private Boolean conditionsCancelOrder = false;
 
     @TableField(value = "conditions_ignore_rth")
     @Schema(description = "条件忽略盘外时段")
-    private Boolean conditionsIgnoreRth;
+    private Boolean conditionsIgnoreRth = false;
 
     @TableField(value = "seek_price_improvement")
     @Schema(description = "寻求价格优化")
@@ -399,7 +360,7 @@ public class IbOrder extends BaseEntity {
 
     @TableField(value = "volatility_type")
     @Schema(description = "波动率类型")
-    private Integer volatilityType;
+    private String volatilityType;
 
     @TableField(value = "continuous_update")
     @Schema(description = "持续更新开关")
@@ -407,7 +368,7 @@ public class IbOrder extends BaseEntity {
 
     @TableField(value = "reference_price_type")
     @Schema(description = "参考价类型")
-    private Integer referencePriceType;
+    private String referencePriceType;
 
     @TableField(value = "reference_contract_id")
     @Schema(description = "参考合约ID")
@@ -451,7 +412,7 @@ public class IbOrder extends BaseEntity {
 
     @TableField(value = "is_pegged_change_amount_decrease")
     @Schema(description = "挂钩向下变动标识")
-    private Boolean isPeggedChangeAmountDecrease;
+    private Boolean isPeggedChangeAmountDecrease = false;
 
     @TableField(value = "reference_change_amount")
     @Schema(description = "参考变动幅度")
@@ -463,7 +424,7 @@ public class IbOrder extends BaseEntity {
 
     @TableField(value = "trigger_method")
     @Schema(description = "触发方式")
-    private Integer triggerMethod;
+    private String triggerMethod;
 
     @TableField(value = "auction_strategy")
     @Schema(description = "集合竞价策略")
@@ -491,7 +452,7 @@ public class IbOrder extends BaseEntity {
 
     @TableField(value = "delta_neutral_short_sale")
     @Schema(description = "Delta对冲做空标识")
-    private Boolean deltaNeutralShortSale;
+    private Boolean deltaNeutralShortSale = false;
 
     @TableField(value = "delta_neutral_short_sale_slot")
     @Schema(description = "Delta做空渠道")
@@ -539,7 +500,7 @@ public class IbOrder extends BaseEntity {
 
     @TableField(value = "scale_auto_reset")
     @Schema(description = "阶梯自动重置")
-    private Boolean scaleAutoReset;
+    private Boolean scaleAutoReset = false;
 
     @TableField(value = "scale_init_position")
     @Schema(description = "阶梯初始持仓")
@@ -551,7 +512,7 @@ public class IbOrder extends BaseEntity {
 
     @TableField(value = "scale_random_percent")
     @Schema(description = "阶梯随机比例")
-    private Boolean scaleRandomPercent;
+    private Boolean scaleRandomPercent = false;
 
     @TableField(value = "scale_table")
     @Schema(description = "阶梯配置表名称")
@@ -613,9 +574,49 @@ public class IbOrder extends BaseEntity {
     @Schema(description = "股东标识")
     private String shareholder;
 
+    @TableField(value = "sl_order_id")
+    @Schema(description = "止损关联订单ID")
+    private Integer slOrderId;
+
+    @TableField(value = "sl_order_type")
+    @Schema(description = "止损单类型")
+    private String slOrderType;
+
+    @TableField(value = "pt_order_id")
+    @Schema(description = "止盈关联订单ID")
+    private Integer ptOrderId;
+
+    @TableField(value = "pt_order_type")
+    @Schema(description = "止盈单类型")
+    private String ptOrderType;
+
+    @TableField(value = "order_ref")
+    @Schema(description = "自定义订单备注")
+    private String orderRef;
+
+    @TableField(value = "oca_group")
+    @Schema(description = "OCA分组标识")
+    private String ocaGroup;
+
+    @TableField(value = "oca_type")
+    @Schema(description = "OCA类型")
+    private String ocaType;
+
+    @TableField(value = "model_code")
+    @Schema(description = "模型编码")
+    private String modelCode;
+
+    @TableField(value = "ext_operator")
+    @Schema(description = "外部操作员")
+    private String extOperator;
+
+    @TableField(value = "submitter")
+    @Schema(description = "提交人")
+    private String submitter;
+
     @TableField(value = "status")
     @Schema(description = "订单状态")
-    private String status = "";
+    private String status;
 
     @TableField(value = "reject_reason")
     @Schema(description = "订单拒绝原因")
@@ -725,180 +726,213 @@ public class IbOrder extends BaseEntity {
     @Schema(description = "盘外下单后融资权益")
     private BigDecimal equityWithLoanAfterOutsideRth;
 
-    public IbOrder(Order order, OrderState orderState){
-// 基础标识
-//        this.setClientId(order.clientId());
-//        this.setOrderId(order.orderId());
-//        this.setPermId(order.permId());
-//        this.setParentId(order.parentId());
-//        this.setParentPermId(order.parentPermId());
-//        this.setSlOrderId(order.slOrderId());
-//        this.setSlOrderType(order.slOrderType());
-//        this.setPtOrderId(order.ptOrderId());
-//        this.setPtOrderType(order.ptOrderType());
-//        this.setOrderRef(order.orderRef());
-//        this.setOcaGroup(order.ocaGroup());
-//        this.setOcaType(order.ocaType());
-//        this.setModelCode(order.modelCode());
-//        this.setExtOperator(order.extOperator());
-//        this.setSubmitter(order.submitter());
-//
-//        // 交易方向、数量、价格
-//        this.setAction(order.action());
-//        this.setTotalQuantity(order.totalQuantity() == null ? null : new BigDecimal(order.totalQuantity().toString()));
-//        this.setFilledQuantity(order.filledQuantity() == null ? null : new BigDecimal(order.filledQuantity().toString()));
-//        this.setSuggestedSize(order.suggestedSize() == null ? null : new BigDecimal(order.suggestedSize().toString()));
-//        this.setCashQty(order.cashQty() == null ? null : new BigDecimal(order.cashQty().toString()));
-//        this.setMinQty(order.minQty());
-//        this.setMinTradeQty(order.minTradeQty());
-//        this.setMinCompeteSize(order.minCompeteSize());
-//        this.setDisplaySize(order.displaySize());
-//        this.setOrderType(order.orderType().name());
-//        this.setAdjustedOrderType(order.adjustedOrderType() == null ? null : order.adjustedOrderType().name());
-//
-//        this.setLmtPrice(BigDecimal.valueOf(order.lmtPrice()));
-//        this.setLmtPriceOffset(BigDecimal.valueOf(order.lmtPriceOffset()));
-//        this.setAuxPrice(BigDecimal.valueOf(order.auxPrice()));
-//        this.setTrailStopPrice(BigDecimal.valueOf(order.trailStopPrice()));
-//        this.setTrailingPercent(BigDecimal.valueOf(order.trailingPercent()));
-//        this.setTriggerPrice(BigDecimal.valueOf(order.triggerPrice()));
-//        this.setAdjustedStopPrice(BigDecimal.valueOf(order.adjustedStopPrice()));
-//        this.setAdjustedStopLimitPrice(BigDecimal.valueOf(order.adjustedStopLimitPrice()));
-//        this.setAdjustedTrailingAmount(BigDecimal.valueOf(order.adjustedTrailingAmount()));
-//        this.setAdjustableTrailingUnit(order.adjustableTrailingUnit());
-//        this.setPercentOffset(BigDecimal.valueOf(order.percentOffset()));
-//        this.setDiscretionaryAmt(BigDecimal.valueOf(order.discretionaryAmt()));
-//        this.setCompeteAgainstBestOffset(BigDecimal.valueOf(order.competeAgainstBestOffset()));
-//        this.setMidOffsetAtWhole(BigDecimal.valueOf(order.midOffsetAtWhole()));
-//        this.setMidOffsetAtHalf(BigDecimal.valueOf(order.midOffsetAtHalf()));
-//
-//        // 时效TIF
-//        this.setTif(order.tif());
-//        this.setGoodAfterTime(order.goodAfterTime());
-//        this.setGoodTillDate(order.goodTillDate());
-//        this.setAutoCancelDate(order.autoCancelDate());
-//        this.setDuration(order.duration());
-//        this.setActiveStartTime(order.activeStartTime());
-//        this.setActiveStopTime(order.activeStopTime());
-//
-//        // 账户清算FA
-//        this.setAccount(order.account());
-//        this.setCustomerAccount(order.customerAccount());
-//        this.setSettlingFirm(order.settlingFirm());
-//        this.setClearingAccount(order.clearingAccount());
-//        this.setClearingIntent(order.clearingIntent());
-//        this.setFaGroup(order.faGroup());
-//        this.setFaMethod(order.faMethod());
-//        this.setFaPercentage(BigDecimal.valueOf(Double.parseDouble(order.faPercentage() == null ? "0" : order.faPercentage())));
-//        this.setBondAccruedInterest(order.bondAccruedInterest());
-//
-//        // 开仓做空
-//        this.setOpenClose(order.openClose());
-//        this.setOrigin(order.origin());
-//        this.setShortSaleSlot(order.shortSaleSlot());
-//        this.setDesignatedLocation(order.designatedLocation());
-//        this.setExemptCode(order.exemptCode());
-//        this.setRule80A(order.rule80A());
-//
-//        // 布尔标识
-//        this.setAllOrNone(order.allOrNone());
-//        this.setBlockOrder(order.blockOrder());
-//        this.setHidden(order.hidden());
-//        this.setOutsideRth(order.outsideRth());
-//        this.setSweepToFill(order.sweepToFill());
-//        this.setTransmit(order.transmit());
-//        this.setWhatIf(order.whatIf());
-//        this.setWhatIfType(order.whatIfType());
-//        this.setOverridePercentageConstraints(order.overridePercentageConstraints());
-//        this.setOptOutSmartRouting(order.optOutSmartRouting());
-//        this.setNotHeld(order.notHeld());
-//        this.setSolicited(order.solicited());
-//        this.setRandomizeSize(order.randomizeSize());
-//        this.setRandomizePrice(order.randomizePrice());
-//        this.setDontUseAutoPriceForHedge(order.dontUseAutoPriceForHedge());
-//        this.setIsOmsContainer(order.isOmsContainer());
-//        this.setDiscretionaryUpToLimitPrice(order.discretionaryUpToLimitPrice());
-//        this.setAutoCancelParent(order.autoCancelParent());
-//        this.setImbalanceOnly(order.imbalanceOnly());
-//        this.setIncludeOvernight(order.includeOvernight());
-//        this.setProfessionalCustomer(order.professionalCustomer());
-//        this.setPostOnly(order.postOnly());
-//        this.setAllowPreOpen(order.allowPreOpen());
-//        this.setIgnoreOpenAuction(order.ignoreOpenAuction());
-//        this.setDeactivate(order.deactivate());
-//        this.setConditionsCancelOrder(order.conditionsCancelOrder());
-//        this.setConditionsIgnoreRth(order.conditionsIgnoreRth());
-//        this.setSeekPriceImprovement(order.seekPriceImprovement());
-//        this.setRouteMarketableToBbo(order.routeMarketableToBbo());
-//        this.setUsePriceMgmtAlgo(order.usePriceMgmtAlgo());
-//
-//        // 波动率、参考价格
-//        this.setVolatility(BigDecimal.valueOf(order.volatility()));
-//        this.setVolatilityType(order.volatilityType());
-//        this.setContinuousUpdate(order.continuousUpdate());
-//        this.setReferencePriceType(order.referencePriceType());
-//        this.setReferenceContractId(order.referenceContractId());
-//        this.setRefFuturesConId(order.refFuturesConId());
-//        this.setStartingPrice(BigDecimal.valueOf(order.startingPrice()));
-//        this.setStockRefPrice(BigDecimal.valueOf(order.stockRefPrice()));
-//        this.setDelta(BigDecimal.valueOf(order.delta()));
-//        this.setStockRangeLower(BigDecimal.valueOf(order.stockRangeLower()));
-//        this.setStockRangeUpper(BigDecimal.valueOf(order.stockRangeUpper()));
-//        this.setBasisPoints(BigDecimal.valueOf(order.basisPoints()));
-//        this.setBasisPointsType(order.basisPointsType());
-//        this.setPeggedChangeAmount(BigDecimal.valueOf(order.peggedChangeAmount()));
-//        this.setIsPeggedChangeAmountDecrease(order.isPeggedChangeAmountDecrease());
-//        this.setReferenceChangeAmount(BigDecimal.valueOf(order.referenceChangeAmount()));
-//        this.setReferenceExchangeId(order.referenceExchangeId());
-//        this.setTriggerMethod(order.triggerMethod());
-//        this.setAuctionStrategy(order.auctionStrategy());
-//        this.setPostToAts(order.postToAts());
-//
-//        // Delta Neutral
-//        this.setDeltaNeutralOrderType(order.deltaNeutralOrderType());
-//        this.setDeltaNeutralAuxPrice(BigDecimal.valueOf(order.deltaNeutralAuxPrice()));
-//        this.setDeltaNeutralConId(order.deltaNeutralConId());
-//        this.setDeltaNeutralOpenClose(order.deltaNeutralOpenClose());
-//        this.setDeltaNeutralShortSale(order.deltaNeutralShortSale());
-//        this.setDeltaNeutralShortSaleSlot(order.deltaNeutralShortSaleSlot());
-//        this.setDeltaNeutralDesignatedLocation(order.deltaNeutralDesignatedLocation());
-//        this.setDeltaNeutralSettlingFirm(order.deltaNeutralSettlingFirm());
-//        this.setDeltaNeutralClearingAccount(order.deltaNeutralClearingAccount());
-//        this.setDeltaNeutralClearingIntent(order.deltaNeutralClearingIntent());
-//
-//        // 阶梯Scale
-//        this.setScaleInitLevelSize(order.scaleInitLevelSize());
-//        this.setScaleSubsLevelSize(order.scaleSubsLevelSize());
-//        this.setScalePriceIncrement(BigDecimal.valueOf(order.scalePriceIncrement()));
-//        this.setScalePriceAdjustValue(BigDecimal.valueOf(order.scalePriceAdjustValue()));
-//        this.setScalePriceAdjustInterval(order.scalePriceAdjustInterval());
-//        this.setScaleProfitOffset(BigDecimal.valueOf(order.scaleProfitOffset()));
-//        this.setScaleAutoReset(order.scaleAutoReset());
-//        this.setScaleInitPosition(order.scaleInitPosition());
-//        this.setScaleInitFillQty(order.scaleInitFillQty());
-//        this.setScaleRandomPercent(order.scaleRandomPercent());
-//        this.setScaleTable(order.scaleTable());
-//
-//        // 对冲
-//        this.setHedgeType(order.hedgeType());
-//        this.setHedgeParam(order.hedgeParam());
-//        this.setHedgeMaxSize(order.hedgeMaxSize());
-//
-//        // 算法单
-//        this.setAlgoStrategy(order.algoStrategy());
-//        this.setAlgoId(order.algoId());
-//        this.setSoftDollarTier(order.softDollarTier() == null ? null : order.softDollarTier().name());
-//
-//        // MiFID2
-//        this.setMifid2DecisionMaker(order.mifid2DecisionMaker());
-//        this.setMifid2DecisionAlgo(order.mifid2DecisionAlgo());
-//        this.setMifid2ExecutionTrader(order.mifid2ExecutionTrader());
-//        this.setMifid2ExecutionAlgo(order.mifid2ExecutionAlgo());
-//
-//        // 人工订单
-//        this.setManualOrderTime(order.manualOrderTime());
-//        this.setManualOrderIndicator(order.manualOrderIndicator());
-//        this.setAdvancedErrorOverride(order.advancedErrorOverride());
-//        this.setShareholder(order.shareholder());
+    public IbOrder() {
+    }
+
+    public IbOrder(IbOrderCallbackVo ibOrderCallbackVo) {
+        Contract contract = ibOrderCallbackVo.getContract();
+        this.conid = contract.conid();
+
+        com.ib.client.Order order = ibOrderCallbackVo.getOrder();
+        com.ib.client.OrderState orderState = ibOrderCallbackVo.getOrderState();
+
+        // 基础信息
+        this.orderId = ibOrderCallbackVo.getOrderId();
+        this.clientId = order.clientId();
+        this.permId = order.permId();
+        this.parentId = order.parentId();
+        this.parentPermId = order.parentPermId();
+        this.slOrderId = order.slOrderId();
+        this.slOrderType = order.slOrderType();
+        this.ptOrderId = order.ptOrderId();
+        this.ptOrderType = order.ptOrderType();
+        this.orderRef = order.orderRef();
+        this.ocaGroup = order.ocaGroup();
+        this.ocaType = order.ocaType().getApiString();
+        this.modelCode = order.modelCode();
+        this.extOperator = order.extOperator();
+        this.submitter = order.submitter();
+
+        // 交易方向、数量、价格
+        this.action = order.action().getApiString();
+        this.totalQuantity = order.totalQuantity() == null ? null : new BigDecimal(order.totalQuantity().toString());
+        this.filledQuantity = order.filledQuantity() == null ? null : new BigDecimal(order.filledQuantity().toString());
+
+        this.cashQty = IbValueUtil.trimDouble(order.cashQty());
+        this.minQty = IbValueUtil.trimInt(order.minQty());
+        this.minTradeQty = order.minTradeQty();
+        this.minCompeteSize = order.minCompeteSize();
+        this.displaySize = order.displaySize();
+        this.orderType = order.orderType() == null ? null : order.orderType().name();
+        this.adjustedOrderType = order.adjustedOrderType() == null ? null : order.adjustedOrderType().name();
+
+        this.lmtPrice = IbValueUtil.trimDouble(order.lmtPrice());
+        this.lmtPriceOffset = IbValueUtil.trimDouble(order.lmtPriceOffset());
+        this.auxPrice = IbValueUtil.trimDouble(order.auxPrice());
+        this.trailStopPrice = IbValueUtil.trimDouble(order.trailStopPrice());
+        this.trailingPercent = IbValueUtil.trimDouble(order.trailingPercent());
+        this.triggerPrice = IbValueUtil.trimDouble(order.triggerPrice());
+        this.adjustedStopPrice = IbValueUtil.trimDouble(order.adjustedStopPrice());
+        this.adjustedStopLimitPrice = IbValueUtil.trimDouble(order.adjustedStopLimitPrice());
+        this.adjustedTrailingAmount = IbValueUtil.trimDouble(order.adjustedTrailingAmount());
+        this.adjustableTrailingUnit = order.adjustableTrailingUnit();
+        this.percentOffset = IbValueUtil.trimDouble(order.percentOffset());
+        this.discretionaryAmt = IbValueUtil.trimDouble(order.discretionaryAmt());
+        this.competeAgainstBestOffset = IbValueUtil.trimDouble(order.competeAgainstBestOffset());
+        this.midOffsetAtWhole = IbValueUtil.trimDouble(order.midOffsetAtWhole());
+        this.midOffsetAtHalf = IbValueUtil.trimDouble(order.midOffsetAtHalf());
+
+        // 时效TIF
+        this.tif = order.tif().getApiString();
+        this.goodAfterTime = order.goodAfterTime();
+        this.goodTillDate = order.goodTillDate();
+        this.autoCancelDate = order.autoCancelDate();
+        this.duration = order.duration();
+        this.activeStartTime = order.activeStartTime();
+        this.activeStopTime = order.activeStopTime();
+
+        // 账户清算FA
+        this.accountCode = order.account();
+        this.customerAccount = order.customerAccount();
+        this.settlingFirm = order.settlingFirm();
+        this.clearingAccount = order.clearingAccount();
+        this.clearingIntent = order.clearingIntent();
+        this.faGroup = order.faGroup();
+        this.faMethod = order.faMethod().getApiString();
+        this.faPercentage = order.faPercentage();
+        this.bondAccruedInterest = order.bondAccruedInterest();
+
+        // 开仓做空
+        this.openClose = order.openClose();
+        this.origin = order.origin();
+        this.shortSaleSlot = order.shortSaleSlot();
+        this.designatedLocation = order.designatedLocation();
+        this.exemptCode = order.exemptCode();
+        this.rule80A = order.rule80A().getApiString();
+
+        // 布尔标识
+        this.allOrNone = order.allOrNone();
+        this.blockOrder = order.blockOrder();
+        this.hidden = order.hidden();
+        this.outsideRth = order.outsideRth();
+        this.sweepToFill = order.sweepToFill();
+        this.transmit = order.transmit();
+        this.whatIf = order.whatIf();
+        this.whatIfType = order.whatIfType();
+        this.overridePercentageConstraints = order.overridePercentageConstraints();
+        this.optOutSmartRouting = order.optOutSmartRouting();
+        this.notHeld = order.notHeld();
+        this.solicited = order.solicited();
+        this.randomizeSize = order.randomizeSize();
+        this.randomizePrice = order.randomizePrice();
+        this.dontUseAutoPriceForHedge = order.dontUseAutoPriceForHedge();
+        this.isOmsContainer = order.isOmsContainer();
+        this.discretionaryUpToLimitPrice = order.discretionaryUpToLimitPrice();
+        this.autoCancelParent = order.autoCancelParent();
+        this.imbalanceOnly = order.imbalanceOnly();
+        this.includeOvernight = order.includeOvernight();
+        this.professionalCustomer = order.professionalCustomer();
+        this.postOnly = order.postOnly();
+        this.allowPreOpen = order.allowPreOpen();
+        this.ignoreOpenAuction = order.ignoreOpenAuction();
+        this.deactivate = order.deactivate();
+        this.conditionsCancelOrder = order.conditionsCancelOrder();
+        this.conditionsIgnoreRth = order.conditionsIgnoreRth();
+        this.seekPriceImprovement = order.seekPriceImprovement();
+        this.routeMarketableToBbo = order.routeMarketableToBbo();
+        this.usePriceMgmtAlgo = order.usePriceMgmtAlgo();
+
+        // 波动率、参考价格
+        this.volatility = IbValueUtil.trimDouble(order.volatility());
+        this.volatilityType = order.volatilityType().getApiString();
+        this.continuousUpdate = order.continuousUpdate();
+        this.referencePriceType = order.referencePriceType().getApiString();
+        this.referenceContractId = order.referenceContractId();
+        this.refFuturesConId = order.refFuturesConId();
+        this.startingPrice = IbValueUtil.trimDouble(order.startingPrice());
+        this.stockRefPrice = IbValueUtil.trimDouble(order.stockRefPrice());
+        this.delta = IbValueUtil.trimDouble(order.delta());
+        this.stockRangeLower = IbValueUtil.trimDouble(order.stockRangeLower());
+        this.stockRangeUpper = IbValueUtil.trimDouble(order.stockRangeUpper());
+        this.basisPoints = IbValueUtil.trimDouble(order.basisPoints());
+        this.basisPointsType = order.basisPointsType();
+        this.peggedChangeAmount = IbValueUtil.trimDouble(order.peggedChangeAmount());
+        this.isPeggedChangeAmountDecrease = order.isPeggedChangeAmountDecrease();
+        this.referenceChangeAmount = IbValueUtil.trimDouble(order.referenceChangeAmount());
+        this.referenceExchangeId = order.referenceExchangeId();
+        this.triggerMethod = order.triggerMethod().getApiString();
+        this.auctionStrategy = order.auctionStrategy();
+        this.postToAts = order.postToAts();
+
+        // Delta Neutral
+        this.deltaNeutralOrderType = order.deltaNeutralOrderType().getApiString();
+        this.deltaNeutralAuxPrice = IbValueUtil.trimDouble(order.deltaNeutralAuxPrice());
+        this.deltaNeutralConId = order.deltaNeutralConId();
+        this.deltaNeutralOpenClose = order.deltaNeutralOpenClose();
+        this.deltaNeutralShortSale = order.deltaNeutralShortSale();
+        this.deltaNeutralShortSaleSlot = order.deltaNeutralShortSaleSlot();
+        this.deltaNeutralDesignatedLocation = order.deltaNeutralDesignatedLocation();
+        this.deltaNeutralSettlingFirm = order.deltaNeutralSettlingFirm();
+        this.deltaNeutralClearingAccount = order.deltaNeutralClearingAccount();
+        this.deltaNeutralClearingIntent = order.deltaNeutralClearingIntent();
+
+        // 阶梯Scale
+        this.scaleInitLevelSize = order.scaleInitLevelSize();
+        this.scaleSubsLevelSize = order.scaleSubsLevelSize();
+        this.scalePriceIncrement = IbValueUtil.trimDouble(order.scalePriceIncrement());
+        this.scalePriceAdjustValue = IbValueUtil.trimDouble(order.scalePriceAdjustValue());
+        this.scalePriceAdjustInterval = order.scalePriceAdjustInterval();
+        this.scaleProfitOffset = IbValueUtil.trimDouble(order.scaleProfitOffset());
+        this.scaleAutoReset = order.scaleAutoReset();
+        this.scaleInitPosition = order.scaleInitPosition();
+        this.scaleInitFillQty = order.scaleInitFillQty();
+        this.scaleRandomPercent = order.scaleRandomPercent();
+        this.scaleTable = order.scaleTable();
+
+        // 对冲
+        this.hedgeType = order.hedgeType().getApiString();
+        this.hedgeParam = order.hedgeParam();
+        this.hedgeMaxSize = IbValueUtil.trimInt(order.hedgeMaxSize());
+
+        // 算法单
+        this.algoStrategy = order.algoStrategy().getApiString();
+        this.algoId = order.algoId();
+        this.softDollarTier = order.softDollarTier() == null ? null : order.softDollarTier().name();
+
+        // MiFID2
+        this.mifid2DecisionMaker = order.mifid2DecisionMaker();
+        this.mifid2DecisionAlgo = order.mifid2DecisionAlgo();
+        this.mifid2ExecutionTrader = order.mifid2ExecutionTrader();
+        this.mifid2ExecutionAlgo = order.mifid2ExecutionAlgo();
+
+        // 人工订单
+        this.manualOrderTime = order.manualOrderTime();
+        this.manualOrderIndicator = order.manualOrderIndicator();
+        this.advancedErrorOverride = order.advancedErrorOverride();
+        this.shareholder = order.shareholder();
+
+        // OrderState
+        if (orderState != null) {
+            this.status = orderState.status().name();
+            this.initMarginBefore = orderState.initMarginBefore();
+            this.maintMarginBefore = orderState.maintMarginBefore();
+            this.equityWithLoanBefore = orderState.equityWithLoanBefore();
+            this.initMarginChange = orderState.initMarginChange();
+            this.maintMarginChange = orderState.maintMarginChange();
+            this.equityWithLoanChange = orderState.equityWithLoanChange();
+            this.initMarginAfter = orderState.initMarginAfter();
+            this.maintMarginAfter = orderState.maintMarginAfter();
+            this.equityWithLoanAfter = orderState.equityWithLoanAfter();
+            this.commissionAndFees = IbValueUtil.trimDouble(orderState.commissionAndFees());
+            this.minCommissionAndFees = IbValueUtil.trimDouble(orderState.minCommissionAndFees());
+            this.maxCommissionAndFees = IbValueUtil.trimDouble(orderState.maxCommissionAndFees());
+            this.commissionAndFeesCurrency = orderState.commissionAndFeesCurrency();
+            this.marginCurrency = orderState.marginCurrency();
+            this.warningText = orderState.warningText();
+            this.completedTime = orderState.completedTime();
+            this.completedStatus = orderState.completedStatus();
+            this.rejectReason = orderState.rejectReason();
+            this.suggestedSize = orderState.suggestedSize() == null ? null : IbValueUtil.trimBigDec(orderState.suggestedSize().value());
+        }
     }
 }

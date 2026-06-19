@@ -607,7 +607,16 @@ public class IbReconnectTask {
         m_client.reqAllOpenOrders();
 
         Object obj = future.get(ibkrSynConfig.timeout, TimeUnit.MILLISECONDS);
-        List<IbOrderCallbackVo> result = (List<IbOrderCallbackVo>) obj;
+        List<Object> result = (List<Object>) obj;
+
+        for (Object o : result) {
+            if (o instanceof IbOrderCallbackVo) {
+                IbOrder ibOrder = new IbOrder((IbOrderCallbackVo)o);
+                ibOrderService.saveOrUpdateByPermId(ibOrder);
+            } else if (o instanceof OrderStatusCallbackVo) {
+                System.out.println("order status:" + JSONObject.toJSONString(o));
+            }
+        }
 
         log.info("synAllOpenOrders end, total={}", result != null ? result.size() : 0);
     }
@@ -631,6 +640,11 @@ public class IbReconnectTask {
 
         Object obj = future.get(ibkrSynConfig.timeout, TimeUnit.MILLISECONDS);
         List<IbOrderCallbackVo> result = (List<IbOrderCallbackVo>) obj;
+
+        for (IbOrderCallbackVo ibOrderCallbackVo : result) {
+            IbOrder ibOrder = new IbOrder(ibOrderCallbackVo);
+            ibOrderService.saveOrUpdateByPermId(ibOrder);
+        }
 
         log.info("synCompletedOrders end, total={}", result != null ? result.size() : 0);
     }
@@ -659,6 +673,8 @@ public class IbReconnectTask {
         int reqId = ReqIdConstant.reqExecutions;
         CompletableFuture<Object> future = ibkrSynConfig.setAndGetCompletableFuture(reqId);
 
+        // execDetails
+        // execDetailsEnd
         m_client.reqExecutions(reqId, new ExecutionFilter());
 
         Object obj = future.get(ibkrSynConfig.timeout, TimeUnit.MILLISECONDS);

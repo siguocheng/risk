@@ -2,4 +2,241 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.riskcontrol.dao.IbOrderMapper">
 
+    <resultMap id="BaseResultMap" type="com.riskcontrol.domain.IbOrder">
+        <id column="id" jdbcType="BIGINT" property="id" />
+        <result column="conid" jdbcType="INTEGER" property="conid" />
+        <result column="client_id" jdbcType="INTEGER" property="clientId" />
+        <result column="order_id" jdbcType="INTEGER" property="orderId" />
+        <result column="perm_id" jdbcType="BIGINT" property="permId" />
+        <result column="parent_id" jdbcType="INTEGER" property="parentId" />
+        <result column="parent_perm_id" jdbcType="BIGINT" property="parentPermId" />
+        <result column="action" jdbcType="VARCHAR" property="action" />
+        <result column="total_quantity" jdbcType="DECIMAL" property="totalQuantity" />
+        <result column="filled_quantity" jdbcType="DECIMAL" property="filledQuantity" />
+        <result column="suggested_size" jdbcType="DECIMAL" property="suggestedSize" />
+        <result column="cash_qty" jdbcType="DECIMAL" property="cashQty" />
+        <result column="min_qty" jdbcType="INTEGER" property="minQty" />
+        <result column="min_trade_qty" jdbcType="INTEGER" property="minTradeQty" />
+        <result column="min_compete_size" jdbcType="INTEGER" property="minCompeteSize" />
+        <result column="display_size" jdbcType="INTEGER" property="displaySize" />
+        <result column="order_type" jdbcType="VARCHAR" property="orderType" />
+        <result column="adjusted_order_type" jdbcType="VARCHAR" property="adjustedOrderType" />
+        <result column="lmt_price" jdbcType="DECIMAL" property="lmtPrice" />
+        <result column="lmt_price_offset" jdbcType="DECIMAL" property="lmtPriceOffset" />
+        <result column="aux_price" jdbcType="DECIMAL" property="auxPrice" />
+        <result column="trail_stop_price" jdbcType="DECIMAL" property="trailStopPrice" />
+        <result column="trailing_percent" jdbcType="DECIMAL" property="trailingPercent" />
+        <result column="trigger_price" jdbcType="DECIMAL" property="triggerPrice" />
+        <result column="adjusted_stop_price" jdbcType="DECIMAL" property="adjustedStopPrice" />
+        <result column="adjusted_stop_limit_price" jdbcType="DECIMAL" property="adjustedStopLimitPrice" />
+        <result column="adjusted_trailing_amount" jdbcType="DECIMAL" property="adjustedTrailingAmount" />
+        <result column="adjustable_trailing_unit" jdbcType="INTEGER" property="adjustableTrailingUnit" />
+        <result column="percent_offset" jdbcType="DECIMAL" property="percentOffset" />
+        <result column="discretionary_amt" jdbcType="DECIMAL" property="discretionaryAmt" />
+        <result column="compete_against_best_offset" jdbcType="DECIMAL" property="competeAgainstBestOffset" />
+        <result column="mid_offset_at_whole" jdbcType="DECIMAL" property="midOffsetAtWhole" />
+        <result column="mid_offset_at_half" jdbcType="DECIMAL" property="midOffsetAtHalf" />
+        <result column="tif" jdbcType="VARCHAR" property="tif" />
+        <result column="good_after_time" jdbcType="VARCHAR" property="goodAfterTime" />
+        <result column="good_till_date" jdbcType="VARCHAR" property="goodTillDate" />
+        <result column="auto_cancel_date" jdbcType="VARCHAR" property="autoCancelDate" />
+        <result column="duration" jdbcType="INTEGER" property="duration" />
+        <result column="active_start_time" jdbcType="VARCHAR" property="activeStartTime" />
+        <result column="active_stop_time" jdbcType="VARCHAR" property="activeStopTime" />
+        <result column="account" jdbcType="VARCHAR" property="account" />
+        <result column="customer_account" jdbcType="VARCHAR" property="customerAccount" />
+        <result column="settling_firm" jdbcType="VARCHAR" property="settlingFirm" />
+        <result column="clearing_account" jdbcType="VARCHAR" property="clearingAccount" />
+        <result column="clearing_intent" jdbcType="VARCHAR" property="clearingIntent" />
+        <result column="fa_group" jdbcType="VARCHAR" property="faGroup" />
+        <result column="fa_method" jdbcType="VARCHAR" property="faMethod" />
+        <result column="fa_percentage" jdbcType="VARCHAR" property="faPercentage" />
+        <result column="bond_accrued_interest" jdbcType="VARCHAR" property="bondAccruedInterest" />
+        <result column="open_close" jdbcType="VARCHAR" property="openClose" />
+        <result column="origin" jdbcType="INTEGER" property="origin" />
+        <result column="short_sale_slot" jdbcType="INTEGER" property="shortSaleSlot" />
+        <result column="designated_location" jdbcType="VARCHAR" property="designatedLocation" />
+        <result column="exempt_code" jdbcType="INTEGER" property="exemptCode" />
+        <result column="rule80a" jdbcType="VARCHAR" property="rule80A" />
+        <result column="all_or_none" jdbcType="TINYINT" property="allOrNone" />
+        <result column="block_order" jdbcType="TINYINT" property="blockOrder" />
+        <result column="hidden" jdbcType="TINYINT" property="hidden" />
+        <result column="outside_rth" jdbcType="TINYINT" property="outsideRth" />
+        <result column="sweep_to_fill" jdbcType="TINYINT" property="sweepToFill" />
+        <result column="transmit" jdbcType="TINYINT" property="transmit" />
+        <result column="what_if" jdbcType="TINYINT" property="whatIf" />
+        <result column="what_if_type" jdbcType="INTEGER" property="whatIfType" />
+        <result column="override_percentage_constraints" jdbcType="TINYINT" property="overridePercentageConstraints" />
+        <result column="opt_out_smart_routing" jdbcType="TINYINT" property="optOutSmartRouting" />
+        <result column="not_held" jdbcType="TINYINT" property="notHeld" />
+        <result column="solicited" jdbcType="TINYINT" property="solicited" />
+        <result column="randomize_size" jdbcType="TINYINT" property="randomizeSize" />
+        <result column="randomize_price" jdbcType="TINYINT" property="randomizePrice" />
+        <result column="dont_use_auto_price_for_hedge" jdbcType="TINYINT" property="dontUseAutoPriceForHedge" />
+        <result column="is_oms_container" jdbcType="TINYINT" property="isOmsContainer" />
+        <result column="discretionary_up_to_limit_price" jdbcType="TINYINT" property="discretionaryUpToLimitPrice" />
+        <result column="auto_cancel_parent" jdbcType="TINYINT" property="autoCancelParent" />
+        <result column="imbalance_only" jdbcType="TINYINT" property="imbalanceOnly" />
+        <result column="include_overnight" jdbcType="TINYINT" property="includeOvernight" />
+        <result column="professional_customer" jdbcType="TINYINT" property="professionalCustomer" />
+        <result column="post_only" jdbcType="TINYINT" property="postOnly" />
+        <result column="allow_pre_open" jdbcType="TINYINT" property="allowPreOpen" />
+        <result column="ignore_open_auction" jdbcType="TINYINT" property="ignoreOpenAuction" />
+        <result column="deactivate" jdbcType="TINYINT" property="deactivate" />
+        <result column="conditions_cancel_order" jdbcType="TINYINT" property="conditionsCancelOrder" />
+        <result column="conditions_ignore_rth" jdbcType="TINYINT" property="conditionsIgnoreRth" />
+        <result column="seek_price_improvement" jdbcType="TINYINT" property="seekPriceImprovement" />
+        <result column="route_marketable_to_bbo" jdbcType="TINYINT" property="routeMarketableToBbo" />
+        <result column="use_price_mgmt_algo" jdbcType="TINYINT" property="usePriceMgmtAlgo" />
+        <result column="volatility" jdbcType="DECIMAL" property="volatility" />
+        <result column="volatility_type" jdbcType="INTEGER" property="volatilityType" />
+        <result column="continuous_update" jdbcType="INTEGER" property="continuousUpdate" />
+        <result column="reference_price_type" jdbcType="INTEGER" property="referencePriceType" />
+        <result column="reference_contract_id" jdbcType="INTEGER" property="referenceContractId" />
+        <result column="ref_futures_con_id" jdbcType="INTEGER" property="refFuturesConId" />
+        <result column="starting_price" jdbcType="DECIMAL" property="startingPrice" />
+        <result column="stock_ref_price" jdbcType="DECIMAL" property="stockRefPrice" />
+        <result column="delta" jdbcType="DECIMAL" property="delta" />
+        <result column="stock_range_lower" jdbcType="DECIMAL" property="stockRangeLower" />
+        <result column="stock_range_upper" jdbcType="DECIMAL" property="stockRangeUpper" />
+        <result column="basis_points" jdbcType="DECIMAL" property="basisPoints" />
+        <result column="basis_points_type" jdbcType="INTEGER" property="basisPointsType" />
+        <result column="pegged_change_amount" jdbcType="DECIMAL" property="peggedChangeAmount" />
+        <result column="is_pegged_change_amount_decrease" jdbcType="TINYINT" property="isPeggedChangeAmountDecrease" />
+        <result column="reference_change_amount" jdbcType="DECIMAL" property="referenceChangeAmount" />
+        <result column="reference_exchange_id" jdbcType="VARCHAR" property="referenceExchangeId" />
+        <result column="trigger_method" jdbcType="INTEGER" property="triggerMethod" />
+        <result column="auction_strategy" jdbcType="INTEGER" property="auctionStrategy" />
+        <result column="post_to_ats" jdbcType="INTEGER" property="postToAts" />
+        <result column="delta_neutral_order_type" jdbcType="VARCHAR" property="deltaNeutralOrderType" />
+        <result column="delta_neutral_aux_price" jdbcType="DECIMAL" property="deltaNeutralAuxPrice" />
+        <result column="delta_neutral_con_id" jdbcType="INTEGER" property="deltaNeutralConId" />
+        <result column="delta_neutral_open_close" jdbcType="VARCHAR" property="deltaNeutralOpenClose" />
+        <result column="delta_neutral_short_sale" jdbcType="TINYINT" property="deltaNeutralShortSale" />
+        <result column="delta_neutral_short_sale_slot" jdbcType="INTEGER" property="deltaNeutralShortSaleSlot" />
+        <result column="delta_neutral_designated_location" jdbcType="VARCHAR" property="deltaNeutralDesignatedLocation" />
+        <result column="delta_neutral_settling_firm" jdbcType="VARCHAR" property="deltaNeutralSettlingFirm" />
+        <result column="delta_neutral_clearing_account" jdbcType="VARCHAR" property="deltaNeutralClearingAccount" />
+        <result column="delta_neutral_clearing_intent" jdbcType="VARCHAR" property="deltaNeutralClearingIntent" />
+        <result column="scale_init_level_size" jdbcType="INTEGER" property="scaleInitLevelSize" />
+        <result column="scale_subs_level_size" jdbcType="INTEGER" property="scaleSubsLevelSize" />
+        <result column="scale_price_increment" jdbcType="DECIMAL" property="scalePriceIncrement" />
+        <result column="scale_price_adjust_value" jdbcType="DECIMAL" property="scalePriceAdjustValue" />
+        <result column="scale_price_adjust_interval" jdbcType="INTEGER" property="scalePriceAdjustInterval" />
+        <result column="scale_profit_offset" jdbcType="DECIMAL" property="scaleProfitOffset" />
+        <result column="scale_auto_reset" jdbcType="TINYINT" property="scaleAutoReset" />
+        <result column="scale_init_position" jdbcType="INTEGER" property="scaleInitPosition" />
+        <result column="scale_init_fill_qty" jdbcType="INTEGER" property="scaleInitFillQty" />
+        <result column="scale_random_percent" jdbcType="TINYINT" property="scaleRandomPercent" />
+        <result column="scale_table" jdbcType="VARCHAR" property="scaleTable" />
+        <result column="hedge_type" jdbcType="VARCHAR" property="hedgeType" />
+        <result column="hedge_param" jdbcType="VARCHAR" property="hedgeParam" />
+        <result column="hedge_max_size" jdbcType="INTEGER" property="hedgeMaxSize" />
+        <result column="algo_strategy" jdbcType="VARCHAR" property="algoStrategy" />
+        <result column="algo_id" jdbcType="VARCHAR" property="algoId" />
+        <result column="soft_dollar_tier" jdbcType="VARCHAR" property="softDollarTier" />
+        <result column="mifid2_decision_maker" jdbcType="VARCHAR" property="mifid2DecisionMaker" />
+        <result column="mifid2_decision_algo" jdbcType="VARCHAR" property="mifid2DecisionAlgo" />
+        <result column="mifid2_execution_trader" jdbcType="VARCHAR" property="mifid2ExecutionTrader" />
+        <result column="mifid2_execution_algo" jdbcType="VARCHAR" property="mifid2ExecutionAlgo" />
+        <result column="manual_order_time" jdbcType="VARCHAR" property="manualOrderTime" />
+        <result column="manual_order_indicator" jdbcType="INTEGER" property="manualOrderIndicator" />
+        <result column="advanced_error_override" jdbcType="VARCHAR" property="advancedErrorOverride" />
+        <result column="shareholder" jdbcType="VARCHAR" property="shareholder" />
+        <result column="sl_order_id" jdbcType="INTEGER" property="slOrderId" />
+        <result column="sl_order_type" jdbcType="VARCHAR" property="slOrderType" />
+        <result column="pt_order_id" jdbcType="INTEGER" property="ptOrderId" />
+        <result column="pt_order_type" jdbcType="VARCHAR" property="ptOrderType" />
+        <result column="order_ref" jdbcType="VARCHAR" property="orderRef" />
+        <result column="oca_group" jdbcType="VARCHAR" property="ocaGroup" />
+        <result column="oca_type" jdbcType="INTEGER" property="ocaType" />
+        <result column="model_code" jdbcType="VARCHAR" property="modelCode" />
+        <result column="ext_operator" jdbcType="VARCHAR" property="extOperator" />
+        <result column="submitter" jdbcType="VARCHAR" property="submitter" />
+        <result column="status" jdbcType="VARCHAR" property="status" />
+        <result column="reject_reason" jdbcType="VARCHAR" property="rejectReason" />
+        <result column="warning_text" jdbcType="VARCHAR" property="warningText" />
+        <result column="completed_time" jdbcType="VARCHAR" property="completedTime" />
+        <result column="completed_status" jdbcType="VARCHAR" property="completedStatus" />
+        <result column="init_margin_before" jdbcType="VARCHAR" property="initMarginBefore" />
+        <result column="maint_margin_before" jdbcType="VARCHAR" property="maintMarginBefore" />
+        <result column="equity_with_loan_before" jdbcType="VARCHAR" property="equityWithLoanBefore" />
+        <result column="init_margin_change" jdbcType="VARCHAR" property="initMarginChange" />
+        <result column="maint_margin_change" jdbcType="VARCHAR" property="maintMarginChange" />
+        <result column="equity_with_loan_change" jdbcType="VARCHAR" property="equityWithLoanChange" />
+        <result column="init_margin_after" jdbcType="VARCHAR" property="initMarginAfter" />
+        <result column="maint_margin_after" jdbcType="VARCHAR" property="maintMarginAfter" />
+        <result column="equity_with_loan_after" jdbcType="VARCHAR" property="equityWithLoanAfter" />
+        <result column="commission_and_fees" jdbcType="DECIMAL" property="commissionAndFees" />
+        <result column="min_commission_and_fees" jdbcType="DECIMAL" property="minCommissionAndFees" />
+        <result column="max_commission_and_fees" jdbcType="DECIMAL" property="maxCommissionAndFees" />
+        <result column="commission_and_fees_currency" jdbcType="VARCHAR" property="commissionAndFeesCurrency" />
+        <result column="margin_currency" jdbcType="VARCHAR" property="marginCurrency" />
+        <result column="init_margin_before_outside_rth" jdbcType="DECIMAL" property="initMarginBeforeOutsideRth" />
+        <result column="maint_margin_before_outside_rth" jdbcType="DECIMAL" property="maintMarginBeforeOutsideRth" />
+        <result column="equity_with_loan_before_outside_rth" jdbcType="DECIMAL" property="equityWithLoanBeforeOutsideRth" />
+        <result column="init_margin_change_outside_rth" jdbcType="DECIMAL" property="initMarginChangeOutsideRth" />
+        <result column="maint_margin_change_outside_rth" jdbcType="DECIMAL" property="maintMarginChangeOutsideRth" />
+        <result column="equity_with_loan_change_outside_rth" jdbcType="DECIMAL" property="equityWithLoanChangeOutsideRth" />
+        <result column="init_margin_after_outside_rth" jdbcType="DECIMAL" property="initMarginAfterOutsideRth" />
+        <result column="maint_margin_after_outside_rth" jdbcType="DECIMAL" property="maintMarginAfterOutsideRth" />
+        <result column="equity_with_loan_after_outside_rth" jdbcType="DECIMAL" property="equityWithLoanAfterOutsideRth" />
+        <result column="deleted" jdbcType="TINYINT" property="deleted" />
+        <result column="create_id" jdbcType="BIGINT" property="createId" />
+        <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
+        <result column="modified_id" jdbcType="BIGINT" property="modifiedId" />
+        <result column="modified_time" jdbcType="TIMESTAMP" property="modifiedTime" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, conid, client_id, order_id, perm_id, parent_id, parent_perm_id, action,
+        total_quantity, filled_quantity, suggested_size, cash_qty, min_qty,
+        min_trade_qty, min_compete_size, display_size, order_type, adjusted_order_type,
+        lmt_price, lmt_price_offset, aux_price, trail_stop_price, trailing_percent,
+        trigger_price, adjusted_stop_price, adjusted_stop_limit_price,
+        adjusted_trailing_amount, adjustable_trailing_unit, percent_offset,
+        discretionary_amt, compete_against_best_offset, mid_offset_at_whole,
+        mid_offset_at_half, tif, good_after_time, good_till_date, auto_cancel_date,
+        duration, active_start_time, active_stop_time, account, customer_account,
+        settling_firm, clearing_account, clearing_intent, fa_group, fa_method,
+        fa_percentage, bond_accrued_interest, open_close, origin, short_sale_slot,
+        designated_location, exempt_code, rule80a, all_or_none, block_order, hidden,
+        outside_rth, sweep_to_fill, transmit, what_if, what_if_type,
+        override_percentage_constraints, opt_out_smart_routing, not_held, solicited,
+        randomize_size, randomize_price, dont_use_auto_price_for_hedge, is_oms_container,
+        discretionary_up_to_limit_price, auto_cancel_parent, imbalance_only,
+        include_overnight, professional_customer, post_only, allow_pre_open,
+        ignore_open_auction, deactivate, conditions_cancel_order, conditions_ignore_rth,
+        seek_price_improvement, route_marketable_to_bbo, use_price_mgmt_algo, volatility,
+        volatility_type, continuous_update, reference_price_type, reference_contract_id,
+        ref_futures_con_id, starting_price, stock_ref_price, delta, stock_range_lower,
+        stock_range_upper, basis_points, basis_points_type, pegged_change_amount,
+        is_pegged_change_amount_decrease, reference_change_amount, reference_exchange_id,
+        trigger_method, auction_strategy, post_to_ats, delta_neutral_order_type,
+        delta_neutral_aux_price, delta_neutral_con_id, delta_neutral_open_close,
+        delta_neutral_short_sale, delta_neutral_short_sale_slot,
+        delta_neutral_designated_location, delta_neutral_settling_firm,
+        delta_neutral_clearing_account, delta_neutral_clearing_intent,
+        scale_init_level_size, scale_subs_level_size, scale_price_increment,
+        scale_price_adjust_value, scale_price_adjust_interval, scale_profit_offset,
+        scale_auto_reset, scale_init_position, scale_init_fill_qty, scale_random_percent,
+        scale_table, hedge_type, hedge_param, hedge_max_size, algo_strategy, algo_id,
+        soft_dollar_tier, mifid2_decision_maker, mifid2_decision_algo,
+        mifid2_execution_trader, mifid2_execution_algo, manual_order_time,
+        manual_order_indicator, advanced_error_override, shareholder, sl_order_id,
+        sl_order_type, pt_order_id, pt_order_type, order_ref, oca_group, oca_type,
+        model_code, ext_operator, submitter, status, reject_reason, warning_text,
+        completed_time, completed_status, init_margin_before, maint_margin_before,
+        equity_with_loan_before, init_margin_change, maint_margin_change,
+        equity_with_loan_change, init_margin_after, maint_margin_after,
+        equity_with_loan_after, commission_and_fees, min_commission_and_fees,
+        max_commission_and_fees, commission_and_fees_currency, margin_currency,
+        init_margin_before_outside_rth, maint_margin_before_outside_rth,
+        equity_with_loan_before_outside_rth, init_margin_change_outside_rth,
+        maint_margin_change_outside_rth, equity_with_loan_change_outside_rth,
+        init_margin_after_outside_rth, maint_margin_after_outside_rth,
+        equity_with_loan_after_outside_rth, deleted, create_id, create_time,
+        modified_id, modified_time
+    </sql>
+
 </mapper>

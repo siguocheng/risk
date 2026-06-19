@@ -48,7 +48,8 @@ public class IbReconnectTaskTest {
     @Test
     public void synAllOrders() throws ExecutionException, InterruptedException, TimeoutException {
 
-        ibReconnectTask.synCompletedOrders();
+//        ibReconnectTask.synCompletedOrders();
+        ibReconnectTask.synAllOpenOrders();
         // ibReconnectTask.synAllOrders();
     }
 

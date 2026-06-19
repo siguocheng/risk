@@ -98,27 +98,27 @@ public class IbkrWrapper implements EWrapper {
         printCurrentMethod();
     }
 
-    public final Map<Object, List<OrderStatusCallbackVo>> orderStatusMap = new ConcurrentHashMap<>();
+//    public final Map<Object, List<OrderStatusCallbackVo>> orderStatusMap = new ConcurrentHashMap<>();
 
     @Override
     public void orderStatus(int orderId, String status, Decimal filled, Decimal remaining, double avgFillPrice, long permId, int parentId, double lastFillPrice, int clientId, String whyHeld, double mktCapPrice) {
         log.info("orderStatus: orderId={}, status={}, filled={}, remaining={}, avgFillPrice={}, permId={}", 
                 orderId, status, filled, remaining, avgFillPrice, permId);
 
-        List<OrderStatusCallbackVo> list = orderStatusMap.computeIfAbsent(ReqIdConstant.openOrderReqId,k -> new CopyOnWriteArrayList<>());
+        List<Object> list = listDataMap.computeIfAbsent(ReqIdConstant.openOrderReqId,k -> new CopyOnWriteArrayList<>());
         OrderStatusCallbackVo orderStatusCallbackVo = new OrderStatusCallbackVo(orderId, status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice);
 
         list.add(orderStatusCallbackVo);
     }
 
-    public final Map<Object, List<IbOrderCallbackVo>> orderMap = new ConcurrentHashMap<>();
+//    public final Map<Object, List<IbOrderCallbackVo>> orderMap = new ConcurrentHashMap<>();
 
     @Override
     public void openOrder(int orderId, Contract contract, Order order, OrderState orderState) {
         log.info("openOrder: orderId={}, symbol={}, action={}, orderType={}, totalQuantity={}", 
                 orderId, contract.symbol(), order.action(), order.orderType(), order.totalQuantity());
 
-        List<IbOrderCallbackVo> list = orderMap.computeIfAbsent(ReqIdConstant.openOrderReqId,k -> new CopyOnWriteArrayList<>());
+        List<Object> list = listDataMap.computeIfAbsent(ReqIdConstant.openOrderReqId,k -> new CopyOnWriteArrayList<>());
 
         list.add(new IbOrderCallbackVo(orderId, contract, order, orderState));
     }
@@ -127,13 +127,9 @@ public class IbkrWrapper implements EWrapper {
     public void openOrderEnd() {
         log.info("openOrderEnd");
         CompletableFuture<Object> future = ibkrSynConfig.FUTURE_MAP.remove(ReqIdConstant.openOrderReqId);
-        List<IbOrderCallbackVo> orders = orderMap.remove(ReqIdConstant.openOrderReqId);
-        List<OrderStatusCallbackVo> orderStatus = orderStatusMap.remove(ReqIdConstant.openOrderReqId);
-        Map<String, Object> orderMap = new HashMap<>();
-        orderMap.put("order", orders);
-        orderMap.put("orderStatus", orderStatus);
+        List<Object> ordersAndOrderStatus = listDataMap.remove(ReqIdConstant.openOrderReqId);
         if (future != null) {
-            future.complete(orderMap);
+            future.complete(ordersAndOrderStatus);
         }
 
     }
@@ -142,7 +138,7 @@ public class IbkrWrapper implements EWrapper {
     public void completedOrder(Contract contract, Order order, OrderState orderState) {
         log.info("completedOrder: permId={}, symbol={}, action={}, status={}", 
                 order.permId(), contract.symbol(), order.action(), orderState.status());
-        List<IbOrderCallbackVo> list = orderMap.computeIfAbsent(ReqIdConstant.completedOrderReqId, k -> new CopyOnWriteArrayList<>());
+        List<Object> list = listDataMap.computeIfAbsent(ReqIdConstant.completedOrderReqId, k -> new CopyOnWriteArrayList<>());
         IbOrderCallbackVo ibOrderCallbackVo = new IbOrderCallbackVo(-1, contract, order, orderState);
 
         list.add(ibOrderCallbackVo);
@@ -153,7 +149,7 @@ public class IbkrWrapper implements EWrapper {
         log.info("completedOrdersEnd");
         // 遍历所有等待中的Future并完成
         CompletableFuture<Object> future = ibkrSynConfig.FUTURE_MAP.remove(ReqIdConstant.completedOrderReqId);
-        List<IbOrderCallbackVo> ibOrderCallbackVos = orderMap.get(ReqIdConstant.completedOrderReqId);
+        List<Object> ibOrderCallbackVos = listDataMap.get(ReqIdConstant.completedOrderReqId);
         if (future != null) {
             future.complete(ibOrderCallbackVos);
         }
