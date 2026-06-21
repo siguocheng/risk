@@ -5,11 +5,11 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.riskcontrol.domain.PositionRelation;
 import com.riskcontrol.domain.Position;
-import com.riskcontrol.domain.vo.compositerelation.CompositeRelationModify;
-import com.riskcontrol.domain.vo.compositerelation.CompositeRelationPage;
-import com.riskcontrol.domain.vo.compositerelation.CompositeRelationQuery;
+import com.riskcontrol.domain.vo.positionrelation.PositionRelationModify;
+import com.riskcontrol.domain.vo.positionrelation.PositionRelationPage;
+import com.riskcontrol.domain.vo.positionrelation.PositionRelationQuery;
 import com.riskcontrol.mapper.PositionRelationMapper;
-import com.riskcontrol.service.ICompositeRelationService;
+import com.riskcontrol.service.IPositionRelationService;
 import com.riskcontrol.service.IPositionService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -26,13 +26,13 @@ import java.util.List;
  */
 @Slf4j
 @Service
-public class PositionRelationServiceImpl extends ServiceImpl<PositionRelationMapper, PositionRelation> implements ICompositeRelationService {
+public class PositionRelationServiceImpl extends ServiceImpl<PositionRelationMapper, PositionRelation> implements IPositionRelationService {
 
     @Resource
     IPositionService positionService;
 
     @Override
-    public IPage<CompositeRelationPage> queryPage(CompositeRelationQuery query) {
+    public IPage<PositionRelationPage> queryPage(PositionRelationQuery query) {
         LambdaQueryWrapper<PositionRelation> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(query.getAccountCode() != null, PositionRelation::getAccountCode, query.getAccountCode());
         queryWrapper.eq(query.getConid() != null, PositionRelation::getConid, query.getConid());
@@ -41,7 +41,7 @@ public class PositionRelationServiceImpl extends ServiceImpl<PositionRelationMap
         queryWrapper.isNull(PositionRelation::getDeleted);
 
         return this.page(query.build(), queryWrapper).convert(compositeRelation -> {
-            CompositeRelationPage page = new CompositeRelationPage();
+            PositionRelationPage page = new PositionRelationPage();
             page.setId(compositeRelation.getId());
             page.setAccountCode(compositeRelation.getAccountCode());
             page.setConid(compositeRelation.getConid());
@@ -53,7 +53,7 @@ public class PositionRelationServiceImpl extends ServiceImpl<PositionRelationMap
     }
 
     @Override
-    public Long create(CompositeRelationModify modify) {
+    public Long create(PositionRelationModify modify) {
         // 验证持仓数量
         validatePositionQty(modify.getAccountCode(), modify.getConid(), null, modify.getPositionQty());
 
@@ -68,7 +68,7 @@ public class PositionRelationServiceImpl extends ServiceImpl<PositionRelationMap
     }
 
     @Override
-    public Long update(CompositeRelationModify modify) {
+    public Long update(PositionRelationModify modify) {
         PositionRelation compositeRelation = this.getById(modify.getId());
         if (compositeRelation == null) {
             throw new RuntimeException("综合关系不存在");

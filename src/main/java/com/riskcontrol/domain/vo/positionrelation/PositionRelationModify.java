@@ -1,4 +1,4 @@
-package com.riskcontrol.domain.vo.compositerelation;
+package com.riskcontrol.domain.vo.positionrelation;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -12,7 +12,7 @@ import java.math.BigDecimal;
  * @date 2026-06-19
  */
 @Data
-public class CompositeRelationModify {
+public class PositionRelationModify {
 
     @Schema(description = "ID")
     private Long id;

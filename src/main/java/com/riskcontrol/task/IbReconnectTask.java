@@ -89,6 +89,9 @@ public class IbReconnectTask {
     @Resource
     IbkrSynConfig ibkrSynConfig;
 
+    @Resource
+    IPositionHistoryService positionHistoryService;
+
     // 30秒检测一次连接状态
     @Scheduled(fixedDelay = 30000)
     public void checkConnect(){
@@ -155,6 +158,8 @@ public class IbReconnectTask {
             List<PositionCallbackVo> positions = (List<PositionCallbackVo>)result.remove("position");
 
             for (PositionCallbackVo positionCallbackVo : positions) {
+
+                // 维护最新持仓
                 Position position = new Position();
                 BeanUtils.copyProperties(positionCallbackVo, position);
                 position.setPositionQty(positionCallbackVo.getPosition());
@@ -165,6 +170,10 @@ public class IbReconnectTask {
                 position.setRealizedPnl(BigDecimal.valueOf(positionCallbackVo.getRealizedPnl()));
                 position.setConid(positionCallbackVo.getConid());
                 positionService.saveOrUpdatePosition(position);
+
+                // 维护历史持仓情况
+                PositionHistory positionHistory = new PositionHistory(positionCallbackVo);
+                positionHistoryService.saveOrUpdatePositionHistory(positionHistory);
 
                 com.ib.client.Contract ibContract = positionCallbackVo.getContract();
 

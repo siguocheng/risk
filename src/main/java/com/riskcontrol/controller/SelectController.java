@@ -15,7 +15,7 @@ import com.riskcontrol.domain.vo.role.RoleQuery;
 import com.riskcontrol.domain.vo.trader.TraderSelectQuery;
 import com.riskcontrol.domain.vo.user.UserQuery;
 import com.riskcontrol.service.IAccountCurrencyService;
-import com.riskcontrol.service.ICompositeRelationService;
+import com.riskcontrol.service.IPositionRelationService;
 import com.riskcontrol.service.IInvestmentStrategyService;
 import com.riskcontrol.service.IPositionService;
 import com.riskcontrol.service.IRoleService;
@@ -60,7 +60,7 @@ public class SelectController {
     private IPositionService positionService;
 
     @Resource
-    private ICompositeRelationService compositeRelationService;
+    private IPositionRelationService compositeRelationService;
 
     @Operation(summary ="取得角色")
     @PostMapping("/pc/role/query-list")
