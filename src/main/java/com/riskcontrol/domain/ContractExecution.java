@@ -15,6 +15,10 @@ import java.math.BigDecimal;
 @Data
 public class ContractExecution extends BaseEntity {
 
+    @Schema(description = "合约id")
+    @TableField(value = "conid")
+    private Integer conid;
+
     @Schema(description = "订单ID orderId")
     @TableField(value = "order_id")
     private Integer orderId;
@@ -118,4 +122,13 @@ public class ContractExecution extends BaseEntity {
     @Schema(description = "收益兑付日期")
     @TableField(value = "yield_redemption_date")
     private Long yieldRedemptionDate;
+
+    @Schema(description = "分配状态：0未分配 1部分分配 2已分配")
+    @TableField(value = "status")
+    private Integer status;
+
+    @Schema(description = "剩余未分配数量")
+    @TableField(value = "remain_qty")
+    private BigDecimal remainQty;
+
 }

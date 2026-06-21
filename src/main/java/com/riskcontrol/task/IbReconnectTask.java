@@ -713,6 +713,7 @@ public class IbReconnectTask {
             ContractExecution contractExecution = new ContractExecution();
 
             // 从ExecutionCallbackVo设置字段
+            contractExecution.setConid(execution.getConid());
             contractExecution.setOrderId(execution.getOrderId());
             contractExecution.setClientId(execution.getClientId());
             contractExecution.setExecId(execution.getExecId());
@@ -734,6 +735,7 @@ public class IbReconnectTask {
             contractExecution.setPendingPriceRevision(execution.isPendingPriceRevision());
             contractExecution.setSubmitter(execution.getSubmitter());
             contractExecution.setOptExerciseOrLapseType(execution.getOptExerciseOrLapseType() != null ? execution.getOptExerciseOrLapseType().name() : "");
+            contractExecution.setRemainQty(contractExecution.getShares());
 
             // 从CommissionAndFeesReportCallbackVo合并字段
             CommissionAndFeesReportCallbackVo commissionReport = commissionMap.get(execution.getExecId());

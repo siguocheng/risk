@@ -100,6 +100,29 @@ public class PositionRelationServiceImpl extends ServiceImpl<PositionRelationMap
         return id;
     }
 
+    @Override
+    public boolean saveOrUpdatePositionQty(String accountCode, Integer conid, String strategyName, String traderName, BigDecimal qty) {
+        LambdaQueryWrapper<PositionRelation> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(PositionRelation::getAccountCode, accountCode)
+                .eq(PositionRelation::getConid, conid)
+                .eq(PositionRelation::getStrategyName, strategyName)
+                .eq(PositionRelation::getTraderName, traderName)
+                .isNull(PositionRelation::getDeleted);
+
+        PositionRelation positionRelation = this.getOne(queryWrapper);
+        if (positionRelation == null) {
+            throw new RuntimeException("未找到对应的持仓关系记录");
+        }
+
+        BigDecimal newQty = positionRelation.getPositionQty().add(qty);
+        if (newQty.compareTo(BigDecimal.ZERO) < 0) {
+            throw new RuntimeException("持仓数量不能为负数");
+        }
+
+        positionRelation.setPositionQty(newQty);
+        return this.updateById(positionRelation);
+    }
+
     /**
      * 验证持仓数量是否超过总持仓
      *
