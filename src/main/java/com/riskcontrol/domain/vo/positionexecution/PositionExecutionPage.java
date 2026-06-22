@@ -1,4 +1,4 @@
-package com.riskcontrol.domain.vo.contractexecution;
+package com.riskcontrol.domain.vo.positionexecution;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
  * @date 2026-06-20
  */
 @Data
-public class ContractExecutionPage {
+public class PositionExecutionPage {
 
     @Schema(description = "主键ID")
     private Long id;

@@ -1,4 +1,4 @@
-package com.riskcontrol.domain.vo.contractexecution;
+package com.riskcontrol.domain.vo.positionexecution;
 
 import com.riskcontrol.domain.bo.BasePageQuery;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -15,7 +15,7 @@ import java.time.LocalDateTime;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-public class ContractExecutionQuery extends BasePageQuery {
+public class PositionExecutionQuery extends BasePageQuery {
 
     @Schema(description = "订单ID")
     private Integer orderId;

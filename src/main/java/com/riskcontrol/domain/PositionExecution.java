@@ -7,13 +7,13 @@ import lombok.Data;
 import java.math.BigDecimal;
 
 /**
- * 成交明细实体类
+ * 持仓交易
  *
  * @author zpc
  * @date 2026-06-18
  */
 @Data
-public class ContractExecution extends BaseEntity {
+public class PositionExecution extends BaseEntity {
 
     @Schema(description = "合约id")
     @TableField(value = "conid")
@@ -122,13 +122,4 @@ public class ContractExecution extends BaseEntity {
     @Schema(description = "收益兑付日期")
     @TableField(value = "yield_redemption_date")
     private Long yieldRedemptionDate;
-
-    @Schema(description = "分配状态：0未分配 1部分分配 2已分配")
-    @TableField(value = "status")
-    private Integer status;
-
-    @Schema(description = "剩余未分配数量")
-    @TableField(value = "remain_qty")
-    private BigDecimal remainQty;
-
 }

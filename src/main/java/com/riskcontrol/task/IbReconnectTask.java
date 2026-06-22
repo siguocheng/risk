@@ -80,7 +80,7 @@ public class IbReconnectTask {
     IIbOrderService ibOrderService;
 
     @Resource
-    IContractExecutionService contractExecutionService;
+    IPositionExecutionService positionExecutionService;
 
     @Resource
     IbkrSynConfig ibkrSynConfig;
@@ -131,6 +131,7 @@ public class IbReconnectTask {
      */
     public void synAccount() throws ExecutionException, InterruptedException, TimeoutException {
 
+        LocalDate now = LocalDate.now();
         log.info("synAccount synAccount");
         List<AccountCurrency> accountList = accountCurrencyService.list();
         for (AccountCurrency accountCurrency : accountList) {
@@ -169,6 +170,7 @@ public class IbReconnectTask {
 
                 // 维护历史持仓情况
                 PositionHistory positionHistory = new PositionHistory(positionCallbackVo);
+                positionHistory.setPositionDate(now);
                 positionHistoryService.saveOrUpdatePositionHistory(positionHistory);
 
                 com.ib.client.Contract ibContract = positionCallbackVo.getContract();
@@ -704,52 +706,51 @@ public class IbReconnectTask {
         }
 
         // 合并数据并保存到数据库
-        List<ContractExecution> executionList = new ArrayList<>();
+        List<PositionExecution> executionList = new ArrayList<>();
         for (ExecutionCallbackVo execution : executions) {
-            ContractExecution contractExecution = new ContractExecution();
+            PositionExecution positionExecution = new PositionExecution();
 
             // 从ExecutionCallbackVo设置字段
-            contractExecution.setConid(execution.getConid());
-            contractExecution.setOrderId(execution.getOrderId());
-            contractExecution.setClientId(execution.getClientId());
-            contractExecution.setExecId(execution.getExecId());
-            contractExecution.setTime(execution.getTime());
-            contractExecution.setAcctNumber(execution.getAcctNumber());
-            contractExecution.setExchange(execution.getExchange());
-            contractExecution.setSide(execution.getSide());
-            contractExecution.setShares(execution.getShares().value());
-            contractExecution.setPrice(BigDecimal.valueOf(execution.getPrice()));
-            contractExecution.setPermId(execution.getPermId());
-            contractExecution.setLiquidation(execution.getLiquidation());
-            contractExecution.setCumQty(execution.getCumQty().value());
-            contractExecution.setAvgPrice(BigDecimal.valueOf(execution.getAvgPrice()));
-            contractExecution.setOrderRef(execution.getOrderRef());
-            contractExecution.setEvRule(execution.getEvRule());
-            contractExecution.setEvMultiplier(BigDecimal.valueOf(execution.getEvMultiplier()));
-            contractExecution.setModelCode(execution.getModelCode());
-            contractExecution.setLastLiquidity(execution.getLastLiquidity() != null ? execution.getLastLiquidity().name() : "");
-            contractExecution.setPendingPriceRevision(execution.isPendingPriceRevision());
-            contractExecution.setSubmitter(execution.getSubmitter());
-            contractExecution.setOptExerciseOrLapseType(execution.getOptExerciseOrLapseType() != null ? execution.getOptExerciseOrLapseType().name() : "");
-            contractExecution.setRemainQty(contractExecution.getShares());
+            positionExecution.setConid(execution.getConid());
+            positionExecution.setOrderId(execution.getOrderId());
+            positionExecution.setClientId(execution.getClientId());
+            positionExecution.setExecId(execution.getExecId());
+            positionExecution.setTime(execution.getTime());
+            positionExecution.setAcctNumber(execution.getAcctNumber());
+            positionExecution.setExchange(execution.getExchange());
+            positionExecution.setSide(execution.getSide());
+            positionExecution.setShares(execution.getShares().value());
+            positionExecution.setPrice(BigDecimal.valueOf(execution.getPrice()));
+            positionExecution.setPermId(execution.getPermId());
+            positionExecution.setLiquidation(execution.getLiquidation());
+            positionExecution.setCumQty(execution.getCumQty().value());
+            positionExecution.setAvgPrice(BigDecimal.valueOf(execution.getAvgPrice()));
+            positionExecution.setOrderRef(execution.getOrderRef());
+            positionExecution.setEvRule(execution.getEvRule());
+            positionExecution.setEvMultiplier(BigDecimal.valueOf(execution.getEvMultiplier()));
+            positionExecution.setModelCode(execution.getModelCode());
+            positionExecution.setLastLiquidity(execution.getLastLiquidity() != null ? execution.getLastLiquidity().name() : "");
+            positionExecution.setPendingPriceRevision(execution.isPendingPriceRevision());
+            positionExecution.setSubmitter(execution.getSubmitter());
+            positionExecution.setOptExerciseOrLapseType(execution.getOptExerciseOrLapseType() != null ? execution.getOptExerciseOrLapseType().name() : "");
 
             // 从CommissionAndFeesReportCallbackVo合并字段
             CommissionAndFeesReportCallbackVo commissionReport = commissionMap.get(execution.getExecId());
             if (commissionReport != null) {
-                contractExecution.setCommissionAndFees(BigDecimal.valueOf(commissionReport.getCommissionAndFees()));
-                contractExecution.setCurrency(commissionReport.getCurrency());
-                contractExecution.setRealizedPnl(BigDecimal.valueOf(commissionReport.getRealizedPNL()));
-                contractExecution.setYield(BigDecimal.valueOf(commissionReport.getYield()));
-                contractExecution.setYieldRedemptionDate((long) commissionReport.getYieldRedemptionDate());
+                positionExecution.setCommissionAndFees(BigDecimal.valueOf(commissionReport.getCommissionAndFees()));
+                positionExecution.setCurrency(commissionReport.getCurrency());
+                positionExecution.setRealizedPnl(BigDecimal.valueOf(commissionReport.getRealizedPNL()));
+                positionExecution.setYield(BigDecimal.valueOf(commissionReport.getYield()));
+                positionExecution.setYieldRedemptionDate((long) commissionReport.getYieldRedemptionDate());
             }
 
-            executionList.add(contractExecution);
+            executionList.add(positionExecution);
         }
 
         // 批量保存到数据库
         if (!executionList.isEmpty()) {
-            for (ContractExecution execution : executionList) {
-                contractExecutionService.saveOrUpdateByExecId(execution);
+            for (PositionExecution execution : executionList) {
+                positionExecutionService.saveOrUpdateByExecId(execution);
             }
             log.info("synExecutions saved {} records", executionList.size());
         }

@@ -1,33 +1,40 @@
 package com.riskcontrol.domain;
 
-import com.alibaba.excel.annotation.ExcelProperty;
-import com.alibaba.excel.annotation.write.style.ColumnWidth;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
 
 /**
- * 策略和交易员和账号和持仓之间的关系实体类
+ * 持仓分配历史实体类
  *
  * @author zpc
- * @date 2026-06-19
+ * @date 2026-06-22
  */
 @Data
-@TableName("position_relation")
-@Schema(description = "策略和交易员和账号和持仓之间的关系")
-public class PositionRelation extends BaseEntity implements Serializable {
+@TableName("position_allocate_history")
+@EqualsAndHashCode(callSuper = true)
+public class PositionAllocateHistory extends BaseEntity implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    @Schema(description = "账号id")
+    @Schema(description = "持仓表position的id")
+    @TableField(value = "position_id")
+    private Long positionId;
+
+    @Schema(description = "交易持仓表position_execution的id")
+    @TableField(value = "position_execution_id")
+    private Long positionExecutionId;
+
+    @Schema(description = "账号代码")
     @TableField(value = "account_code")
     private String accountCode;
 
-    @Schema(description = "合约id")
+    @Schema(description = "合约ID")
     @TableField(value = "conid")
     private Integer conid;
 
@@ -35,13 +42,13 @@ public class PositionRelation extends BaseEntity implements Serializable {
     @TableField(value = "strategy_name")
     private String strategyName;
 
-    @Schema(description = "交易员")
+    @Schema(description = "交易员名称")
     @TableField(value = "trader_name")
     private String traderName;
 
-    @Schema(description = "持仓股数")
-    @TableField(value = "position_qty")
-    private BigDecimal positionQty;
+    @Schema(description = "分配数量（正数增加，负数减少）")
+    @TableField(value = "allocate_qty")
+    private BigDecimal allocateQty;
 
     @Schema(description = "未实现盈亏")
     @TableField(value = "unrealized_pnl")
