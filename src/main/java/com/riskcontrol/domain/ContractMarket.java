@@ -12,9 +12,9 @@ import java.time.LocalDate;
  * 合约历史行情表
  */
 @Data
-@TableName("contract_history")
+@TableName("contract_market")
 @Schema(description = "合约历史行情表")
-public class ContractHistory extends BaseEntity{
+public class ContractMarket extends BaseEntity{
 
     @TableField("conid")
     @Schema(description = "合约唯一ID")

@@ -1,7 +1,6 @@
 package com.riskcontrol.task;
 
 import com.alibaba.fastjson2.JSONObject;
-import com.ib.client.DeltaNeutralContract;
 import com.ib.client.EClientSocket;
 import com.ib.client.ExecutionFilter;
 import com.ib.client.TagValue;
@@ -16,7 +15,6 @@ import com.riskcontrol.domain.vo.ibkr.*;
 import com.riskcontrol.service.*;
 import com.riskcontrol.util.BigDecimalUtil;
 import com.riskcontrol.util.DateUtil;
-import com.riskcontrol.util.IbValueUtil;
 import com.riskcontrol.util.RiskMetricsUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -27,8 +25,6 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -75,7 +71,7 @@ public class IbReconnectTask {
     IContractDailyPnlService contractDailyPnlService;
 
     @Resource
-    IContractHistoryService contractHistoryService;
+    IContractMarketService contractMarketService;
 
     @Resource
     IContractOptionService contractOptionService;
@@ -355,7 +351,7 @@ public class IbReconnectTask {
         contractDailyPnlService.saveOrUpdateContractDailyPnl(contractDailyPnl);
     }
 
-    public void synContractHistory() throws ExecutionException, InterruptedException, TimeoutException {
+    public void synContractMarket() throws ExecutionException, InterruptedException, TimeoutException {
 
         List<Contract> list = contractService.list();
 
@@ -381,10 +377,10 @@ public class IbReconnectTask {
 
             List<TagValue> tagList = null;
 
-            LocalDate contractHistoryLastDate = contract.getContractHistoryLastDate();
-            if (contractHistoryLastDate != null) {
+            LocalDate contractMarketLastDate = contract.getContractMarketLastDate();
+            if (contractMarketLastDate != null) {
                 LocalDate now = LocalDate.now().minusDays(1);
-                long days = ChronoUnit.DAYS.between(contractHistoryLastDate, now);
+                long days = ChronoUnit.DAYS.between(contractMarketLastDate, now);
                 if (days == 0){
                     continue;
                 }
@@ -401,9 +397,9 @@ public class IbReconnectTask {
 
             List<BarData> result = (List<BarData>) obj;
 
-            List<ContractHistory> historyList = new ArrayList<>();
+            List<ContractMarket> historyList = new ArrayList<>();
             for (BarData barData : result) {
-                ContractHistory history = new ContractHistory();
+                ContractMarket history = new ContractMarket();
                 history.setConid(conid);
                 history.setTime(barData.getTime());
                 history.setPriceOpen(BigDecimalUtil.doubleToDecimal(barData.getOpen()));
@@ -416,10 +412,10 @@ public class IbReconnectTask {
                 history.setDealVolume(barData.getVolume());
                 historyList.add(history);
 
-                contractHistoryService.saveOrUpdateContractHistory(history);
+                contractMarketService.saveOrUpdateContractMarket(history);
             }
 
-            contract.setContractHistoryLastDate(yesterday);
+            contract.setContractMarketLastDate(yesterday);
 
             contractService.updateById(contract);
         }
@@ -434,7 +430,7 @@ public class IbReconnectTask {
             int conid = position.getConid();
             System.out.printf("conid:" + conid);
             // 取得日价格
-            double[] prices = contractHistoryService.queryContractHistoryPriceCloseByConid(conid);
+            double[] prices = contractMarketService.queryContractMarketPriceCloseByConid(conid);
             // 95% var
             double calcParamVarValue95 = RiskMetricsUtil.calcParamVar(prices, marketValue, RiskMetricsUtil.Z_95);
             double calcHistoryVarValue95 = RiskMetricsUtil.calcHistoryVar(prices, marketValue, RiskMetricsUtil.Z_ALPHA_95);

@@ -36,8 +36,8 @@ public class IbReconnectTaskTest {
     }
 
     @Test
-    public void synContractHistory() throws ExecutionException, InterruptedException, TimeoutException {
-        ibReconnectTask.synContractHistory();
+    public void synContractMarket() throws ExecutionException, InterruptedException, TimeoutException {
+        ibReconnectTask.synContractMarket();
     }
 
     @Test

@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.annotation.TableField;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
+import java.math.BigDecimal;
+
 /**
  * 交易员实体类
  *
@@ -16,4 +18,8 @@ public class Trader extends BaseEntity {
     @Schema(description = "交易员名称")
     @TableField(value = "trader_name")
     private String traderName;
+
+    @Schema(description = "本金")
+    @TableField(value = "本金")
+    private BigDecimal capital;
 }

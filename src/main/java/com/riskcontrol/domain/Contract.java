@@ -95,8 +95,8 @@ public class Contract extends BaseEntity {
     private String issuerId;
 
     @Schema(description = "历史数据最新的时间")
-    @TableField(value = "contract_history_last_date")
-    private LocalDate contractHistoryLastDate;
+    @TableField(value = "contract_market_last_date")
+    private LocalDate contractMarketLastDate;
 
     public Contract(){
 

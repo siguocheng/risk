@@ -1,8 +1,10 @@
 package com.riskcontrol.domain.vo.trader;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -19,6 +21,10 @@ public class TraderModify {
 
     @Schema(description = "交易员名称")
     private String traderName;
+
+    @Schema(description = "本金")
+    @TableField(value = "本金")
+    private BigDecimal capital;
 
     @Schema(description = "关联的账号列表")
     private List<String> accountCodes;
