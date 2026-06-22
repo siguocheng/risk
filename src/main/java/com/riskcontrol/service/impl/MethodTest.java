@@ -33,11 +33,11 @@ public class MethodTest {
 
         Contract contract = new Contract();
         contract.conid(890256592);
-//        contract.symbol("TSLA");
-//        contract.secType("OPT");
+        contract.symbol("TSLA");
+        contract.secType("OPT");
         contract.exchange("AMEX");
-//        contract.currency("USD");
-//        contract.localSymbol("TSLA  260622C00395000");
+        contract.currency("USD");
+        contract.localSymbol("TSLA  260622C00395000");
 
         // 调用行情订阅
         // 价格回调 tickPrice

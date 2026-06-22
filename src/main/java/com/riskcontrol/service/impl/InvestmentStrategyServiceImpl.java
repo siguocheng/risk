@@ -7,7 +7,7 @@ import com.riskcontrol.domain.InvestmentStrategy;
 import com.riskcontrol.domain.vo.investmentstrategy.InvestmentStrategyModify;
 import com.riskcontrol.domain.vo.investmentstrategy.InvestmentStrategyPage;
 import com.riskcontrol.domain.vo.investmentstrategy.InvestmentStrategyQuery;
-import com.riskcontrol.mapper.InvestmentStrategyMapper;
+import com.riskcontrol.dao.InvestmentStrategyMapper;
 import com.riskcontrol.service.IInvestmentStrategyService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

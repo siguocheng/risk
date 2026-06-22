@@ -1,4 +1,4 @@
-package com.riskcontrol.mapper;
+package com.riskcontrol.dao;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.riskcontrol.domain.InvestmentStrategy;

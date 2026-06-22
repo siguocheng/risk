@@ -8,7 +8,7 @@ import com.riskcontrol.domain.Position;
 import com.riskcontrol.domain.vo.positionrelation.PositionRelationModify;
 import com.riskcontrol.domain.vo.positionrelation.PositionRelationPage;
 import com.riskcontrol.domain.vo.positionrelation.PositionRelationQuery;
-import com.riskcontrol.mapper.PositionRelationMapper;
+import com.riskcontrol.dao.PositionRelationMapper;
 import com.riskcontrol.service.IPositionRelationService;
 import com.riskcontrol.service.IPositionService;
 import jakarta.annotation.Resource;

@@ -48,7 +48,8 @@ public class IbkrConfig {
             if(m_client.isConnected()){
                 System.out.println("IB TWS/Gateway连接成功！");
             }else{
-                throw new RuntimeException("IB连接失败，请检查Gateway/TWS是否开启、端口放行、API权限开启");
+                System.out.println("IB TWS/Gateway连接失败！");
+//                throw new RuntimeException("IB连接失败，请检查Gateway/TWS是否开启、端口放行、API权限开启");
             }
         }
 

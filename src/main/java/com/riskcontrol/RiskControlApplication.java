@@ -9,7 +9,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication
 @ServletComponentScan
 @MapperScan(basePackages={"com.riskcontrol.dao"})
-@EnableScheduling
+//@EnableScheduling
 public class RiskControlApplication {
 
     public static void main(String[] args) {

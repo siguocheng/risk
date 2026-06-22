@@ -40,7 +40,7 @@ public class ContractExecutionController extends BaseController {
     @PostMapping("/pc/allocate")
     @ResourceMethod(btnCode = "btn-pc-contract-execution-allocate", level = 3)
     public ResultBean<Boolean> allocate(@RequestBody ContractExecutionAllocateModify request) {
-        boolean result = contractExecutionService.allocate(request);
-        return new ResultBean<>(result);
+        contractExecutionService.allocate(request);
+        return new ResultBean<>(true);
     }
 }

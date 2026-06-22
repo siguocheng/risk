@@ -14,6 +14,7 @@ import com.riskcontrol.domain.vo.position.PositionInfoVo;
 import com.riskcontrol.domain.vo.role.RoleQuery;
 import com.riskcontrol.domain.vo.trader.TraderSelectQuery;
 import com.riskcontrol.domain.vo.user.UserQuery;
+import com.riskcontrol.exception.BusinessException;
 import com.riskcontrol.service.IAccountCurrencyService;
 import com.riskcontrol.service.IPositionRelationService;
 import com.riskcontrol.service.IInvestmentStrategyService;
@@ -35,6 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Tag(description = "下拉", name = "下拉")
 @RestController
@@ -84,6 +86,7 @@ public class SelectController {
         LambdaQueryWrapper<AccountCurrency> queryWrapper = new LambdaQueryWrapper<>();
         if (id != null) {
             queryWrapper.eq(AccountCurrency::getId, id);
+            throw new BusinessException("aaa");
         }
         if (accountCode != null && !accountCode.isEmpty()) {
             queryWrapper.eq(AccountCurrency::getAccountCode, accountCode);
@@ -104,8 +107,8 @@ public class SelectController {
             traderNames = traders.stream()
                     .map(Trader::getTraderName)
                     .filter(name -> name != null && !name.isEmpty())
-                    .distinct()
-                    .toList();
+                    .distinct().collect(Collectors.toList());
+
             return new ResultBean<>(traderNames);
         }
 
@@ -128,8 +131,7 @@ public class SelectController {
         traderNames = relations.stream()
                 .map(PositionRelation::getTraderName)
                 .filter(name -> name != null && !name.isEmpty())
-                .distinct()
-                .toList();
+                .distinct().collect(Collectors.toList());
 
         return new ResultBean<>(traderNames);
     }
@@ -146,8 +148,7 @@ public class SelectController {
             strategyNames = strategies.stream()
                     .map(InvestmentStrategy::getStrategyName)
                     .filter(name -> name != null && !name.isEmpty())
-                    .distinct()
-                    .toList();
+                    .distinct().collect(Collectors.toList());
             return new ResultBean<>(strategyNames);
         }
 
@@ -170,8 +171,7 @@ public class SelectController {
         strategyNames = relations.stream()
                 .map(PositionRelation::getStrategyName)
                 .filter(name -> name != null && !name.isEmpty())
-                .distinct()
-                .toList();
+                .distinct().collect(Collectors.toList());
 
         return new ResultBean<>(strategyNames);
     }
