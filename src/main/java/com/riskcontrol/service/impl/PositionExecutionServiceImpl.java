@@ -53,7 +53,6 @@ public class PositionExecutionServiceImpl extends ServiceImpl<PositionExecutionM
                 .eq(query.getPermId() != null, PositionExecution::getPermId, query.getPermId())
                 .eq(StringUtils.hasText(query.getModelCode()), PositionExecution::getModelCode, query.getModelCode())
                 .eq(StringUtils.hasText(query.getSubmitter()), PositionExecution::getSubmitter, query.getSubmitter())
-                .eq(query.getStatus() != null, PositionExecution::getStatus, query.getStatus())
                 .orderByDesc(PositionExecution::getCreateTime);
 
         IPage<PositionExecution> entityPage = this.page(page, queryWrapper);
