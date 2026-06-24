@@ -14,9 +14,6 @@ import java.util.List;
 @Data
 public class InvestmentStrategySelectQuery {
 
-    @Schema(description = "账号代码列表")
-    private List<String> accountCodes;
-
-    @Schema(description = "交易员名称列表")
-    private List<String> traderNames;
+    @Schema(description = "策略名称")
+    private String strategyName;
 }

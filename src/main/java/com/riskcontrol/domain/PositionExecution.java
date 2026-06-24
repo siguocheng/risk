@@ -35,9 +35,9 @@ public class PositionExecution extends BaseEntity {
     @TableField(value = "time")
     private String time;
 
-    @Schema(description = "账户号 acctNumber")
-    @TableField(value = "acct_number")
-    private String acctNumber;
+    @Schema(description = "账户号")
+    @TableField(value = "account_code")
+    private String accountCode;
 
     @Schema(description = "交易所 exchange")
     @TableField(value = "exchange")

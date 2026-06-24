@@ -1,10 +1,8 @@
 package com.riskcontrol.domain.vo.position;
 
-import com.riskcontrol.domain.PositionAllocateHistory;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
-import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -23,6 +21,6 @@ public class PositionAllocateRequest {
     private Integer operateType;
 
     @Schema(description = "分配明细列表")
-    private List<PositionAllocateHistory> details;
+    private List<PositionAllocateItem> details;
 
 }

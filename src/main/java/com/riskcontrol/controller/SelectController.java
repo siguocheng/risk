@@ -2,36 +2,26 @@ package com.riskcontrol.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.riskcontrol.common.ResultBean;
-import com.riskcontrol.domain.AccountCurrency;
-import com.riskcontrol.domain.InvestmentStrategy;
-import com.riskcontrol.domain.Position;
-import com.riskcontrol.domain.PositionRelation;
-import com.riskcontrol.domain.Role;
-import com.riskcontrol.domain.Trader;
-import com.riskcontrol.domain.User;
+import com.riskcontrol.domain.*;
+import com.riskcontrol.domain.bo.AccountCodeBo;
+import com.riskcontrol.domain.vo.AccountSelectVo;
+import com.riskcontrol.domain.vo.TraderSelectVo;
 import com.riskcontrol.domain.vo.investmentstrategy.InvestmentStrategySelectQuery;
 import com.riskcontrol.domain.vo.position.PositionInfoVo;
+import com.riskcontrol.domain.vo.positionrelation.PositionRelationSelectQuery;
+import com.riskcontrol.domain.vo.positionrelation.PositionRelationSelectVo;
 import com.riskcontrol.domain.vo.role.RoleQuery;
+import com.riskcontrol.domain.vo.trader.InvestmentStrategySelectVo;
 import com.riskcontrol.domain.vo.trader.TraderSelectQuery;
 import com.riskcontrol.domain.vo.user.UserQuery;
-import com.riskcontrol.exception.BusinessException;
-import com.riskcontrol.service.IAccountCurrencyService;
-import com.riskcontrol.service.IPositionRelationService;
-import com.riskcontrol.service.IInvestmentStrategyService;
-import com.riskcontrol.service.IPositionService;
-import com.riskcontrol.service.IRoleService;
-import com.riskcontrol.service.ITraderService;
-import com.riskcontrol.service.IUserService;
+import com.riskcontrol.service.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.beans.BeanUtils;
+import org.springframework.util.CollectionUtils;
+import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -62,7 +52,7 @@ public class SelectController {
     private IPositionService positionService;
 
     @Resource
-    private IPositionRelationService compositeRelationService;
+    private IPositionRelationService positionRelationService;
 
     @Operation(summary ="取得角色")
     @PostMapping("/pc/role/query-list")
@@ -72,108 +62,99 @@ public class SelectController {
     }
 
     @Operation(summary ="用户下拉")
-    @RequestMapping({"/pc/user"})
-    public ResultBean<List<User>> listWorker(UserQuery query, HttpServletRequest request) {
+    @PostMapping({"/pc/user"})
+    public ResultBean<List<User>> listWorker(@RequestBody UserQuery query, HttpServletRequest request) {
         List<User> workerSelect = userService.list();
         return new ResultBean<>(workerSelect);
     }
 
     @Operation(summary = "取得账号信息")
-    @GetMapping("/pc/account")
-    public ResultBean<List<AccountCurrency>> getAccountCurrencyList(
-            @RequestParam(value = "id", required = false) Long id,
-            @RequestParam(value = "accountCode", required = false) String accountCode) {
+    @PostMapping("/pc/account")
+    public ResultBean<List<AccountSelectVo>> getAccountCurrencyList(@RequestBody AccountCodeBo query) {
         LambdaQueryWrapper<AccountCurrency> queryWrapper = new LambdaQueryWrapper<>();
-        if (id != null) {
-            queryWrapper.eq(AccountCurrency::getId, id);
-            throw new BusinessException("aaa");
-        }
-        if (accountCode != null && !accountCode.isEmpty()) {
-            queryWrapper.eq(AccountCurrency::getAccountCode, accountCode);
+        if (query.getAccountCode() != null && !query.getAccountCode().isEmpty()) {
+            queryWrapper.eq(AccountCurrency::getAccountCode, query.getAccountCode());
         }
         List<AccountCurrency> list = accountCurrencyService.list(queryWrapper);
-        return new ResultBean<>(list);
+
+        List<AccountSelectVo> newList = new ArrayList<>();
+        for (AccountCurrency accountCurrency : list) {
+            AccountSelectVo data = new AccountSelectVo();
+            data.setAccountCode(accountCurrency.getAccountCode());
+            newList.add(data);
+        }
+
+        return new ResultBean<>(newList);
     }
 
-    @Operation(summary = "根据账号或交易员名称取得交易员")
+    @Operation(summary = "取得交易员")
     @PostMapping("/pc/trader")
-    public ResultBean<List<String>> getTraderByAccountCodes(@RequestBody TraderSelectQuery query) {
-        List<String> traderNames;
+    public ResultBean<List<TraderSelectVo>> getTraderByAccountCodes(@RequestBody TraderSelectQuery query) {
 
-        // 如果没有任何查询条件，返回所有交易员
-        if ((query.getAccountCodes() == null || query.getAccountCodes().isEmpty()) 
-                && (query.getTraderName() == null || query.getTraderName().isEmpty())) {
-            List<Trader> traders = traderService.list();
-            traderNames = traders.stream()
-                    .map(Trader::getTraderName)
-                    .filter(name -> name != null && !name.isEmpty())
-                    .distinct().collect(Collectors.toList());
-
-            return new ResultBean<>(traderNames);
-        }
-
-        // 从 position_relation 表查询关联的交易员
-        LambdaQueryWrapper<PositionRelation> queryWrapper = new LambdaQueryWrapper<>();
-        
-        if (query.getAccountCodes() != null && !query.getAccountCodes().isEmpty()) {
-            queryWrapper.in(PositionRelation::getAccountCode, query.getAccountCodes());
-        }
-        
+        LambdaQueryWrapper<Trader> queryWrapper = new LambdaQueryWrapper<>();
         if (query.getTraderName() != null && !query.getTraderName().isEmpty()) {
-            queryWrapper.like(PositionRelation::getTraderName, query.getTraderName());
+            queryWrapper.eq(Trader::getTraderName, query.getTraderName());
         }
-        
-        queryWrapper.isNull(PositionRelation::getDeleted);
-        queryWrapper.select(PositionRelation::getTraderName);
-        List<PositionRelation> relations = compositeRelationService.list(queryWrapper);
 
-        // 提取不重复的交易员名称
-        traderNames = relations.stream()
-                .map(PositionRelation::getTraderName)
-                .filter(name -> name != null && !name.isEmpty())
-                .distinct().collect(Collectors.toList());
-
+        List<TraderSelectVo> traderNames = new ArrayList<>();
+        List<Trader> list = traderService.list();
+        for (Trader trader : list) {
+            TraderSelectVo data = new TraderSelectVo();
+            data.setTraderName(trader.getTraderName());
+            traderNames.add(data);
+        }
         return new ResultBean<>(traderNames);
     }
 
-    @Operation(summary = "根据账号或交易员取得投资策略")
+    @Operation(summary = "取得投资策略")
     @PostMapping("/pc/investment-strategy")
-    public ResultBean<List<String>> getInvestmentStrategyByConditions(@RequestBody InvestmentStrategySelectQuery query) {
-        List<String> strategyNames;
+    public ResultBean<List<InvestmentStrategySelectVo>> getInvestmentStrategyByConditions(@RequestBody InvestmentStrategySelectQuery query) {
 
-        // 如果没有任何查询条件，返回所有投资策略
-        if ((query.getAccountCodes() == null || query.getAccountCodes().isEmpty()) 
-                && (query.getTraderNames() == null || query.getTraderNames().isEmpty())) {
-            List<InvestmentStrategy> strategies = investmentStrategyService.list();
-            strategyNames = strategies.stream()
-                    .map(InvestmentStrategy::getStrategyName)
-                    .filter(name -> name != null && !name.isEmpty())
-                    .distinct().collect(Collectors.toList());
-            return new ResultBean<>(strategyNames);
+        List<InvestmentStrategySelectVo> result = new ArrayList<>();
+        LambdaQueryWrapper<InvestmentStrategy> queryWrapper = new LambdaQueryWrapper<>();
+        if (query.getStrategyName() != null && !query.getStrategyName().isEmpty()) {
+            queryWrapper.eq(InvestmentStrategy::getStrategyName, query.getStrategyName());
+        }
+        List<InvestmentStrategy> strategies = investmentStrategyService.list(queryWrapper);
+
+        for (InvestmentStrategy strategy : strategies) {
+            InvestmentStrategySelectVo data = new InvestmentStrategySelectVo();
+            data.setStrategyName(strategy.getStrategyName());
+            result.add(data);
         }
 
-        // 从 position_relation 表查询关联的投资策略
-        LambdaQueryWrapper<PositionRelation> queryWrapper = new LambdaQueryWrapper<>();
+        return new ResultBean<>(result);
+    }
+
+    @Operation(summary = "账号、策略、交易员联动接口")
+    @PostMapping("/pc/position-relation")
+    public ResultBean<List<PositionRelationSelectVo>> getInvestmentStrategyByConditions(@RequestBody PositionRelationSelectQuery query) {
         
-        if (query.getAccountCodes() != null && !query.getAccountCodes().isEmpty()) {
+        
+        
+        LambdaQueryWrapper<PositionRelation> queryWrapper = new LambdaQueryWrapper<>();
+        if (!CollectionUtils.isEmpty(query.getAccountCodes())) {
             queryWrapper.in(PositionRelation::getAccountCode, query.getAccountCodes());
         }
-        
-        if (query.getTraderNames() != null && !query.getTraderNames().isEmpty()) {
+        if (!CollectionUtils.isEmpty(query.getStrategyNames())) {
+            queryWrapper.in(PositionRelation::getStrategyName, query.getStrategyNames());
+        }
+        if (!CollectionUtils.isEmpty(query.getTraderNames())) {
             queryWrapper.in(PositionRelation::getTraderName, query.getTraderNames());
         }
+
+        List<PositionRelation> list = positionRelationService.list(queryWrapper);
+
+        list = list.stream().distinct().collect(Collectors.toList());
+
+        List<PositionRelationSelectVo> result = new ArrayList<>();
+        for (PositionRelation positionRelation : list) {
+            PositionRelationSelectVo data = new PositionRelationSelectVo();
+            BeanUtils.copyProperties(positionRelation, data);
+            result.add(data);
+        }
         
-        queryWrapper.isNull(PositionRelation::getDeleted);
-        queryWrapper.select(PositionRelation::getStrategyName);
-        List<PositionRelation> relations = compositeRelationService.list(queryWrapper);
-
-        // 提取不重复的策略名称
-        strategyNames = relations.stream()
-                .map(PositionRelation::getStrategyName)
-                .filter(name -> name != null && !name.isEmpty())
-                .distinct().collect(Collectors.toList());
-
-        return new ResultBean<>(strategyNames);
+        return new ResultBean<>(result);
     }
 
     @Operation(summary = "根据账号取得持仓信息")
@@ -207,7 +188,7 @@ public class SelectController {
             relationQuery.eq(PositionRelation::getAccountCode, position.getAccountCode());
             relationQuery.eq(PositionRelation::getConid, position.getConid());
             relationQuery.isNull(PositionRelation::getDeleted);
-            List<PositionRelation> relations = compositeRelationService.list(relationQuery);
+            List<PositionRelation> relations = positionRelationService.list(relationQuery);
 
             BigDecimal allocatedQty = BigDecimal.ZERO;
             for (PositionRelation relation : relations) {

@@ -1,6 +1,3 @@
-server:
-  port: 8080
-
 spring:
   application:
     name: risk-control-system

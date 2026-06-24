@@ -27,7 +27,7 @@ public class PositionExecutionQuery extends BasePageQuery {
     private String execId;
 
     @Schema(description = "账户号")
-    private String acctNumber;
+    private String accountCode;
 
     @Schema(description = "交易所")
     private String exchange;

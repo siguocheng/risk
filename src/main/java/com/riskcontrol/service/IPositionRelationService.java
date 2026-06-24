@@ -36,4 +36,6 @@ public interface IPositionRelationService extends IService<PositionRelation> {
      * @return 是否成功
      */
     boolean saveOrUpdatePositionQty(String accountCode, Integer conid, String strategyName, String traderName, BigDecimal qty);
+
+    PositionRelation getPositionRelationByKey(String accountCode, Integer conid, String strategyName, String traderName);
 }

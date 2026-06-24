@@ -20,4 +20,39 @@
         id, account_code, conid, strategy_name, trader_name, position_qty, deleted, create_id, create_time, modified_id, modified_time
     </sql>
 
+    <select id="listPortfolioOverviewDetail" resultType="com.riskcontrol.domain.vo.PortfolioOverviewDetail">
+        SELECT
+            t.trader_name,
+            pr.position_qty,
+            p.avg_cost,
+            p.market_price,
+            c.delta,
+            c.multiplier
+        FROM
+            trader t
+        LEFT JOIN position_relation pr ON t.trader_name = pr.trader_name
+        left join position p on pr.account_code=p.account_code and pr.conid=p.conid
+        LEFT JOIN contract c ON pr.account_code = c.account_code
+        AND pr.conid = c.conid
+        where 1=1
+        <if test="accountCodes != null and accountCodes.size() > 0">
+            and pr.account_code IN
+            <foreach collection="accountCodes" item="code" open="(" separator="," close=")">
+                #{code}
+            </foreach>
+        </if>
+        <if test="tradeNames != null and tradeNames.size() > 0">
+            and pr.trade_name IN
+            <foreach collection="tradeNames" item="name" open="(" separator="," close=")">
+                #{name}
+            </foreach>
+        </if>
+        <if test="strategyNames != null and strategyNames.size() > 0">
+            and pr.strategy_name IN
+            <foreach collection="strategyNames" item="name" open="(" separator="," close=")">
+                #{name}
+            </foreach>
+        </if>
+    </select>
+
 </mapper>

@@ -37,4 +37,13 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
             return this.save(contract);
         }
     }
+
+    @Override
+    public Contract getContractByConid(String accountCode, Integer conid) {
+        LambdaQueryWrapper<Contract> queryWrapper = new LambdaQueryWrapper();
+        queryWrapper.eq(Contract::getAccountCode, accountCode);
+        queryWrapper.eq(Contract::getConid, conid);
+
+        return this.getOne(queryWrapper);
+    }
 }

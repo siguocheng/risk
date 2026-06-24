@@ -21,10 +21,10 @@ import java.util.Map;
 public class BasePageQuery {
 
     @Schema(description = "页码", example = "1")
-    protected Integer pageNum;
+    protected Integer pageNum = 1;
 
     @Schema(description = "每页展示数", example = "10")
-    protected Integer pageSize;
+    protected Integer pageSize = 10;
 
     @Schema(description = "排序列", example = "id")
     private String orderColumn;

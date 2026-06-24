@@ -20,6 +20,6 @@ public class Trader extends BaseEntity {
     private String traderName;
 
     @Schema(description = "本金")
-    @TableField(value = "本金")
+    @TableField(value = "capital")
     private BigDecimal capital;
 }

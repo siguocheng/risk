@@ -1,8 +1,11 @@
 package com.riskcontrol.service;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.riskcontrol.domain.Position;
 import com.riskcontrol.domain.vo.position.PositionAllocateRequest;
+import com.riskcontrol.domain.vo.position.PositionPage;
+import com.riskcontrol.domain.vo.position.PositionQuery;
 
 /**
  * 持仓列表Service接口
@@ -21,4 +24,12 @@ public interface IPositionService extends IService<Position>  {
      * @return 是否成功
      */
     boolean allocatePosition(PositionAllocateRequest request);
+
+    /**
+     * 分页查询持仓列表
+     *
+     * @param query 查询条件
+     * @return 分页结果
+     */
+    IPage<PositionPage> queryPage(PositionQuery query);
 }

@@ -28,8 +28,8 @@ import java.util.List;
 @Service
 public class PositionRelationServiceImpl extends ServiceImpl<PositionRelationMapper, PositionRelation> implements IPositionRelationService {
 
-    @Resource
-    IPositionService positionService;
+//    @Resource
+//    IPositionService positionService;
 
     @Override
     public IPage<PositionRelationPage> queryPage(PositionRelationQuery query) {
@@ -55,38 +55,41 @@ public class PositionRelationServiceImpl extends ServiceImpl<PositionRelationMap
     @Override
     public Long create(PositionRelationModify modify) {
         // 验证持仓数量
-        validatePositionQty(modify.getAccountCode(), modify.getConid(), null, modify.getPositionQty());
-
-        PositionRelation compositeRelation = new PositionRelation();
-        compositeRelation.setAccountCode(modify.getAccountCode());
-        compositeRelation.setConid(modify.getConid());
-        compositeRelation.setStrategyName(modify.getStrategyName());
-        compositeRelation.setTraderName(modify.getTraderName());
-        compositeRelation.setPositionQty(modify.getPositionQty());
-        this.save(compositeRelation);
-        return compositeRelation.getId();
+//        validatePositionQty(modify.getAccountCode(), modify.getConid(), null, modify.getPositionQty());
+//
+//        PositionRelation compositeRelation = new PositionRelation();
+//        compositeRelation.setAccountCode(modify.getAccountCode());
+//        compositeRelation.setConid(modify.getConid());
+//        compositeRelation.setStrategyName(modify.getStrategyName());
+//        compositeRelation.setTraderName(modify.getTraderName());
+//        compositeRelation.setPositionQty(modify.getPositionQty());
+//        this.save(compositeRelation);
+//        return compositeRelation.getId();
+        return null;
     }
 
     @Override
     public Long update(PositionRelationModify modify) {
-        PositionRelation compositeRelation = this.getById(modify.getId());
-        if (compositeRelation == null) {
-            throw new RuntimeException("综合关系不存在");
-        }
+//        PositionRelation compositeRelation = this.getById(modify.getId());
+//        if (compositeRelation == null) {
+//            throw new RuntimeException("综合关系不存在");
+//        }
+//
+//        // 获取原有的持仓数量
+//        BigDecimal oldPositionQty = compositeRelation.getPositionQty();
+//
+//        // 验证持仓数量
+//        validatePositionQty(modify.getAccountCode(), modify.getConid(), oldPositionQty, modify.getPositionQty());
+//
+//        compositeRelation.setAccountCode(modify.getAccountCode());
+//        compositeRelation.setConid(modify.getConid());
+//        compositeRelation.setStrategyName(modify.getStrategyName());
+//        compositeRelation.setTraderName(modify.getTraderName());
+//        compositeRelation.setPositionQty(modify.getPositionQty());
+//        this.updateById(compositeRelation);
+//        return modify.getId();
 
-        // 获取原有的持仓数量
-        BigDecimal oldPositionQty = compositeRelation.getPositionQty();
-
-        // 验证持仓数量
-        validatePositionQty(modify.getAccountCode(), modify.getConid(), oldPositionQty, modify.getPositionQty());
-
-        compositeRelation.setAccountCode(modify.getAccountCode());
-        compositeRelation.setConid(modify.getConid());
-        compositeRelation.setStrategyName(modify.getStrategyName());
-        compositeRelation.setTraderName(modify.getTraderName());
-        compositeRelation.setPositionQty(modify.getPositionQty());
-        this.updateById(compositeRelation);
-        return modify.getId();
+        return null;
     }
 
     @Override
@@ -123,6 +126,17 @@ public class PositionRelationServiceImpl extends ServiceImpl<PositionRelationMap
         return this.updateById(positionRelation);
     }
 
+    @Override
+    public PositionRelation getPositionRelationByKey(String accountCode, Integer conid, String strategyName, String traderName) {
+        LambdaQueryWrapper<PositionRelation> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(PositionRelation::getAccountCode, accountCode)
+                .eq(PositionRelation::getConid, conid)
+                .eq(PositionRelation::getStrategyName, strategyName)
+                .eq(PositionRelation::getTraderName, traderName);
+
+        return this.getOne(queryWrapper);
+    }
+
     /**
      * 验证持仓数量是否超过总持仓
      *
@@ -132,39 +146,39 @@ public class PositionRelationServiceImpl extends ServiceImpl<PositionRelationMap
      * @param newPositionQty 新的持仓数量
      */
     private void validatePositionQty(String accountCode, Integer conid, BigDecimal oldPositionQty, BigDecimal newPositionQty) {
-        // 1. 获取position表中的总持仓数量
-        LambdaQueryWrapper<Position> positionQuery = new LambdaQueryWrapper<>();
-        positionQuery.eq(Position::getAccountCode, accountCode);
-        positionQuery.eq(Position::getConid, conid);
-        Position position = positionService.getOne(positionQuery);
-        if (position == null || position.getPositionQty() == null) {
-            throw new RuntimeException("未找到对应的持仓记录");
-        }
-        BigDecimal totalPositionQty = position.getPositionQty();
-
-        // 2. 计算已分配的持仓数量（排除当前记录的原有数量）
-        LambdaQueryWrapper<PositionRelation> relationQuery = new LambdaQueryWrapper<>();
-        relationQuery.eq(PositionRelation::getAccountCode, accountCode);
-        relationQuery.eq(PositionRelation::getConid, conid);
-        relationQuery.isNull(PositionRelation::getDeleted);
-        List<PositionRelation> existingRelations = this.list(relationQuery);
-
-        BigDecimal allocatedQty = BigDecimal.ZERO;
-        for (PositionRelation relation : existingRelations) {
-            if (relation.getPositionQty() != null) {
-                allocatedQty = allocatedQty.add(relation.getPositionQty());
-            }
-        }
-
-        // 如果是更新操作，需要减去原有的数量
-        if (oldPositionQty != null) {
-            allocatedQty = allocatedQty.subtract(oldPositionQty);
-        }
-
-        // 3. 验证新的持仓数量是否超过剩余可分配数量
-        BigDecimal remainingQty = totalPositionQty.subtract(allocatedQty);
-        if (newPositionQty.compareTo(remainingQty) > 0) {
-            throw new RuntimeException(String.format("持仓数量超过限制，剩余可分配数量为：%s", remainingQty));
-        }
+//        // 1. 获取position表中的总持仓数量
+//        LambdaQueryWrapper<Position> positionQuery = new LambdaQueryWrapper<>();
+//        positionQuery.eq(Position::getAccountCode, accountCode);
+//        positionQuery.eq(Position::getConid, conid);
+//        Position position = positionService.getOne(positionQuery);
+//        if (position == null || position.getPositionQty() == null) {
+//            throw new RuntimeException("未找到对应的持仓记录");
+//        }
+//        BigDecimal totalPositionQty = position.getPositionQty();
+//
+//        // 2. 计算已分配的持仓数量（排除当前记录的原有数量）
+//        LambdaQueryWrapper<PositionRelation> relationQuery = new LambdaQueryWrapper<>();
+//        relationQuery.eq(PositionRelation::getAccountCode, accountCode);
+//        relationQuery.eq(PositionRelation::getConid, conid);
+//        relationQuery.isNull(PositionRelation::getDeleted);
+//        List<PositionRelation> existingRelations = this.list(relationQuery);
+//
+//        BigDecimal allocatedQty = BigDecimal.ZERO;
+//        for (PositionRelation relation : existingRelations) {
+//            if (relation.getPositionQty() != null) {
+//                allocatedQty = allocatedQty.add(relation.getPositionQty());
+//            }
+//        }
+//
+//        // 如果是更新操作，需要减去原有的数量
+//        if (oldPositionQty != null) {
+//            allocatedQty = allocatedQty.subtract(oldPositionQty);
+//        }
+//
+//        // 3. 验证新的持仓数量是否超过剩余可分配数量
+//        BigDecimal remainingQty = totalPositionQty.subtract(allocatedQty);
+//        if (newPositionQty.compareTo(remainingQty) > 0) {
+//            throw new RuntimeException(String.format("持仓数量超过限制，剩余可分配数量为：%s", remainingQty));
+//        }
     }
 }

@@ -3,6 +3,7 @@ package com.riskcontrol;
 import com.ib.client.Contract;
 import com.ib.client.EClientSocket;
 import com.ib.client.ExecutionFilter;
+import com.riskcontrol.config.PolygonOptionClient;
 import com.riskcontrol.enums.GenericTickListEnum;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
@@ -22,7 +23,7 @@ public class MethodTest {
     public void reqMktData() throws IOException {
         // 订阅期权全套Greeks+成交量OI+盯市价
         String genericTicks = GenericTickListEnum.joinTickIds(
-                GenericTickListEnum.MODEL_OPTION_COMPUTATION
+                GenericTickListEnum.CLOSE_IMPLIED_VOLATILITY
 //                ,GenericTickListEnum.OPTION_VOLUME,
 //                GenericTickListEnum.OPEN_INTEREST,
 //                GenericTickListEnum.MARK_PRICE
@@ -61,8 +62,8 @@ public class MethodTest {
         m_client.reqMktData(
                 reqId,
                 aaplCall,
-                "", // 行情类型
-                false, // 是否只获取一次,true：只返回一次 false：持续推送
+                "13", // 行情类型
+                true, // 是否只获取一次,true：只返回一次 false：持续推送
                 false, // 美国监管快照,给false就可以
                 new ArrayList<>()
         );
@@ -76,6 +77,16 @@ public class MethodTest {
         m_client.reqExecutions(reqId, new ExecutionFilter());
 
         System.in.read();
+    }
+
+    @Resource
+    PolygonOptionClient polygonOptionClient;
+
+    @Test
+    public void opta() throws IOException {
+        String json = polygonOptionClient.getOptionSnapshot("TSLA");
+
+        System.out.println(json);
     }
 
 

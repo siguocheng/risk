@@ -14,6 +14,7 @@ import com.riskcontrol.domain.vo.ExecutionCallbackVo;
 import com.riskcontrol.domain.vo.ibkr.*;
 import com.riskcontrol.service.IContractOptionService;
 import com.riskcontrol.service.IIbOrderService;
+import com.riskcontrol.util.IbValueUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -225,10 +226,17 @@ public class IbkrWrapper implements EWrapper {
         CompletableFuture<Object> future = ibkrSynConfig.FUTURE_MAP.remove(accountName);
         List<PositionCallbackVo> data = posProtoMap.remove(accountName);
         Map<String, Object> accountData = accTempMap.remove(accountName);
-        accountData.put("position", data);
+        
+        if (data == null) {
+            accountData.put("position", new ArrayList<>());
+        } else {
+            accountData.put("position", data);
+        }
+        
         if (future != null) {
             future.complete(accountData);
         }
+        
     }
 
     @Override
@@ -393,6 +401,7 @@ public class IbkrWrapper implements EWrapper {
 
     @Override
     public void accountSummary(int reqId, String account, String tag, String value, String currency) {
+        System.out.println("accountSummary");
         List<AccountSummaryCallbackVO> dataList = accountSummaryTempMap.computeIfAbsent(reqId, k-> new ArrayList<>());
 
         AccountSummaryCallbackVO accountSummaryCallbackVO = new AccountSummaryCallbackVO();
@@ -621,6 +630,12 @@ public class IbkrWrapper implements EWrapper {
             System.out.println("【警告】realizedPnL 无有效数据，为IB占位值");
             // 业务赋值：0
             realizedPnL = 0.0;
+        }
+
+        if (Math.abs(unrealizedPnL - Double.MAX_VALUE) < 1e-15) {
+            System.out.println("【警告】realizedPnL 无有效数据，为IB占位值");
+            // 业务赋值：0
+            unrealizedPnL = 0.0;
         }
 
         singlePnlCallbackVo.setPos(pos);

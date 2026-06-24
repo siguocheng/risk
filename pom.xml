@@ -38,6 +38,14 @@
     </dependencyManagement>
 
     <dependencies>
+
+        <!-- OkHttp -->
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp</artifactId>
+            <version>4.9.3</version>
+        </dependency>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
@@ -149,6 +157,7 @@
             <artifactId>spring-boot-starter-aop</artifactId>
             <!-- version 3.3.5，和boot版本保持一致 -->
         </dependency>
+
     </dependencies>
 
     <build>

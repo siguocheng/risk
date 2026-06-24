@@ -2,7 +2,10 @@ package com.riskcontrol.controller;
 
 import com.riskcontrol.annotation.ResourceMethod;
 import com.riskcontrol.common.ResultBean;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.riskcontrol.domain.vo.position.PositionAllocateRequest;
+import com.riskcontrol.domain.vo.position.PositionPage;
+import com.riskcontrol.domain.vo.position.PositionQuery;
 import com.riskcontrol.service.IPositionService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -35,6 +38,13 @@ public class PositionController extends BaseController {
     @ResourceMethod(btnCode = "btn-pc-position-allocate", level = 3)
     public ResultBean<Boolean> allocatePosition(@RequestBody PositionAllocateRequest request) {
         return new ResultBean<>(positionService.allocatePosition(request));
+    }
+
+    @Operation(summary = "持仓列表分页查询")
+    @PostMapping("/pc/query-page")
+    @ResourceMethod(btnCode = "btn-pc-position-query-page", level = 3)
+    public ResultBean<IPage<PositionPage>> queryList(@RequestBody PositionQuery query) {
+        return new ResultBean<>(positionService.queryPage(query));
     }
 }
 

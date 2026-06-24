@@ -3,15 +3,15 @@ package com.riskcontrol.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.riskcontrol.dao.PositionMapper;
-import com.riskcontrol.domain.Position;
-import com.riskcontrol.domain.PositionAllocateHistory;
-import com.riskcontrol.domain.PositionExecution;
-import com.riskcontrol.domain.PositionRelation;
+import com.riskcontrol.domain.*;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.riskcontrol.domain.vo.position.PositionAllocateItem;
 import com.riskcontrol.domain.vo.position.PositionAllocateRequest;
-import com.riskcontrol.service.IPositionAllocateHistoryService;
-import com.riskcontrol.service.IPositionExecutionService;
-import com.riskcontrol.service.IPositionRelationService;
-import com.riskcontrol.service.IPositionService;
+import com.riskcontrol.domain.vo.position.PositionPage;
+import com.riskcontrol.domain.vo.position.PositionQuery;
+import com.riskcontrol.service.*;
+import org.springframework.beans.BeanUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -39,6 +39,7 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
     private final IPositionAllocateHistoryService positionAllocateHistoryService;
 
     private final IPositionExecutionService positionExecutionService;
+    private final IContractService contractService;
 
     @Override
     public boolean saveOrUpdatePosition(Position position) {
@@ -75,32 +76,30 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
             avgPln = positionExecution.getRealizedPnl().divide(positionExecution.getShares(), 2, RoundingMode.HALF_UP);
         }
 
-        for (PositionAllocateHistory detail : request.getDetails()) {
+        for (PositionAllocateItem detail : request.getDetails()) {
+
+            PositionAllocateHistory history = new PositionAllocateHistory();
+
+            BeanUtils.copyProperties(detail, history);
             String strategyName = detail.getStrategyName();
             String traderName = detail.getTraderName();
             BigDecimal allocateQty = detail.getAllocateQty(); // 分配数量
 
             // 持仓分配
             if (operateType == 1) {
-                detail.setPositionId(request.getId());
-                detail.setUnrealizedPnl(avgPln.multiply(allocateQty));
+                history.setPositionId(request.getId());
+                history.setUnrealizedPnl(avgPln.multiply(allocateQty));
             }
             // 持仓交易分配
             else if (operateType == 2) {
-                detail.setPositionExecutionId(request.getId());
-                detail.setRealizedPnl(avgPln.multiply(allocateQty));
+                history.setPositionExecutionId(request.getId());
+                history.setRealizedPnl(avgPln.multiply(allocateQty));
             }
 
-            positionAllocateHistoryService.saveOrUpdate(detail);
+            positionAllocateHistoryService.saveOrUpdate(history);
 
             // 修改：更新position_relation表
-            LambdaQueryWrapper<PositionRelation> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.eq(PositionRelation::getAccountCode, detail.getAccountCode())
-                    .eq(PositionRelation::getConid, detail.getConid())
-                    .eq(PositionRelation::getStrategyName, strategyName)
-                    .eq(PositionRelation::getTraderName, traderName);
-
-            PositionRelation relation = positionRelationService.getOne(queryWrapper);
+            PositionRelation relation = positionRelationService.getPositionRelationByKey(detail.getAccountCode(), detail.getConid(), strategyName, traderName);
             if (relation == null) {
                 // 新增：直接保存到position_relation表
                 relation = new PositionRelation();
@@ -110,17 +109,19 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
                 relation.setTraderName(traderName);
                 relation.setPositionQty(allocateQty);
                 if (operateType == 1) {
-                    relation.setUnrealizedPnl(detail.getUnrealizedPnl());
+                    relation.setUnrealizedPnl(history.getUnrealizedPnl());
+                    relation.setRealizedPnl(BigDecimal.ZERO);
                 } else if (operateType == 2) {
-                    relation.setRealizedPnl(detail.getRealizedPnl());
+                    relation.setUnrealizedPnl(BigDecimal.ZERO);
+                    relation.setRealizedPnl(history.getRealizedPnl());
                 }
 
                 positionRelationService.save(relation);
             } else {
                 if (operateType == 1) {
-                    relation.setUnrealizedPnl(detail.getUnrealizedPnl());
+                    relation.setUnrealizedPnl(relation.getUnrealizedPnl().add(history.getUnrealizedPnl()));
                 } else if (operateType == 2) {
-                    relation.setRealizedPnl(detail.getRealizedPnl());
+                    relation.setRealizedPnl(relation.getRealizedPnl().add(history.getRealizedPnl()));
                 }
                 relation.setPositionQty(relation.getPositionQty().add(allocateQty));
 
@@ -129,5 +130,39 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
         }
 
         return true;
+    }
+
+    @Override
+    public IPage<PositionPage> queryPage(PositionQuery query) {
+        Page<Position> page = new Page<>(query.getPageNum(), query.getPageSize());
+
+        LambdaQueryWrapper<Position> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.in(!CollectionUtils.isEmpty(query.getAccountCodes()), Position::getAccountCode, query.getAccountCodes())
+                .eq(!CollectionUtils.isEmpty(query.getConids()), Position::getConid, query.getConids())
+                .orderByDesc(Position::getId);
+
+        IPage<Position> entityPage = this.page(page, queryWrapper);
+
+        IPage<PositionPage> pageList = entityPage.convert(entity -> {
+            PositionPage vo = new PositionPage();
+            BeanUtils.copyProperties(entity, vo);
+
+            List<PositionAllocateHistory> positionAllocateHistories = positionAllocateHistoryService.listPositionAllocateHistoryByKey(vo.getId(), null);
+            // 求和，空字段当作0处理
+            BigDecimal sum = positionAllocateHistories.stream()
+                    .map(item -> item.getAllocateQty() == null ? BigDecimal.ZERO : item.getAllocateQty())
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            vo.setRemainQty(vo.getPositionQty().subtract(sum));
+
+            Contract contract = contractService.getContractByConid(vo.getAccountCode(), vo.getConid());
+
+            if (contract != null) {
+                vo.setSymbol(contract.getSymbol());
+            }
+
+            return vo;
+        });
+
+        return pageList;
     }
 }

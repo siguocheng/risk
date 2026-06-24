@@ -32,7 +32,7 @@ public class IbReconnectTaskTest {
 
     @Test
     public void synSinglePnl() throws ExecutionException, InterruptedException, TimeoutException {
-        ibReconnectTask.synSinglePnl("DUQ346350","", 265598);
+        ibReconnectTask.synSinglePnl("U11802741","", 812096310);
     }
 
     @Test

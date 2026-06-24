@@ -15,4 +15,6 @@ import java.util.List;
  */
 public interface IContractService extends IService<Contract> {
     boolean saveOrUpdateContract(Contract contract);
+
+    Contract getContractByConid(String accountCode, Integer conid);
 }

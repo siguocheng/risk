@@ -5,15 +5,22 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.riskcontrol.dao.PositionExecutionMapper;
+import com.riskcontrol.domain.Contract;
+import com.riskcontrol.domain.PositionAllocateHistory;
 import com.riskcontrol.domain.PositionExecution;
 import com.riskcontrol.domain.vo.positionexecution.PositionExecutionPage;
 import com.riskcontrol.domain.vo.positionexecution.PositionExecutionQuery;
+import com.riskcontrol.service.IContractService;
+import com.riskcontrol.service.IPositionAllocateHistoryService;
 import com.riskcontrol.service.IPositionExecutionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+
+import java.math.BigDecimal;
+import java.util.List;
 
 /**
  * 成交明细Service业务层处理
@@ -25,6 +32,10 @@ import org.springframework.util.StringUtils;
 @Service
 @RequiredArgsConstructor
 public class PositionExecutionServiceImpl extends ServiceImpl<PositionExecutionMapper, PositionExecution> implements IPositionExecutionService {
+
+    private final IPositionAllocateHistoryService positionAllocateHistoryService;
+
+    private final IContractService contractService;
 
     @Override
     public boolean saveOrUpdateByExecId(PositionExecution positionExecution) {
@@ -47,7 +58,7 @@ public class PositionExecutionServiceImpl extends ServiceImpl<PositionExecutionM
         queryWrapper.eq(query.getOrderId() != null, PositionExecution::getOrderId, query.getOrderId())
                 .eq(query.getClientId() != null, PositionExecution::getClientId, query.getClientId())
                 .eq(StringUtils.hasText(query.getExecId()), PositionExecution::getExecId, query.getExecId())
-                .eq(StringUtils.hasText(query.getAcctNumber()), PositionExecution::getAcctNumber, query.getAcctNumber())
+                .eq(StringUtils.hasText(query.getAccountCode()), PositionExecution::getAccountCode, query.getAccountCode())
                 .eq(StringUtils.hasText(query.getExchange()), PositionExecution::getExchange, query.getExchange())
                 .eq(StringUtils.hasText(query.getSide()), PositionExecution::getSide, query.getSide())
                 .eq(query.getPermId() != null, PositionExecution::getPermId, query.getPermId())
@@ -57,11 +68,28 @@ public class PositionExecutionServiceImpl extends ServiceImpl<PositionExecutionM
 
         IPage<PositionExecution> entityPage = this.page(page, queryWrapper);
 
-        return entityPage.convert(entity -> {
+
+        IPage<PositionExecutionPage> pageList = entityPage.convert(entity -> {
             PositionExecutionPage vo = new PositionExecutionPage();
             BeanUtils.copyProperties(entity, vo);
+
+            List<PositionAllocateHistory> positionAllocateHistories = positionAllocateHistoryService.listPositionAllocateHistoryByKey(vo.getId(), null);
+            // 求和，空字段当作0处理
+            BigDecimal sum = positionAllocateHistories.stream()
+                    .map(item -> item.getAllocateQty() == null ? BigDecimal.ZERO : item.getAllocateQty())
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+            vo.setRemainQty(vo.getShares().subtract(sum));
+
+            Contract contract = contractService.getContractByConid(vo.getAccountCode(), vo.getConid());
+
+            if (contract != null) {
+                vo.setSymbol(contract.getSymbol());
+            }
+
             return vo;
         });
+
+        return pageList;
     }
 
 

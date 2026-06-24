@@ -133,11 +133,14 @@ public class IbReconnectTask {
 
         LocalDate now = LocalDate.now();
         log.info("synAccount synAccount");
-        List<AccountCurrency> accountList = accountCurrencyService.list();
+        LambdaQueryWrapper<AccountCurrency> queryWrapper = new LambdaQueryWrapper<>();
+//        queryWrapper.eq(AccountCurrency::getAccountCode, "U11802741");
+        queryWrapper.gt(AccountCurrency::getId, 7);
+        List<AccountCurrency> accountList = accountCurrencyService.list(queryWrapper);
         for (AccountCurrency accountCurrency : accountList) {
 
             String accountCode = accountCurrency.getAccountCode();
-            log.info("synAccount:{} start", accountCode);
+            log.info("synAccount start:{}", accountCode);
 
             String currency = accountCurrency.getCurrency();
             CompletableFuture<Object> future = new CompletableFuture<>();
@@ -147,12 +150,16 @@ public class IbReconnectTask {
             // updatePortfolio
             // updateAccountTime
             // accountDownloadEnd
+            log.info("synAccount reqAccountUpdates true:{}", accountCode);
             m_client.reqAccountUpdates(true, accountCode);
-            Map<String,Object> result  = (Map<String,Object>)future.get(ibkrSynConfig.timeout, TimeUnit.MILLISECONDS);
+//            Map<String,Object> result  = (Map<String,Object>)future.get(ibkrSynConfig.timeout, TimeUnit.MILLISECONDS);
+            Map<String,Object> result  = (Map<String,Object>)future.get();
 
+            log.info("synAccount reqAccountUpdates false:{}", accountCode);
             m_client.reqAccountUpdates(false, accountCode);
             // 持仓信息
             List<PositionCallbackVo> positions = (List<PositionCallbackVo>)result.remove("position");
+
 
             for (PositionCallbackVo positionCallbackVo : positions) {
 
@@ -179,6 +186,7 @@ public class IbReconnectTask {
                 contract.setAccountCode(accountCode);
                 contractService.saveOrUpdateContract(contract);
 
+                log.info("synAccount synSinglePnl:{}", accountCode);
                 this.synSinglePnl(accountCode,"" , positionCallbackVo.getConid());
             }
 
@@ -200,12 +208,17 @@ public class IbReconnectTask {
                     currencyMap.put(s1[1], null);
                 }
             }
-
+            log.info("synAccount handleAccountSummary:{}", accountCode);
             this.handleAccountSummary(accountCode, singleKeyMap);
 
+            log.info("synAccount handleAccountSummaryCurrency:{}", accountCode);
             this.handleAccountSummaryCurrency(accountCode, currencyMap, multiKeyMap);
 
-            this.synPnl(accountCode, "");
+            if (positions.size() > 0) {
+                log.info("synAccount synPnl:{}", accountCode);
+                this.synPnl(accountCode, "");
+            }
+
         }
         log.info("synAccount end");
     }
@@ -305,7 +318,8 @@ public class IbReconnectTask {
         ibkrSynConfig.FUTURE_MAP.put(reqId, future1);
         // 最后一个参数是modelCode
         m_client.reqPnL(reqId, accountCode, modelCode);
-        Object obj = future1.get(ibkrSynConfig.timeout, TimeUnit.MILLISECONDS);
+//        Object obj = future1.get(ibkrSynConfig.timeout, TimeUnit.MILLISECONDS);
+        Object obj = future1.get();
         m_client.cancelPnL(reqId);
 
         PnlCallbackVo result = (PnlCallbackVo) obj;
@@ -337,20 +351,28 @@ public class IbReconnectTask {
         ibkrSynConfig.FUTURE_MAP.put(reqId, future);
         // 最后一个参数是modelCode
         m_client.reqPnLSingle(reqId, accountCode, modelCode, conid);
-        Object obj = future.get(ibkrSynConfig.timeout, TimeUnit.MILLISECONDS);
-        m_client.cancelPnLSingle(reqId);
-        ContractSinglePnlCallbackVo result = (ContractSinglePnlCallbackVo) obj;
+//        Object obj = future.get(ibkrSynConfig.timeout, TimeUnit.MILLISECONDS);
+        try{
+            Object obj = future.get();
+            ContractSinglePnlCallbackVo result = (ContractSinglePnlCallbackVo) obj;
 
-        ContractDailyPnl contractDailyPnl = new ContractDailyPnl();
+            ContractDailyPnl contractDailyPnl = new ContractDailyPnl();
 
-        contractDailyPnl.setAccountCode(accountCode);
-        contractDailyPnl.setConid(conid);
-        contractDailyPnl.setDailyPnl(BigDecimalUtil.doubleToDecimal(result.getDailyPnL()));
-        contractDailyPnl.setUnrealizedPnl(BigDecimalUtil.doubleToDecimal(result.getUnrealizedPnL()));
-        contractDailyPnl.setRealizedPnl(BigDecimalUtil.doubleToDecimal(result.getRealizedPnL()));
-        contractDailyPnl.setDailyDate(LocalDate.now());
+            contractDailyPnl.setAccountCode(accountCode);
+            contractDailyPnl.setConid(conid);
+            contractDailyPnl.setDailyPnl(BigDecimalUtil.doubleToDecimal(result.getDailyPnL()));
+            contractDailyPnl.setUnrealizedPnl(BigDecimalUtil.doubleToDecimal(result.getUnrealizedPnL()));
+            contractDailyPnl.setRealizedPnl(BigDecimalUtil.doubleToDecimal(result.getRealizedPnL()));
+            contractDailyPnl.setDailyDate(LocalDate.now());
 
-        contractDailyPnlService.saveOrUpdateContractDailyPnl(contractDailyPnl);
+            contractDailyPnlService.saveOrUpdateContractDailyPnl(contractDailyPnl);
+        } catch (Exception e) {
+            log.error("账号:{} conid：{},异常",  accountCode, conid, e);
+        }
+        finally {
+            m_client.cancelPnLSingle(reqId);
+        }
+
     }
 
     public void synContractMarket() throws ExecutionException, InterruptedException, TimeoutException {
@@ -716,7 +738,7 @@ public class IbReconnectTask {
             positionExecution.setClientId(execution.getClientId());
             positionExecution.setExecId(execution.getExecId());
             positionExecution.setTime(execution.getTime());
-            positionExecution.setAcctNumber(execution.getAcctNumber());
+            positionExecution.setAccountCode(execution.getAcctNumber());
             positionExecution.setExchange(execution.getExchange());
             positionExecution.setSide(execution.getSide());
             positionExecution.setShares(execution.getShares().value());
