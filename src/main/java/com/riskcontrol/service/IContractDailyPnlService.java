@@ -1,7 +1,6 @@
 package com.riskcontrol.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
-import com.riskcontrol.domain.Contract;
 import com.riskcontrol.domain.ContractDailyPnl;
 
 /**

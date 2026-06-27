@@ -3,11 +3,8 @@ package com.riskcontrol.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.riskcontrol.dao.ContractDailyPnlMapper;
-import com.riskcontrol.dao.ContractMapper;
-import com.riskcontrol.domain.Contract;
 import com.riskcontrol.domain.ContractDailyPnl;
 import com.riskcontrol.service.IContractDailyPnlService;
-import com.riskcontrol.service.IContractService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 

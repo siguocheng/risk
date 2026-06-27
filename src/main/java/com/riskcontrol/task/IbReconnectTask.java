@@ -56,7 +56,7 @@ public class IbReconnectTask {
     IAccountDailyPnlService accountDailyPnlService;
 
     @Resource
-    IContractService contractService;
+    IAccountContractService contractService;
 
     @Resource
     IAccountSummaryService accountSummaryService;
@@ -182,7 +182,7 @@ public class IbReconnectTask {
 
                 com.ib.client.Contract ibContract = positionCallbackVo.getContract();
 
-                Contract contract = new Contract(ibContract);
+                AccountContract contract = new AccountContract(ibContract);
                 contract.setAccountCode(accountCode);
                 contractService.saveOrUpdateContract(contract);
 
@@ -377,7 +377,7 @@ public class IbReconnectTask {
 
     public void synContractMarket() throws ExecutionException, InterruptedException, TimeoutException {
 
-        List<Contract> list = contractService.list();
+        List<AccountContract> list = contractService.list();
 
         LocalDate yesterday = LocalDate.now().minusDays(1);
 
@@ -390,7 +390,7 @@ public class IbReconnectTask {
         int formatDate = 1;
         boolean keepUpToDate = false;// 不持续更新
 
-        for (Contract contract : list) {
+        for (AccountContract contract : list) {
             com.ib.client.Contract ibContract = new com.ib.client.Contract();
             int conid = contract.getConid();
             ibContract.conid(conid);
@@ -574,11 +574,11 @@ public class IbReconnectTask {
         log.info("synAllContractOptions start");
 
         // 查询所有期权类型的合约
-        LambdaQueryWrapper<Contract> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(Contract::getSecType, "OPT");
-        List<Contract> optionContracts = contractService.list(queryWrapper);
+        LambdaQueryWrapper<AccountContract> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(AccountContract::getSecType, "OPT");
+        List<AccountContract> optionContracts = contractService.list(queryWrapper);
 
-        for (Contract contract : optionContracts) {
+        for (AccountContract contract : optionContracts) {
             try {
                 this.synContractOption(
                         contract.getConid(),

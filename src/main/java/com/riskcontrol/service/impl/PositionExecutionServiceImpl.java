@@ -5,12 +5,12 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.riskcontrol.dao.PositionExecutionMapper;
-import com.riskcontrol.domain.Contract;
+import com.riskcontrol.domain.AccountContract;
 import com.riskcontrol.domain.PositionAllocateHistory;
 import com.riskcontrol.domain.PositionExecution;
 import com.riskcontrol.domain.vo.positionexecution.PositionExecutionPage;
 import com.riskcontrol.domain.vo.positionexecution.PositionExecutionQuery;
-import com.riskcontrol.service.IContractService;
+import com.riskcontrol.service.IAccountContractService;
 import com.riskcontrol.service.IPositionAllocateHistoryService;
 import com.riskcontrol.service.IPositionExecutionService;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +35,7 @@ public class PositionExecutionServiceImpl extends ServiceImpl<PositionExecutionM
 
     private final IPositionAllocateHistoryService positionAllocateHistoryService;
 
-    private final IContractService contractService;
+    private final IAccountContractService contractService;
 
     @Override
     public boolean saveOrUpdateByExecId(PositionExecution positionExecution) {
@@ -80,7 +80,7 @@ public class PositionExecutionServiceImpl extends ServiceImpl<PositionExecutionM
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             vo.setRemainQty(vo.getShares().subtract(sum));
 
-            Contract contract = contractService.getContractByConid(vo.getAccountCode(), vo.getConid());
+            AccountContract contract = contractService.getContractByConid(vo.getAccountCode(), vo.getConid());
 
             if (contract != null) {
                 vo.setSymbol(contract.getSymbol());

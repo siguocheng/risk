@@ -8,7 +8,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Data
-public class Contract extends BaseEntity {
+public class AccountContract extends BaseEntity {
 
     @Schema(description = "账户编号")
     @TableField(value = "account_code")
@@ -98,11 +98,11 @@ public class Contract extends BaseEntity {
     @TableField(value = "contract_market_last_date")
     private LocalDate contractMarketLastDate;
 
-    public Contract(){
+    public AccountContract(){
 
     }
 
-    public Contract(com.ib.client.Contract ibContract) {
+    public AccountContract(com.ib.client.Contract ibContract) {
         // 基础核心字段
         this.conid = ibContract.conid();
         this.symbol = ibContract.symbol();

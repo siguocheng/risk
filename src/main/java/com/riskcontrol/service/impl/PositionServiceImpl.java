@@ -17,7 +17,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
-import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -39,7 +38,7 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
     private final IPositionAllocateHistoryService positionAllocateHistoryService;
 
     private final IPositionExecutionService positionExecutionService;
-    private final IContractService contractService;
+    private final IAccountContractService contractService;
 
     @Override
     public boolean saveOrUpdatePosition(Position position) {
@@ -154,7 +153,7 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             vo.setRemainQty(vo.getPositionQty().subtract(sum));
 
-            Contract contract = contractService.getContractByConid(vo.getAccountCode(), vo.getConid());
+            AccountContract contract = contractService.getContractByConid(vo.getAccountCode(), vo.getConid());
 
             if (contract != null) {
                 vo.setSymbol(contract.getSymbol());
