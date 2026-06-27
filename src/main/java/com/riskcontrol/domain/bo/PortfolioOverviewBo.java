@@ -19,8 +19,8 @@ public class PortfolioOverviewBo {
     private List<String> strategyNames;
 
     @Schema(description = "开始时间，默认是当天")
-    private LocalDate startDate;
+    private LocalDate startDate = LocalDate.now();
 
     @Schema(description = "结束时间，默认是当天")
-    private LocalDate endDate;
+    private LocalDate endDate = LocalDate.now();
 }

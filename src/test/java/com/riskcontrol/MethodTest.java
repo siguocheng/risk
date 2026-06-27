@@ -3,15 +3,30 @@ package com.riskcontrol;
 import com.ib.client.Contract;
 import com.ib.client.EClientSocket;
 import com.ib.client.ExecutionFilter;
+import com.ib.client.TagValue;
+import com.riskcontrol.config.IbkrSynConfig;
 import com.riskcontrol.config.PolygonOptionClient;
+import com.riskcontrol.constant.ReqIdConstant;
+import com.riskcontrol.domain.ContractMarket;
+import com.riskcontrol.domain.vo.ibkr.BarData;
 import com.riskcontrol.enums.GenericTickListEnum;
+import com.riskcontrol.service.IContractMarketService;
+import com.riskcontrol.util.BigDecimalUtil;
+import com.riskcontrol.util.DateUtil;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 @SpringBootTest
 public class MethodTest {
@@ -87,6 +102,67 @@ public class MethodTest {
         String json = polygonOptionClient.getOptionSnapshot("TSLA");
 
         System.out.println(json);
+    }
+
+    @Resource
+    IbkrSynConfig ibkrSynConfig;
+
+    @Resource
+    IContractMarketService contractMarketService;
+
+    @Test
+    public void reqHistoricalData() throws IOException, ExecutionException, InterruptedException, TimeoutException {
+        com.ib.client.Contract ibContract = new com.ib.client.Contract();
+
+        ibContract.symbol("SPX");
+        ibContract.exchange("CBOE");
+        ibContract.secType("IND");
+        ibContract.currency("USD");
+
+        LocalDate yesterday = LocalDate.now().minusDays(1);
+
+        int useRTH = 1;                   // 1仅常规交易时段 0包含盘前盘后交易时段
+
+        int formatDate = 1;
+        boolean keepUpToDate = false;// 不持续更新
+
+        String durationStr = "1 Y";
+
+        List<TagValue> tagList = null;
+
+        CompletableFuture<Object> future = new CompletableFuture<>();
+        ibkrSynConfig.FUTURE_MAP.put(ReqIdConstant.HistoricalDataReqId, future);
+
+        String endDateTime = DateUtil.toIbkrUtcEndTime(yesterday);
+        String barSize = "1 day";         // 日K线 1 secs / 1 min / 5 mins / 1 hour / 1 day
+        String whatToShow = "TRADES";     // 取成交价格 MIDPOINT(中间价)、BID、ASK、TRADES(成交)
+
+        int conid = 719582;
+
+        m_client.reqHistoricalData(ReqIdConstant.HistoricalDataReqId, ibContract, endDateTime, durationStr, barSize, whatToShow, useRTH, formatDate, keepUpToDate, tagList);
+        Object obj = future.get(60 * 1000, TimeUnit.MILLISECONDS);
+
+        m_client.cancelHistogramData(conid);
+
+        List<BarData> result = (List<BarData>) obj;
+
+        List<ContractMarket> historyList = new ArrayList<>();
+        for (BarData barData : result) {
+            ContractMarket history = new ContractMarket();
+            history.setConid(conid);
+            history.setTime(barData.getTime());
+            history.setPriceOpen(BigDecimalUtil.doubleToDecimal(barData.getOpen()));
+            history.setPriceHigh(BigDecimalUtil.doubleToDecimal(barData.getHigh()));
+            history.setPriceLow(BigDecimalUtil.doubleToDecimal(barData.getLow()));
+            history.setPriceClose(BigDecimalUtil.doubleToDecimal(barData.getClose()));
+            history.setPriceWap(BigDecimalUtil.doubleToDecimal(barData.getWap()));
+
+            history.setDealCount(barData.getCount());
+            history.setDealVolume(barData.getVolume());
+            historyList.add(history);
+
+            contractMarketService.saveOrUpdateContractMarket(history);
+        }
     }
 
 

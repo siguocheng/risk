@@ -50,3 +50,9 @@ mybatis-plus:
       cache-enabled: false
       # 返回类型为Map,显示null对应的字段
       call-setters-on-nulls: true
+
+polygon:
+  api-key: tR5r8pVQWwVKnBImTA0Q67jpW85CuaYE
+  base-url: https://api.polygon.io
+  connect-timeout: 10
+  read-timeout: 30

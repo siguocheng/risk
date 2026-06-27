@@ -23,11 +23,15 @@
     <select id="listPortfolioOverviewDetail" resultType="com.riskcontrol.domain.vo.PortfolioOverviewDetail">
         SELECT
             t.trader_name,
+            t.capital,
             pr.position_qty,
             p.avg_cost,
             p.market_price,
             c.delta,
-            c.multiplier
+            c.multiplier,
+            c.sec_type,
+            pr.unrealized_pnl,
+            pr.realized_pnl
         FROM
             trader t
         LEFT JOIN position_relation pr ON t.trader_name = pr.trader_name
