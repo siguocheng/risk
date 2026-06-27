@@ -120,4 +120,46 @@ public class Contract extends BaseEntity implements Serializable {
     @Schema(description = "theta")
     @TableField(value = "theta")
     private BigDecimal theta;
+
+    public Contract(){
+
+    }
+
+    public Contract(com.ib.client.Contract ibContract) {
+        // 基础核心字段
+        this.conid = ibContract.conid();
+        this.symbol = ibContract.symbol();
+        this.secType = ibContract.secType().getApiString();
+        this.exchange = ibContract.exchange();
+        this.currency = ibContract.currency();
+
+        // 交易所相关
+        this.primaryExch = ibContract.primaryExch();
+        this.localSymbol = ibContract.localSymbol();
+        this.tradingClass = ibContract.tradingClass();
+
+        // 证券外部编码
+        this.secIdType = ibContract.secIdType().getApiString();
+        this.secId = ibContract.secId();
+
+        // 乘数 IB 原生是 String
+        this.multiplier = ibContract.multiplier();
+
+        // 期权行权价 转BigDecimal，空值置0
+        double ibStrike = ibContract.strike();
+        this.strike = BigDecimal.valueOf(ibStrike);
+
+        // 期权看涨看跌
+        this.optRight = ibContract.right().getApiString();
+
+        // 到期年月/合约月份
+        this.lastTradeDateOrContractMonth = ibContract.lastTradeDateOrContractMonth();
+        // IB无单独lastTradeDate，复用到期字段或置空
+        this.lastTradeDate = ibContract.lastTradeDateOrContractMonth();
+
+        // IB Contract 无 description、issuerId、accountCode、contractHistoryLastDate
+        // 这几个业务字段由业务层单独赋值，构造器仅映射IB原生数据
+        this.description = ibContract.description();
+        this.issuerId = ibContract.issuerId();
+    }
 }

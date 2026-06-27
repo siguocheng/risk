@@ -71,7 +71,10 @@ public class IbReconnectTask {
     IContractDailyPnlService contractDailyPnlService;
 
     @Resource
-    IContractMarketHistoryService contractMarketService;
+    IContractMarketHistoryService contractMarketHistoryService;
+
+    @Resource
+    IContractMarketService contractMarketService;
 
     @Resource
     IContractOptionService contractOptionService;
@@ -137,8 +140,6 @@ public class IbReconnectTask {
         LocalDate now = LocalDate.now();
         log.info("synAccount synAccount");
         LambdaQueryWrapper<AccountCurrency> queryWrapper = new LambdaQueryWrapper<>();
-//        queryWrapper.eq(AccountCurrency::getAccountCode, "U11802741");
-//        queryWrapper.gt(AccountCurrency::getId, 7);
         List<AccountCurrency> accountList = accountCurrencyService.list(queryWrapper);
         for (AccountCurrency accountCurrency : accountList) {
 
@@ -185,9 +186,18 @@ public class IbReconnectTask {
 
                 com.ib.client.Contract ibContract = positionCallbackVo.getContract();
 
-                AccountContract contract = new AccountContract(ibContract);
-                contract.setAccountCode(accountCode);
-                accountContractService.saveOrUpdateContract(contract);
+                // 维护账号下的合约信息
+                AccountContract accountContract = new AccountContract(ibContract);
+                accountContract.setAccountCode(accountCode);
+                accountContractService.saveOrUpdateAccountContract(accountContract);
+
+                // 维护合约信息
+                Contract contract = new Contract(ibContract);
+                contractService.saveOrUpdateByConid(contract);
+
+                // 维护合约市场信息
+                ContractMarket contractMarket = new ContractMarket(ibContract);
+                contractMarketService.saveOrUpdateByConid(contractMarket);
 
                 log.info("synAccount synSinglePnl:{}", accountCode);
                 this.synSinglePnl(accountCode,"" , positionCallbackVo.getConid());
@@ -379,9 +389,10 @@ public class IbReconnectTask {
     }
 
     public void synContractMarket() throws ExecutionException, InterruptedException, TimeoutException {
-
-        // TODO 通过表contract_market的数据进行循环取得历史数据
-        List<AccountContract> list = accountContractService.list();
+        LambdaQueryWrapper<ContractMarket> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.ne(ContractMarket::getSecType, "OPT"); // 排除期权
+        queryWrapper.orderByAsc(ContractMarket::getId);
+        List<ContractMarket> list = contractMarketService.list(queryWrapper);
 
         LocalDate yesterday = LocalDate.now().minusDays(1);
 
@@ -394,18 +405,19 @@ public class IbReconnectTask {
         int formatDate = 1;
         boolean keepUpToDate = false;// 不持续更新
 
-        for (AccountContract contract : list) {
+        for (ContractMarket contractMarket : list) {
             com.ib.client.Contract ibContract = new com.ib.client.Contract();
-            int conid = contract.getConid();
-            ibContract.conid(conid);
-            ibContract.symbol(contract.getSymbol());
-            ibContract.exchange(contract.getExchange());
-            ibContract.secType(contract.getSecType());
-            ibContract.currency(contract.getCurrency());
+            int conid = contractMarket.getConid();
+//            ibContract.conid(conid);
+            ibContract.symbol(contractMarket.getSymbol());
+            ibContract.exchange(contractMarket.getExchange());
+            ibContract.secType(contractMarket.getSecType());
+            ibContract.currency(contractMarket.getCurrency());
+            ibContract.localSymbol(contractMarket.getLocalSymbol());
 
             List<TagValue> tagList = null;
 
-            LocalDate contractMarketLastDate = contract.getContractMarketLastDate();
+            LocalDate contractMarketLastDate = contractMarket.getContractMarketLastDate();
             if (contractMarketLastDate != null) {
                 LocalDate now = LocalDate.now().minusDays(1);
                 long days = ChronoUnit.DAYS.between(contractMarketLastDate, now);
@@ -453,12 +465,12 @@ public class IbReconnectTask {
                 history.setDealVolume(barData.getVolume());
                 historyList.add(history);
 
-                contractMarketService.saveOrUpdateContractMarket(history);
+                contractMarketHistoryService.saveOrUpdateContractMarket(history);
             }
 
-            contract.setContractMarketLastDate(yesterday);
+            contractMarket.setContractMarketLastDate(yesterday);
 
-            accountContractService.updateById(contract);
+            contractMarketService.updateById(contractMarket);
         }
     }
 
@@ -471,7 +483,7 @@ public class IbReconnectTask {
             int conid = position.getConid();
             System.out.printf("conid:" + conid);
             // 取得日价格
-            double[] prices = contractMarketService.queryContractMarketPriceCloseByConid(conid);
+            double[] prices = contractMarketHistoryService.queryContractMarketPriceCloseByConid(conid);
             // 95% var
             double calcParamVarValue95 = RiskMetricsUtil.calcParamVar(prices, marketValue, RiskMetricsUtil.Z_95);
             double calcHistoryVarValue95 = RiskMetricsUtil.calcHistoryVar(prices, marketValue, RiskMetricsUtil.Z_ALPHA_95);

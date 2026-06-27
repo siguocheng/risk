@@ -20,7 +20,7 @@ public class AccountContractServiceImpl extends ServiceImpl<AccountContractMappe
 
 
     @Override
-    public boolean saveOrUpdateContract(AccountContract contract) {
+    public boolean saveOrUpdateAccountContract(AccountContract contract) {
         LambdaQueryWrapper<AccountContract> queryWrapper = new LambdaQueryWrapper();
         queryWrapper.eq(AccountContract::getAccountCode, contract.getAccountCode());
         queryWrapper.eq(AccountContract::getConid, contract.getConid());

@@ -9,6 +9,7 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
@@ -55,4 +56,22 @@ public class ContractMarket extends BaseEntity implements Serializable {
     @Schema(description = "对标指数 1是")
     @TableField(value = "reference_index")
     private Integer referenceIndex;
+
+    @Schema(description = "交易所本地代码")
+    @TableField(value = "local_symbol")
+    private String localSymbol;
+
+    public ContractMarket(){
+
+    }
+
+    public ContractMarket(com.ib.client.Contract ibContract) {
+        // 基础核心字段
+        this.conid = ibContract.conid();
+        this.symbol = ibContract.symbol();
+        this.secType = ibContract.secType().getApiString();
+        this.exchange = ibContract.exchange();
+        this.currency = ibContract.currency();
+        this.localSymbol = ibContract.localSymbol();
+    }
 }

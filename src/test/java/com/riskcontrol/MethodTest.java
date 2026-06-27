@@ -118,12 +118,12 @@ public class MethodTest {
     public void reqHistoricalData() throws IOException, ExecutionException, InterruptedException, TimeoutException {
         com.ib.client.Contract ibContract = new com.ib.client.Contract();
 
-//        int conid = 34426421;
-//
-//        ibContract.symbol("VIX");
-//        ibContract.secType("IND");
-//        ibContract.exchange("CBOE");
-//        ibContract.currency("USD");
+        int conid = 34426421;
+
+        ibContract.symbol("VIX");
+        ibContract.secType("IND");
+        ibContract.exchange("CBOE");
+        ibContract.currency("USD");
 
 
 //        int conid = 719582;
@@ -132,11 +132,11 @@ public class MethodTest {
 //        ibContract.exchange("CBOE");
 //        ibContract.currency("USD");
 
-        int conid = 4970027;
-        ibContract.symbol("NDX");
-        ibContract.secType("IND");
-        ibContract.exchange("NASDAQ");
-        ibContract.currency("USD");
+//        int conid = 4970027;
+//        ibContract.symbol("NDX");
+//        ibContract.secType("IND");
+//        ibContract.exchange("NASDAQ");
+//        ibContract.currency("USD");
 
         LocalDate yesterday = LocalDate.now().minusDays(1);
 

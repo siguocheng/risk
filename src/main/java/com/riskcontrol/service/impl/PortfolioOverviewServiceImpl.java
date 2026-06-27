@@ -100,6 +100,12 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
         }
 
         List<Integer> referenceIndexConids = portfolioOverviewBo.getReferenceIndexConids();
+        if (referenceIndexConids == null) {
+            referenceIndexConids = new ArrayList<>();
+        }
+        referenceIndexConids.add(719582);
+        referenceIndexConids.add(4970027);
+        portfolioOverviewBo.setReferenceIndexConids(referenceIndexConids);
 
         LambdaQueryWrapper<ContractMarketHistory> queryWrapperMarket = new LambdaQueryWrapper<>();
         queryWrapperMarket.in(ContractMarketHistory::getConid, referenceIndexConids);

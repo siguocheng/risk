@@ -10,7 +10,7 @@ import com.riskcontrol.domain.AccountContract;
  * @date 2026-06-01
  */
 public interface IAccountContractService extends IService<AccountContract> {
-    boolean saveOrUpdateContract(AccountContract contract);
+    boolean saveOrUpdateAccountContract(AccountContract contract);
 
     AccountContract getContractByConid(String accountCode, Integer conid);
 }
