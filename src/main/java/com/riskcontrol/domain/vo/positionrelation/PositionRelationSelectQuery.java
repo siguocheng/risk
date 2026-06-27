@@ -16,4 +16,7 @@ public class PositionRelationSelectQuery {
 
     @Schema(description = "交易员集合")
     private List<String> traderNames;
+
+    @Schema(description = "查询类型 1:交易员 2:策略")
+    private Integer queryType;
 }

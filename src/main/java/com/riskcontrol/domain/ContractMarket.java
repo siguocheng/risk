@@ -1,54 +1,58 @@
 package com.riskcontrol.domain;
 
+import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
-import java.math.BigDecimal;
+import java.io.Serializable;
 import java.time.LocalDate;
 
 /**
- * 合约历史行情表
+ * 合约实体类
+ *
+ * @author zpc
+ * @date 2026-06-26
  */
 @Data
 @TableName("contract_market")
-@Schema(description = "合约历史行情表")
-public class ContractMarket extends BaseEntity{
+@EqualsAndHashCode(callSuper = true)
+public class ContractMarket extends BaseEntity implements Serializable {
 
-    @TableField("conid")
-    @Schema(description = "合约唯一ID")
+    private static final long serialVersionUID = 1L;
+
+    @Schema(description = "主键ID")
+    @TableId(value = "id", type = IdType.AUTO)
+    private Long id;
+
+    @Schema(description = "合约唯一 ID")
+    @TableField(value = "conid")
     private Integer conid;
 
-    @TableField("time")
-    @Schema(description = "行情时间")
-    private String time;
+    @Schema(description = "股票简称")
+    @TableField(value = "symbol")
+    private String symbol;
 
-    @TableField("price_open")
-    @Schema(description = "开盘价")
-    private BigDecimal priceOpen;
+    @Schema(description = "类型 STK=股票、OPT=期权、FUT=期货、FX=外汇")
+    @TableField(value = "sec_type")
+    private String secType;
 
-    @TableField("price_high")
-    @Schema(description = "最高价")
-    private BigDecimal priceHigh;
+    @Schema(description = "交易所，NASDAQ 纳斯达克")
+    @TableField(value = "exchange")
+    private String exchange;
 
-    @TableField("price_low")
-    @Schema(description = "最低价")
-    private BigDecimal priceLow;
+    @Schema(description = "结算币种")
+    @TableField(value = "currency")
+    private String currency;
 
-    @TableField("price_close")
-    @Schema(description = "收盘价")
-    private BigDecimal priceClose;
+    @Schema(description = "行情历史数据最新的时间")
+    @TableField(value = "contract_market_last_date")
+    private LocalDate contractMarketLastDate;
 
-    @TableField("price_wap")
-    @Schema(description = "加权平均价WAP")
-    private BigDecimal priceWap;
-
-    @TableField("deal_count")
-    @Schema(description = "成交笔数")
-    private Integer dealCount;
-
-    @TableField("deal_volume")
-    @Schema(description = "成交量")
-    private Long dealVolume;
+    @Schema(description = "对标指数 1是")
+    @TableField(value = "reference_index")
+    private Integer referenceIndex;
 }

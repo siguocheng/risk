@@ -23,4 +23,7 @@ public class PortfolioOverviewBo {
 
     @Schema(description = "结束时间，默认是当天")
     private LocalDate endDate = LocalDate.now();
+
+    @Schema(description = "对标指数conid集合")
+    private List<Integer> referenceIndexConids;
 }

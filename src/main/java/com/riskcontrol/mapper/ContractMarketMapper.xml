@@ -1,5 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.riskcontrol.dao.ContractMarketMapper">
+    <resultMap id="BaseResultMap" type="com.riskcontrol.domain.ContractMarket">
+        <id column="id" jdbcType="BIGINT" property="id" />
+        <result column="conid" jdbcType="INTEGER" property="conid" />
+        <result column="symbol" jdbcType="VARCHAR" property="symbol" />
+        <result column="sec_type" jdbcType="VARCHAR" property="secType" />
+        <result column="exchange" jdbcType="VARCHAR" property="exchange" />
+        <result column="currency" jdbcType="VARCHAR" property="currency" />
+        <result column="contract_market_last_date" jdbcType="DATE" property="contractMarketLastDate" />
+        <result column="reference_index" jdbcType="INTEGER" property="referenceIndex" />
+        <result column="deleted" jdbcType="TINYINT" property="deleted" />
+        <result column="create_id" jdbcType="BIGINT" property="createId" />
+        <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
+        <result column="modified_id" jdbcType="BIGINT" property="modifiedId" />
+        <result column="modified_time" jdbcType="TIMESTAMP" property="modifiedTime" />
+    </resultMap>
 
+    <sql id="Base_Column_List">
+        id, conid, symbol, sec_type, exchange, currency, contract_market_last_date, 
+        reference_index, deleted, create_id, create_time, modified_id, modified_time
+    </sql>
 </mapper>

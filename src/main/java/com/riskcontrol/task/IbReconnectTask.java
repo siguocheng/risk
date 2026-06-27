@@ -71,7 +71,7 @@ public class IbReconnectTask {
     IContractDailyPnlService contractDailyPnlService;
 
     @Resource
-    IContractMarketService contractMarketService;
+    IContractMarketHistoryService contractMarketService;
 
     @Resource
     IContractOptionService contractOptionService;
@@ -135,7 +135,7 @@ public class IbReconnectTask {
         log.info("synAccount synAccount");
         LambdaQueryWrapper<AccountCurrency> queryWrapper = new LambdaQueryWrapper<>();
 //        queryWrapper.eq(AccountCurrency::getAccountCode, "U11802741");
-        queryWrapper.gt(AccountCurrency::getId, 7);
+//        queryWrapper.gt(AccountCurrency::getId, 7);
         List<AccountCurrency> accountList = accountCurrencyService.list(queryWrapper);
         for (AccountCurrency accountCurrency : accountList) {
 
@@ -421,11 +421,11 @@ public class IbReconnectTask {
 
             List<BarData> result = (List<BarData>) obj;
 
-            List<ContractMarket> historyList = new ArrayList<>();
+            List<ContractMarketHistory> historyList = new ArrayList<>();
             for (BarData barData : result) {
-                ContractMarket history = new ContractMarket();
+                ContractMarketHistory history = new ContractMarketHistory();
                 history.setConid(conid);
-                history.setTime(barData.getTime());
+                history.setDateTime(barData.getTime());
                 history.setPriceOpen(BigDecimalUtil.doubleToDecimal(barData.getOpen()));
                 history.setPriceHigh(BigDecimalUtil.doubleToDecimal(barData.getHigh()));
                 history.setPriceLow(BigDecimalUtil.doubleToDecimal(barData.getLow()));

@@ -7,20 +7,18 @@ import com.ib.client.TagValue;
 import com.riskcontrol.config.IbkrSynConfig;
 import com.riskcontrol.config.PolygonOptionClient;
 import com.riskcontrol.constant.ReqIdConstant;
-import com.riskcontrol.domain.ContractMarket;
+import com.riskcontrol.domain.ContractMarketHistory;
 import com.riskcontrol.domain.vo.ibkr.BarData;
 import com.riskcontrol.enums.GenericTickListEnum;
-import com.riskcontrol.service.IContractMarketService;
+import com.riskcontrol.service.IContractMarketHistoryService;
 import com.riskcontrol.util.BigDecimalUtil;
 import com.riskcontrol.util.DateUtil;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -108,15 +106,30 @@ public class MethodTest {
     IbkrSynConfig ibkrSynConfig;
 
     @Resource
-    IContractMarketService contractMarketService;
+    IContractMarketHistoryService contractMarketService;
 
     @Test
     public void reqHistoricalData() throws IOException, ExecutionException, InterruptedException, TimeoutException {
         com.ib.client.Contract ibContract = new com.ib.client.Contract();
 
-        ibContract.symbol("SPX");
-        ibContract.exchange("CBOE");
+//        int conid = 34426421;
+//
+//        ibContract.symbol("VIX");
+//        ibContract.secType("IND");
+//        ibContract.exchange("CBOE");
+//        ibContract.currency("USD");
+
+
+//        int conid = 719582;
+//        ibContract.symbol("SPX");
+//        ibContract.secType("IND");
+//        ibContract.exchange("CBOE");
+//        ibContract.currency("USD");
+
+        int conid = 4970027;
+        ibContract.symbol("NDX");
         ibContract.secType("IND");
+        ibContract.exchange("NASDAQ");
         ibContract.currency("USD");
 
         LocalDate yesterday = LocalDate.now().minusDays(1);
@@ -137,7 +150,7 @@ public class MethodTest {
         String barSize = "1 day";         // 日K线 1 secs / 1 min / 5 mins / 1 hour / 1 day
         String whatToShow = "TRADES";     // 取成交价格 MIDPOINT(中间价)、BID、ASK、TRADES(成交)
 
-        int conid = 719582;
+
 
         m_client.reqHistoricalData(ReqIdConstant.HistoricalDataReqId, ibContract, endDateTime, durationStr, barSize, whatToShow, useRTH, formatDate, keepUpToDate, tagList);
         Object obj = future.get(60 * 1000, TimeUnit.MILLISECONDS);
@@ -146,11 +159,11 @@ public class MethodTest {
 
         List<BarData> result = (List<BarData>) obj;
 
-        List<ContractMarket> historyList = new ArrayList<>();
+        List<ContractMarketHistory> historyList = new ArrayList<>();
         for (BarData barData : result) {
-            ContractMarket history = new ContractMarket();
+            ContractMarketHistory history = new ContractMarketHistory();
             history.setConid(conid);
-            history.setTime(barData.getTime());
+            history.setDateTime(barData.getTime());
             history.setPriceOpen(BigDecimalUtil.doubleToDecimal(barData.getOpen()));
             history.setPriceHigh(BigDecimalUtil.doubleToDecimal(barData.getHigh()));
             history.setPriceLow(BigDecimalUtil.doubleToDecimal(barData.getLow()));

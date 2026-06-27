@@ -5,6 +5,7 @@ import com.riskcontrol.common.ResultBean;
 import com.riskcontrol.domain.*;
 import com.riskcontrol.domain.bo.AccountCodeBo;
 import com.riskcontrol.domain.vo.AccountSelectVo;
+import com.riskcontrol.domain.vo.ReferenceIndexQuery;
 import com.riskcontrol.domain.vo.TraderSelectVo;
 import com.riskcontrol.domain.vo.investmentstrategy.InvestmentStrategySelectQuery;
 import com.riskcontrol.domain.vo.position.PositionInfoVo;
@@ -70,17 +71,18 @@ public class SelectController {
 
     @Operation(summary = "取得账号信息")
     @PostMapping("/pc/account")
-    public ResultBean<List<AccountSelectVo>> getAccountCurrencyList(@RequestBody AccountCodeBo query) {
+    public ResultBean<List<SelectVo>> getAccountCurrencyList(@RequestBody AccountCodeBo query) {
         LambdaQueryWrapper<AccountCurrency> queryWrapper = new LambdaQueryWrapper<>();
         if (query.getAccountCode() != null && !query.getAccountCode().isEmpty()) {
             queryWrapper.eq(AccountCurrency::getAccountCode, query.getAccountCode());
         }
         List<AccountCurrency> list = accountCurrencyService.list(queryWrapper);
 
-        List<AccountSelectVo> newList = new ArrayList<>();
+        List<SelectVo> newList = new ArrayList<>();
         for (AccountCurrency accountCurrency : list) {
-            AccountSelectVo data = new AccountSelectVo();
-            data.setAccountCode(accountCurrency.getAccountCode());
+            SelectVo data = new SelectVo();
+            data.setLabel(accountCurrency.getAccountCode());
+            data.setValue(accountCurrency.getAccountCode());
             newList.add(data);
         }
 
@@ -89,18 +91,19 @@ public class SelectController {
 
     @Operation(summary = "取得交易员")
     @PostMapping("/pc/trader")
-    public ResultBean<List<TraderSelectVo>> getTraderByAccountCodes(@RequestBody TraderSelectQuery query) {
+    public ResultBean<List<SelectVo>> getTraderByAccountCodes(@RequestBody TraderSelectQuery query) {
 
         LambdaQueryWrapper<Trader> queryWrapper = new LambdaQueryWrapper<>();
         if (query.getTraderName() != null && !query.getTraderName().isEmpty()) {
             queryWrapper.eq(Trader::getTraderName, query.getTraderName());
         }
 
-        List<TraderSelectVo> traderNames = new ArrayList<>();
+        List<SelectVo> traderNames = new ArrayList<>();
         List<Trader> list = traderService.list();
         for (Trader trader : list) {
-            TraderSelectVo data = new TraderSelectVo();
-            data.setTraderName(trader.getTraderName());
+            SelectVo data = new SelectVo();
+            data.setLabel(trader.getTraderName());
+            data.setValue(trader.getTraderName());
             traderNames.add(data);
         }
         return new ResultBean<>(traderNames);
@@ -108,9 +111,9 @@ public class SelectController {
 
     @Operation(summary = "取得投资策略")
     @PostMapping("/pc/investment-strategy")
-    public ResultBean<List<InvestmentStrategySelectVo>> getInvestmentStrategyByConditions(@RequestBody InvestmentStrategySelectQuery query) {
+    public ResultBean<List<SelectVo>> getInvestmentStrategyByConditions(@RequestBody InvestmentStrategySelectQuery query) {
 
-        List<InvestmentStrategySelectVo> result = new ArrayList<>();
+        List<SelectVo> result = new ArrayList<>();
         LambdaQueryWrapper<InvestmentStrategy> queryWrapper = new LambdaQueryWrapper<>();
         if (query.getStrategyName() != null && !query.getStrategyName().isEmpty()) {
             queryWrapper.eq(InvestmentStrategy::getStrategyName, query.getStrategyName());
@@ -118,8 +121,9 @@ public class SelectController {
         List<InvestmentStrategy> strategies = investmentStrategyService.list(queryWrapper);
 
         for (InvestmentStrategy strategy : strategies) {
-            InvestmentStrategySelectVo data = new InvestmentStrategySelectVo();
-            data.setStrategyName(strategy.getStrategyName());
+            SelectVo data = new SelectVo();
+            data.setLabel(strategy.getStrategyName());
+            data.setValue(strategy.getStrategyName());
             result.add(data);
         }
 
@@ -128,10 +132,7 @@ public class SelectController {
 
     @Operation(summary = "账号、策略、交易员联动接口")
     @PostMapping("/pc/position-relation")
-    public ResultBean<List<PositionRelationSelectVo>> getInvestmentStrategyByConditions(@RequestBody PositionRelationSelectQuery query) {
-        
-        
-        
+    public ResultBean<List<SelectVo>> getInvestmentStrategyByConditions(@RequestBody PositionRelationSelectQuery query) {
         LambdaQueryWrapper<PositionRelation> queryWrapper = new LambdaQueryWrapper<>();
         if (!CollectionUtils.isEmpty(query.getAccountCodes())) {
             queryWrapper.in(PositionRelation::getAccountCode, query.getAccountCodes());
@@ -147,15 +148,44 @@ public class SelectController {
 
         list = list.stream().distinct().collect(Collectors.toList());
 
-        List<PositionRelationSelectVo> result = new ArrayList<>();
+        List<SelectVo> result = new ArrayList<>();
         for (PositionRelation positionRelation : list) {
-            PositionRelationSelectVo data = new PositionRelationSelectVo();
-            BeanUtils.copyProperties(positionRelation, data);
+            SelectVo data = new SelectVo();
+//            BeanUtils.copyProperties(positionRelation, data);
+            if (query.getQueryType() == 1) {
+                data.setValue(positionRelation.getTraderName());
+                data.setLabel(positionRelation.getTraderName());
+            } else if (query.getQueryType() == 2) {
+                data.setValue(positionRelation.getStrategyName());
+                data.setLabel(positionRelation.getStrategyName());
+            }
             result.add(data);
         }
         
         return new ResultBean<>(result);
     }
+
+    @Resource
+    IContractMarketService contractMarketService;
+
+    @Operation(summary = "取得对标指数")
+    @PostMapping("/pc/reference-index")
+    public ResultBean<List<SelectVo>> referenceIndex(@RequestBody ReferenceIndexQuery query) {
+        LambdaQueryWrapper<ContractMarket> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(ContractMarket::getReferenceIndex, 1);
+        List<ContractMarket> list = contractMarketService.list(queryWrapper);
+
+        List<SelectVo> result = new ArrayList<>();
+        for (ContractMarket contractMarket : list) {
+            SelectVo data = new SelectVo();
+            data.setLabel(contractMarket.getSymbol());
+            data.setValue(contractMarket.getConid() + "");
+            result.add(data);
+        }
+
+        return new ResultBean<>(result);
+    }
+
 
     @Operation(summary = "根据账号取得持仓信息")
     @GetMapping("/pc/position")

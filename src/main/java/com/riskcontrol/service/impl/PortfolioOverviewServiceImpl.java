@@ -1,17 +1,20 @@
 package com.riskcontrol.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.riskcontrol.dao.PositionRelationMapper;
+import com.riskcontrol.domain.ContractMarketHistory;
 import com.riskcontrol.domain.bo.PortfolioOverviewBo;
+import com.riskcontrol.domain.vo.PortfolioOverviewData;
 import com.riskcontrol.domain.vo.PortfolioOverviewDetail;
 import com.riskcontrol.domain.vo.PortfolioOverviewVo;
 import com.riskcontrol.enums.SetTypeEnum;
-import com.riskcontrol.service.IPortfolioOverviewService;
-import com.riskcontrol.service.IPositionRelationService;
+import com.riskcontrol.service.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -22,8 +25,14 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
 
     private final PositionRelationMapper positionRelationMapper;
 
+    private final IContractMarketHistoryService contractMarketHistoryService;
+
+    private final IContractService contractService;
+
     @Override
     public List<PortfolioOverviewVo> queryPortfolioOverview(PortfolioOverviewBo portfolioOverviewBo) {
+
+        PortfolioOverviewData viewData = new PortfolioOverviewData();
 
         List<PortfolioOverviewVo> result = new ArrayList<>();
 
@@ -78,10 +87,21 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
             data.setPnl(data.getRealizedPnl().add(data.getUnrealizedPnl()));
         }
 
-        if (portfolioOverviewBo.getStartDate() == null && portfolioOverviewBo.getEndDate() == null) {
+        List<Integer> referenceIndexConids = portfolioOverviewBo.getReferenceIndexConids();
 
+        Map<Integer, List<ContractMarketHistory>> conidHistoryMap = new HashMap<>();
+
+        for (Integer referenceIndexConid : referenceIndexConids) {
+            LambdaQueryWrapper<ContractMarketHistory> queryWrapperMarket = new LambdaQueryWrapper<>();
+            queryWrapperMarket.eq(ContractMarketHistory::getConid, referenceIndexConid);
+            queryWrapperMarket.ge(ContractMarketHistory::getDateTime, portfolioOverviewBo.getStartDate());
+            queryWrapperMarket.le(ContractMarketHistory::getDateTime, portfolioOverviewBo.getEndDate());
+
+            List<ContractMarketHistory> list = contractMarketHistoryService.list(queryWrapperMarket);
+            conidHistoryMap.put(referenceIndexConid, list);
         }
 
+        
 
         return result;
     }

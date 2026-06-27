@@ -4,13 +4,14 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.riskcontrol.domain.ContractMarket;
 
 /**
- * 代码模板Service接口
+ * 合约Service接口
  *
  * @author zpc
- * @date 2026-06-01
+ * @date 2026-06-26
  */
 public interface IContractMarketService extends IService<ContractMarket> {
-    boolean saveOrUpdateContractMarket(ContractMarket contractMarket);
 
-    double[] queryContractMarketPriceCloseByConid(int conid);
+    ContractMarket getByConid(Integer conid);
+
+    boolean saveOrUpdateByConid(ContractMarket contractMarket);
 }
