@@ -10,6 +10,11 @@ public class DateUtil {
         return date.format(fmt);
     }
 
+    public static LocalDate stringToLocalDate(String date, String formatter){
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern(formatter);
+        return LocalDate.parse(date, fmt);
+    }
+
     public static String localDateToString(LocalDate date){
         return localDateToString(date, "yyyy-MM-dd");
     }

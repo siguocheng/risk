@@ -4,10 +4,13 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.riskcontrol.dao.PositionRelationHistoryMapper;
 import com.riskcontrol.domain.PositionRelationHistory;
+import com.riskcontrol.domain.bo.PortfolioOverviewBo;
 import com.riskcontrol.service.IPositionRelationHistoryService;
+import com.riskcontrol.util.DateUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.util.List;
@@ -38,7 +41,7 @@ public class PositionRelationHistoryServiceImpl extends ServiceImpl<PositionRela
     @Override
     public boolean saveOrUpdateByKey(PositionRelationHistory history) {
         LambdaQueryWrapper<PositionRelationHistory> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(PositionRelationHistory::getDataDate, history.getDataDate())
+        queryWrapper.eq(PositionRelationHistory::getDailyDate, history.getDailyDate())
                 .eq(PositionRelationHistory::getAccountCode, history.getAccountCode())
                 .eq(PositionRelationHistory::getConid, history.getConid())
                 .eq(PositionRelationHistory::getStrategyName, history.getStrategyName())
@@ -50,5 +53,33 @@ public class PositionRelationHistoryServiceImpl extends ServiceImpl<PositionRela
         } else {
             return this.save(history);
         }
+    }
+
+    @Override
+    public List<PositionRelationHistory> listByDateRange(PortfolioOverviewBo portfolioOverviewBo) {
+        LambdaQueryWrapper<PositionRelationHistory> queryWrapper = new LambdaQueryWrapper<>();
+
+        queryWrapper.ge(portfolioOverviewBo.getStartDate() != null, 
+                PositionRelationHistory::getDailyDate, 
+                DateUtil.localDateToString(portfolioOverviewBo.getStartDate()))
+                .le(portfolioOverviewBo.getEndDate() != null, 
+                PositionRelationHistory::getDailyDate, 
+                DateUtil.localDateToString(portfolioOverviewBo.getEndDate()));
+
+        if (!CollectionUtils.isEmpty(portfolioOverviewBo.getAccountCodes())) {
+            queryWrapper.in(PositionRelationHistory::getAccountCode, portfolioOverviewBo.getAccountCodes());
+        }
+
+        if (!CollectionUtils.isEmpty(portfolioOverviewBo.getTradeNames())) {
+            queryWrapper.in(PositionRelationHistory::getTraderName, portfolioOverviewBo.getTradeNames());
+        }
+
+        if (!CollectionUtils.isEmpty(portfolioOverviewBo.getStrategyNames())) {
+            queryWrapper.in(PositionRelationHistory::getStrategyName, portfolioOverviewBo.getStrategyNames());
+        }
+
+        queryWrapper.orderByDesc(PositionRelationHistory::getDailyDate);
+
+        return this.list(queryWrapper);
     }
 }

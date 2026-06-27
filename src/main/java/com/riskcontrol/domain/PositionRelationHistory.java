@@ -1,6 +1,8 @@
 package com.riskcontrol.domain;
 
+import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -8,7 +10,6 @@ import lombok.EqualsAndHashCode;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 
 /**
  * 策略和交易员和账号和持仓之间的关系历史实体类
@@ -23,9 +24,13 @@ public class PositionRelationHistory extends BaseEntity implements Serializable 
 
     private static final long serialVersionUID = 1L;
 
-    @Schema(description = "数据日期")
-    @TableField(value = "data_date")
-    private LocalDate dataDate;
+    @Schema(description = "主键ID")
+    @TableId(value = "id", type = IdType.AUTO)
+    private Long id;
+
+    @Schema(description = "yyyyMMdd格式日期")
+    @TableField(value = "daily_date")
+    private String dailyDate;
 
     @Schema(description = "账号id")
     @TableField(value = "account_code")

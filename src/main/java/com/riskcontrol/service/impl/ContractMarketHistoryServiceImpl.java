@@ -25,7 +25,7 @@ public class ContractMarketHistoryServiceImpl extends ServiceImpl<ContractMarket
     @Override
     public boolean saveOrUpdateContractMarket(ContractMarketHistory contractMarket) {
         LambdaQueryWrapper<ContractMarketHistory> queryWrapper = new LambdaQueryWrapper();
-        queryWrapper.eq(ContractMarketHistory::getDateTime, contractMarket.getDateTime());
+        queryWrapper.eq(ContractMarketHistory::getDailyDate, contractMarket.getDailyDate());
         queryWrapper.eq(ContractMarketHistory::getConid, contractMarket.getConid());
 
         long count = this.count(queryWrapper);

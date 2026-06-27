@@ -11,6 +11,7 @@ import com.riskcontrol.domain.ContractMarketHistory;
 import com.riskcontrol.domain.vo.ibkr.BarData;
 import com.riskcontrol.enums.GenericTickListEnum;
 import com.riskcontrol.service.IContractMarketHistoryService;
+import com.riskcontrol.service.IContractService;
 import com.riskcontrol.util.BigDecimalUtil;
 import com.riskcontrol.util.DateUtil;
 import jakarta.annotation.Resource;
@@ -20,7 +21,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -108,6 +111,9 @@ public class MethodTest {
     @Resource
     IContractMarketHistoryService contractMarketService;
 
+    @Resource
+    IContractService contractService;
+
     @Test
     public void reqHistoricalData() throws IOException, ExecutionException, InterruptedException, TimeoutException {
         com.ib.client.Contract ibContract = new com.ib.client.Contract();
@@ -159,11 +165,14 @@ public class MethodTest {
 
         List<BarData> result = (List<BarData>) obj;
 
+        Map<Integer, String> conMap = new HashMap<>();
+
         List<ContractMarketHistory> historyList = new ArrayList<>();
         for (BarData barData : result) {
             ContractMarketHistory history = new ContractMarketHistory();
+            history.setSymbol(ibContract.symbol());
             history.setConid(conid);
-            history.setDateTime(barData.getTime());
+            history.setDailyDate(barData.getTime());
             history.setPriceOpen(BigDecimalUtil.doubleToDecimal(barData.getOpen()));
             history.setPriceHigh(BigDecimalUtil.doubleToDecimal(barData.getHigh()));
             history.setPriceLow(BigDecimalUtil.doubleToDecimal(barData.getLow()));

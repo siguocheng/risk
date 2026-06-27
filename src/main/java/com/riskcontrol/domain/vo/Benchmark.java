@@ -2,6 +2,8 @@ package com.riskcontrol.domain.vo;
 
 import lombok.Data;
 
+import java.math.BigDecimal;
+
 @Data
 public class Benchmark {
 
@@ -9,5 +11,5 @@ public class Benchmark {
 
     private String name;
 
-    private String value;
+    private BigDecimal value;
 }

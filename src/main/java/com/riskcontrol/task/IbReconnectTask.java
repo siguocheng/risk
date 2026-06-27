@@ -56,7 +56,7 @@ public class IbReconnectTask {
     IAccountDailyPnlService accountDailyPnlService;
 
     @Resource
-    IAccountContractService contractService;
+    IAccountContractService accountContractService;
 
     @Resource
     IAccountSummaryService accountSummaryService;
@@ -87,6 +87,9 @@ public class IbReconnectTask {
 
     @Resource
     IPositionHistoryService positionHistoryService;
+
+    @Resource
+    IContractService contractService;
 
     // 30秒检测一次连接状态
     @Scheduled(fixedDelay = 30000)
@@ -184,7 +187,7 @@ public class IbReconnectTask {
 
                 AccountContract contract = new AccountContract(ibContract);
                 contract.setAccountCode(accountCode);
-                contractService.saveOrUpdateContract(contract);
+                accountContractService.saveOrUpdateContract(contract);
 
                 log.info("synAccount synSinglePnl:{}", accountCode);
                 this.synSinglePnl(accountCode,"" , positionCallbackVo.getConid());
@@ -377,7 +380,8 @@ public class IbReconnectTask {
 
     public void synContractMarket() throws ExecutionException, InterruptedException, TimeoutException {
 
-        List<AccountContract> list = contractService.list();
+        // TODO 通过表contract_market的数据进行循环取得历史数据
+        List<AccountContract> list = accountContractService.list();
 
         LocalDate yesterday = LocalDate.now().minusDays(1);
 
@@ -422,10 +426,23 @@ public class IbReconnectTask {
             List<BarData> result = (List<BarData>) obj;
 
             List<ContractMarketHistory> historyList = new ArrayList<>();
+
+            Map<Integer, String> conMap = new HashMap<>();
+
             for (BarData barData : result) {
                 ContractMarketHistory history = new ContractMarketHistory();
+                if (conMap.get(conid) != null) {
+                    history.setSymbol(conMap.get(conid));
+                } else {
+                    Contract con = contractService.getByConid(conid);
+
+                    if (con != null) {
+                        history.setSymbol(con.getSymbol());
+                    }
+                }
+
                 history.setConid(conid);
-                history.setDateTime(barData.getTime());
+                history.setDailyDate(barData.getTime());
                 history.setPriceOpen(BigDecimalUtil.doubleToDecimal(barData.getOpen()));
                 history.setPriceHigh(BigDecimalUtil.doubleToDecimal(barData.getHigh()));
                 history.setPriceLow(BigDecimalUtil.doubleToDecimal(barData.getLow()));
@@ -441,7 +458,7 @@ public class IbReconnectTask {
 
             contract.setContractMarketLastDate(yesterday);
 
-            contractService.updateById(contract);
+            accountContractService.updateById(contract);
         }
     }
 
@@ -576,7 +593,7 @@ public class IbReconnectTask {
         // 查询所有期权类型的合约
         LambdaQueryWrapper<AccountContract> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(AccountContract::getSecType, "OPT");
-        List<AccountContract> optionContracts = contractService.list(queryWrapper);
+        List<AccountContract> optionContracts = accountContractService.list(queryWrapper);
 
         for (AccountContract contract : optionContracts) {
             try {

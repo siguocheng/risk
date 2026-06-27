@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.riskcontrol.dao.ContractMapper">
+    <resultMap id="BaseResultMap" type="com.riskcontrol.domain.Contract">
+        <id column="id" jdbcType="BIGINT" property="id" />
+        <result column="conid" jdbcType="INTEGER" property="conid" />
+        <result column="symbol" jdbcType="VARCHAR" property="symbol" />
+        <result column="sec_type" jdbcType="VARCHAR" property="secType" />
+        <result column="exchange" jdbcType="VARCHAR" property="exchange" />
+        <result column="currency" jdbcType="VARCHAR" property="currency" />
+        <result column="strike" jdbcType="DECIMAL" property="strike" />
+        <result column="opt_right" jdbcType="VARCHAR" property="optRight" />
+        <result column="last_trade_date_or_contract_month" jdbcType="VARCHAR" property="lastTradeDateOrContractMonth" />
+        <result column="last_trade_date" jdbcType="VARCHAR" property="lastTradeDate" />
+        <result column="multiplier" jdbcType="VARCHAR" property="multiplier" />
+        <result column="primary_exch" jdbcType="VARCHAR" property="primaryExch" />
+        <result column="local_symbol" jdbcType="VARCHAR" property="localSymbol" />
+        <result column="trading_class" jdbcType="VARCHAR" property="tradingClass" />
+        <result column="sec_id_type" jdbcType="VARCHAR" property="secIdType" />
+        <result column="sec_id" jdbcType="VARCHAR" property="secId" />
+        <result column="description" jdbcType="VARCHAR" property="description" />
+        <result column="issuer_id" jdbcType="VARCHAR" property="issuerId" />
+        <result column="contract_market_last_date" jdbcType="DATE" property="contractMarketLastDate" />
+        <result column="implied_vol" jdbcType="DECIMAL" property="impliedVol" />
+        <result column="delta" jdbcType="DECIMAL" property="delta" />
+        <result column="gamma" jdbcType="DECIMAL" property="gamma" />
+        <result column="vega" jdbcType="DECIMAL" property="vega" />
+        <result column="theta" jdbcType="DECIMAL" property="theta" />
+        <result column="deleted" jdbcType="TINYINT" property="deleted" />
+        <result column="create_id" jdbcType="BIGINT" property="createId" />
+        <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
+        <result column="modified_id" jdbcType="BIGINT" property="modifiedId" />
+        <result column="modified_time" jdbcType="TIMESTAMP" property="modifiedTime" />
+    </resultMap>
+
+    <sql id="Base_Column_List">
+        id, conid, symbol, sec_type, exchange, currency, strike, opt_right, 
+        last_trade_date_or_contract_month, last_trade_date, multiplier, primary_exch, 
+        local_symbol, trading_class, sec_id_type, sec_id, description, issuer_id, 
+        contract_market_last_date, implied_vol, delta, gamma, vega, theta, 
+        deleted, create_id, create_time, modified_id, modified_time
+    </sql>
+</mapper>

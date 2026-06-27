@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 
 @Data
@@ -18,8 +19,8 @@ public class PortfolioOverviewBo {
     @Schema(description = "策略集合")
     private List<String> strategyNames;
 
-    @Schema(description = "开始时间，默认是当天")
-    private LocalDate startDate = LocalDate.now();
+    @Schema(description = "开始时间，默认当年第一天")
+    private LocalDate startDate = LocalDate.now().with(TemporalAdjusters.firstDayOfYear());
 
     @Schema(description = "结束时间，默认是当天")
     private LocalDate endDate = LocalDate.now();

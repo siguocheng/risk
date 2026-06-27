@@ -36,8 +36,7 @@
             trader t
         LEFT JOIN position_relation pr ON t.trader_name = pr.trader_name
         left join position p on pr.account_code=p.account_code and pr.conid=p.conid
-        LEFT JOIN contract c ON pr.account_code = c.account_code
-        AND pr.conid = c.conid
+        LEFT JOIN contract c ON pr.conid = c.conid
         where 1=1
         <if test="accountCodes != null and accountCodes.size() > 0">
             and pr.account_code IN

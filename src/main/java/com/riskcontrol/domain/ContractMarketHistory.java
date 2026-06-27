@@ -2,6 +2,7 @@ package com.riskcontrol.domain;
 
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.riskcontrol.util.DateUtil;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -20,9 +21,13 @@ public class ContractMarketHistory extends BaseEntity{
     @Schema(description = "合约唯一ID")
     private Integer conid;
 
-    @TableField("time")
+    @TableField("symbol")
+    @Schema(description = "股票简称")
+    private String symbol;
+
+    @TableField("daily_date")
     @Schema(description = "行情时间")
-    private String dateTime;
+    private String dailyDate;
 
     @TableField("price_open")
     @Schema(description = "开盘价")
@@ -51,4 +56,13 @@ public class ContractMarketHistory extends BaseEntity{
     @TableField("deal_volume")
     @Schema(description = "成交量")
     private Long dealVolume;
+
+
+    public void setDailyDate(String dailyDate){
+        if (dailyDate.contains("-")){
+            this.dailyDate = dailyDate;
+        } else {
+            this.dailyDate = DateUtil.localDateToString(DateUtil.stringToLocalDate(dailyDate, "yyyyMMdd"));
+        }
+    }
 }

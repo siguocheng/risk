@@ -2,13 +2,14 @@ package com.riskcontrol.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.riskcontrol.dao.PositionRelationMapper;
+import com.riskcontrol.domain.Contract;
 import com.riskcontrol.domain.ContractMarketHistory;
+import com.riskcontrol.domain.PositionRelationHistory;
 import com.riskcontrol.domain.bo.PortfolioOverviewBo;
-import com.riskcontrol.domain.vo.PortfolioOverviewData;
-import com.riskcontrol.domain.vo.PortfolioOverviewDetail;
-import com.riskcontrol.domain.vo.PortfolioOverviewVo;
+import com.riskcontrol.domain.vo.*;
 import com.riskcontrol.enums.SetTypeEnum;
 import com.riskcontrol.service.*;
+import com.riskcontrol.util.DateUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -25,16 +26,18 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
 
     private final PositionRelationMapper positionRelationMapper;
 
+    private final IPositionRelationHistoryService positionRelationHistoryService;
+
     private final IContractMarketHistoryService contractMarketHistoryService;
 
     private final IContractService contractService;
 
     @Override
-    public List<PortfolioOverviewVo> queryPortfolioOverview(PortfolioOverviewBo portfolioOverviewBo) {
+    public PortfolioOverviewData queryPortfolioOverview(PortfolioOverviewBo portfolioOverviewBo) {
 
         PortfolioOverviewData viewData = new PortfolioOverviewData();
 
-        List<PortfolioOverviewVo> result = new ArrayList<>();
+        List<PortfolioOverviewVo> portfolioOverviewList = new ArrayList<>();
 
         List<PortfolioOverviewDetail> portfolioOverviewDetails = positionRelationMapper.listPortfolioOverviewDetail(portfolioOverviewBo);
 
@@ -54,9 +57,13 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
             BigDecimal availableFunds = BigDecimal.ZERO; // 现金
             BigDecimal realizedPnl = BigDecimal.ZERO; // 已实现盈亏
             BigDecimal unrealizedPnl = BigDecimal.ZERO; // 未实现盈亏
+            BigDecimal sumCost = BigDecimal.ZERO; // 未实现盈亏
 
             for (PortfolioOverviewDetail portfolioOverviewDetail : details) {
 
+                if (portfolioOverviewDetail.getPositionQty() == null) {
+                    continue;
+                }
                 // 单一资产市值
                 BigDecimal singlePositionValue = portfolioOverviewDetail.getMarketPrice().multiply(portfolioOverviewDetail.getPositionQty());
                 grossPositionValue = grossPositionValue.add(singlePositionValue);
@@ -71,12 +78,15 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
 
                 // 单一资成本
                 BigDecimal singleCost = portfolioOverviewDetail.getAvgCost().multiply(portfolioOverviewDetail.getPositionQty());
-                // 现金=投入本金-每一个持仓的成本价
-                availableFunds = availableFunds.add(data.getYearCapital().subtract(singleCost));
+                // 总成本
+                sumCost = sumCost.add(singleCost);
 
                 realizedPnl = realizedPnl.add(portfolioOverviewDetail.getRealizedPnl()); // 未实现盈亏
-                unrealizedPnl = unrealizedPnl.add(portfolioOverviewDetail.getRealizedPnl()); // 实现盈亏
+                unrealizedPnl = unrealizedPnl.add(portfolioOverviewDetail.getUnrealizedPnl()); // 实现盈亏
             }
+
+            // 现金=投入本金-每一个持仓的总成本价
+            availableFunds = data.getYearCapital().subtract(sumCost);
 
             data.setGrossPositionValue(grossPositionValue);
             data.setDeltaExposure(deltaExposure);
@@ -85,25 +95,88 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
             data.setRealizedPnl(realizedPnl);
             data.setUnrealizedPnl(unrealizedPnl);
             data.setPnl(data.getRealizedPnl().add(data.getUnrealizedPnl()));
+
+            portfolioOverviewList.add(data);
         }
 
         List<Integer> referenceIndexConids = portfolioOverviewBo.getReferenceIndexConids();
 
-        Map<Integer, List<ContractMarketHistory>> conidHistoryMap = new HashMap<>();
+        LambdaQueryWrapper<ContractMarketHistory> queryWrapperMarket = new LambdaQueryWrapper<>();
+        queryWrapperMarket.in(ContractMarketHistory::getConid, referenceIndexConids);
+        queryWrapperMarket.ge(ContractMarketHistory::getDailyDate, portfolioOverviewBo.getStartDate());
+        queryWrapperMarket.le(ContractMarketHistory::getDailyDate, portfolioOverviewBo.getEndDate());
 
-        for (Integer referenceIndexConid : referenceIndexConids) {
-            LambdaQueryWrapper<ContractMarketHistory> queryWrapperMarket = new LambdaQueryWrapper<>();
-            queryWrapperMarket.eq(ContractMarketHistory::getConid, referenceIndexConid);
-            queryWrapperMarket.ge(ContractMarketHistory::getDateTime, portfolioOverviewBo.getStartDate());
-            queryWrapperMarket.le(ContractMarketHistory::getDateTime, portfolioOverviewBo.getEndDate());
+        List<ContractMarketHistory> list = contractMarketHistoryService.list(queryWrapperMarket);
+        // 按日期分组，
+        Map<String, List<ContractMarketHistory>> contractHistoryMap = list.stream()
+                .collect(Collectors.groupingBy(ContractMarketHistory::getDailyDate));
 
-            List<ContractMarketHistory> list = contractMarketHistoryService.list(queryWrapperMarket);
-            conidHistoryMap.put(referenceIndexConid, list);
+        // 取得历史收益情况
+        List<PositionRelationHistory> positionRelationHistories = positionRelationHistoryService.listByDateRange(portfolioOverviewBo);
+
+        // 按日期分组，计算每天的综合收益
+        Map<String, List<PositionRelationHistory>> historyMap = positionRelationHistories.stream()
+                .collect(Collectors.groupingBy(PositionRelationHistory::getDailyDate));
+
+        List<DailyProfitVo> dailyProfitList = new ArrayList<>();
+
+        for (String dailyDate : historyMap.keySet()) {
+            List<PositionRelationHistory> histories = historyMap.get(dailyDate);
+
+            BigDecimal totalUnrealizedPnl = BigDecimal.ZERO;
+            BigDecimal totalRealizedPnl = BigDecimal.ZERO;
+
+            for (PositionRelationHistory history : histories) {
+                if (history.getUnrealizedPnl() != null) {
+                    totalUnrealizedPnl = totalUnrealizedPnl.add(history.getUnrealizedPnl());
+                }
+                if (history.getRealizedPnl() != null) {
+                    totalRealizedPnl = totalRealizedPnl.add(history.getRealizedPnl());
+                }
+            }
+
+            DailyProfitVo dailyProfitVo = new DailyProfitVo();
+            dailyProfitVo.setDailyDate(dailyDate);
+            dailyProfitVo.setUnrealizedPnl(totalUnrealizedPnl);
+            dailyProfitVo.setRealizedPnl(totalRealizedPnl);
+            dailyProfitVo.setTotalPnl(totalUnrealizedPnl.add(totalRealizedPnl));
+
+            dailyProfitList.add(dailyProfitVo);
         }
 
-        
+        // 按日期排序
+        dailyProfitList.sort((a, b) -> b.getDailyDate().compareTo(a.getDailyDate()));
 
-        return result;
+        List<ChartVo> chartList = new ArrayList<>();
+
+        for (DailyProfitVo dailyProfitVo : dailyProfitList) {
+
+            String dailyDate = dailyProfitVo.getDailyDate();
+
+            List<ContractMarketHistory> contractMarketHistories = contractHistoryMap.get(dailyDate);
+
+            ChartVo chartVo = new ChartVo();
+
+            chartVo.setDate(dailyDate);
+            chartVo.setNav(dailyProfitVo.getTotalPnl());
+
+            List<Benchmark> benchmarks = new ArrayList<>();
+            for (ContractMarketHistory contractMarketHistory : contractMarketHistories) {
+                Benchmark benchmark = new Benchmark();
+                benchmark.setKey(contractMarketHistory.getSymbol());
+                benchmark.setName(contractMarketHistory.getSymbol());
+                benchmark.setValue(contractMarketHistory.getPriceClose());
+
+                benchmarks.add(benchmark);
+            }
+            chartVo.setBenchmarks(benchmarks);
+
+            chartList.add(chartVo);
+        }
+
+        viewData.setChartList(chartList);
+        viewData.setPortfolioOverviewList(portfolioOverviewList);
+        return viewData;
     }
 
     private BigDecimal calDelta(PortfolioOverviewDetail portfolioOverviewDetail){

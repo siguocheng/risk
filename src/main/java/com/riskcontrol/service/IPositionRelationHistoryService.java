@@ -2,6 +2,7 @@ package com.riskcontrol.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.riskcontrol.domain.PositionRelationHistory;
+import com.riskcontrol.domain.bo.PortfolioOverviewBo;
 
 import java.util.List;
 
@@ -16,4 +17,6 @@ public interface IPositionRelationHistoryService extends IService<PositionRelati
     List<PositionRelationHistory> listByKey(String accountCode, Integer conid, String strategyName, String traderName);
 
     boolean saveOrUpdateByKey(PositionRelationHistory history);
+
+    List<PositionRelationHistory> listByDateRange(PortfolioOverviewBo portfolioOverviewBo);
 }

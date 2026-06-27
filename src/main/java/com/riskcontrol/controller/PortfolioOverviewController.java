@@ -3,6 +3,7 @@ package com.riskcontrol.controller;
 import com.riskcontrol.annotation.ResourceMethod;
 import com.riskcontrol.common.ResultBean;
 import com.riskcontrol.domain.bo.PortfolioOverviewBo;
+import com.riskcontrol.domain.vo.PortfolioOverviewData;
 import com.riskcontrol.domain.vo.PortfolioOverviewVo;
 import com.riskcontrol.service.IPortfolioOverviewService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,7 +27,7 @@ public class PortfolioOverviewController {
     @Operation(summary = "列表")
     @PostMapping("/pc/query-list")
     @ResourceMethod(btnCode = "btn-pc-portfolio-overview-query-list", level = 3)
-    public ResultBean<List<PortfolioOverviewVo>> queryList(@RequestBody PortfolioOverviewBo query) {
+    public ResultBean<PortfolioOverviewData> queryList(@RequestBody PortfolioOverviewBo query) {
         return new ResultBean<>(portfolioOverviewService.queryPortfolioOverview(query));
     }
 

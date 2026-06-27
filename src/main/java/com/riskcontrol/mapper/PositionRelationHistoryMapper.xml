@@ -3,7 +3,7 @@
 <mapper namespace="com.riskcontrol.dao.PositionRelationHistoryMapper">
     <resultMap id="BaseResultMap" type="com.riskcontrol.domain.PositionRelationHistory">
         <id column="id" jdbcType="BIGINT" property="id" />
-        <result column="data_date" jdbcType="DATE" property="dataDate" />
+        <result column="daily_date" jdbcType="VARCHAR" property="dailyDate" />
         <result column="account_code" jdbcType="VARCHAR" property="accountCode" />
         <result column="conid" jdbcType="INTEGER" property="conid" />
         <result column="strategy_name" jdbcType="VARCHAR" property="strategyName" />
@@ -19,7 +19,7 @@
     </resultMap>
 
     <sql id="Base_Column_List">
-        id, data_date, account_code, conid, strategy_name, trader_name, position_qty, 
+        id, daily_date, account_code, conid, strategy_name, trader_name, position_qty, 
         unrealized_pnl, realized_pnl, deleted, create_id, create_time, modified_id, modified_time
     </sql>
 </mapper>
