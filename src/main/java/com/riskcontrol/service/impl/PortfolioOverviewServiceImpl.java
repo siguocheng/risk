@@ -107,9 +107,53 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
         queryWrapperMarket.le(ContractMarketHistory::getDailyDate, portfolioOverviewBo.getEndDate());
 
         List<ContractMarketHistory> list = contractMarketHistoryService.list(queryWrapperMarket);
+
+        // 按conid分组
+        Map<Integer, List<ContractMarketHistory>> conidHistoryMap = list.stream()
+                .collect(Collectors.groupingBy(ContractMarketHistory::getConid));
+
+        // 计算每只股票每天的收益率
+        List<DailyReturnRateVo> dailyReturnRateList = new ArrayList<>();
+
+        for (Map.Entry<Integer, List<ContractMarketHistory>> entry : conidHistoryMap.entrySet()) {
+            Integer conid = entry.getKey();
+            List<ContractMarketHistory> histories = entry.getValue();
+
+            // 按日期排序
+            histories.sort((a, b) -> a.getDailyDate().compareTo(b.getDailyDate()));
+
+            ContractMarketHistory previousHistory = null;
+            for (ContractMarketHistory history : histories) {
+                DailyReturnRateVo vo = new DailyReturnRateVo();
+                vo.setConid(conid);
+                vo.setSymbol(history.getSymbol());
+                vo.setDailyDate(history.getDailyDate());
+                vo.setPriceClose(history.getPriceClose());
+
+                // 计算日收益率 = (当日收盘价 - 前一日收盘价) / 前一日收盘价
+                if (previousHistory != null && previousHistory.getPriceClose() != null 
+                        && history.getPriceClose() != null 
+                        && previousHistory.getPriceClose().compareTo(BigDecimal.ZERO) != 0) {
+                    BigDecimal dailyReturnRate = history.getPriceClose()
+                            .subtract(previousHistory.getPriceClose())
+                            .divide(previousHistory.getPriceClose(), 8, BigDecimal.ROUND_HALF_UP);
+
+                    BigDecimal dailyReturn = history.getPriceClose().subtract(previousHistory.getPriceClose());
+                    vo.setDailyReturnRate(dailyReturnRate);
+                    vo.setDailyReturn(dailyReturn);
+                } else {
+                    vo.setDailyReturnRate(BigDecimal.ZERO);
+                    vo.setDailyReturn(BigDecimal.ZERO);
+                }
+
+                dailyReturnRateList.add(vo);
+                previousHistory = history;
+            }
+        }
+
         // 按日期分组，
-        Map<String, List<ContractMarketHistory>> contractHistoryMap = list.stream()
-                .collect(Collectors.groupingBy(ContractMarketHistory::getDailyDate));
+        Map<String, List<DailyReturnRateVo>> dailyReturnRateMap = dailyReturnRateList.stream()
+                .collect(Collectors.groupingBy(DailyReturnRateVo::getDailyDate));
 
         // 取得历史收益情况
         List<PositionRelationHistory> positionRelationHistories = positionRelationHistoryService.listByDateRange(portfolioOverviewBo);
@@ -153,19 +197,23 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
 
             String dailyDate = dailyProfitVo.getDailyDate();
 
-            List<ContractMarketHistory> contractMarketHistories = contractHistoryMap.get(dailyDate);
+            List<DailyReturnRateVo> contractMarketHistories = dailyReturnRateMap.get(dailyDate);
 
+            // 市场数据没有，就不计算收益
+            if (contractMarketHistories == null) {
+                continue;
+            }
             ChartVo chartVo = new ChartVo();
 
             chartVo.setDate(dailyDate);
             chartVo.setNav(dailyProfitVo.getTotalPnl());
 
             List<Benchmark> benchmarks = new ArrayList<>();
-            for (ContractMarketHistory contractMarketHistory : contractMarketHistories) {
+            for (DailyReturnRateVo dailyReturnRateVo : contractMarketHistories) {
                 Benchmark benchmark = new Benchmark();
-                benchmark.setKey(contractMarketHistory.getSymbol());
-                benchmark.setName(contractMarketHistory.getSymbol());
-                benchmark.setValue(contractMarketHistory.getPriceClose());
+                benchmark.setKey(dailyReturnRateVo.getSymbol());
+                benchmark.setName(dailyReturnRateVo.getSymbol());
+                benchmark.setValue(dailyReturnRateVo.getPriceClose());
 
                 benchmarks.add(benchmark);
             }
