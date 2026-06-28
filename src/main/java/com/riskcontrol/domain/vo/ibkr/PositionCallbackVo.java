@@ -37,4 +37,7 @@ public class PositionCallbackVo {
 
     @Schema(description = "合约唯一 ID")
     private Contract contract;
+
+    @Schema(description = "股票简称")
+    private String symbol;
 }

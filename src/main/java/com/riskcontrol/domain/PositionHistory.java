@@ -32,6 +32,10 @@ public class PositionHistory extends BaseEntity implements Serializable {
     @TableField(value = "conid")
     private Long conid;
 
+    @Schema(description = "股票简称")
+    @TableField(value = "symbol")
+    private String symbol;
+
     @Schema(description = "账号编号")
     @TableField(value = "account_code")
     private String accountCode;
@@ -76,6 +80,7 @@ public class PositionHistory extends BaseEntity implements Serializable {
         this.accountCode = positionCallbackVo.getAccountCode();
         this.modelCode = positionCallbackVo.getModelCode();
         this.conid = positionCallbackVo.getConid() != null ? positionCallbackVo.getConid().longValue() : null;
+        this.symbol = positionCallbackVo.getSymbol();
         this.positionQty = positionCallbackVo.getPosition();
         this.avgCost = positionCallbackVo.getAvgCost() != null ? BigDecimal.valueOf(positionCallbackVo.getAvgCost()) : null;
         this.unrealizedPnl = positionCallbackVo.getUnrealizedPnl() != null ? BigDecimal.valueOf(positionCallbackVo.getUnrealizedPnl()) : null;

@@ -18,4 +18,6 @@ public class ReqIdConstant {
 
     public final static int commissionAndFeesReportReqId = 992;
 
+    public final static int reqContractDetailsReqId = 990;
+
 }

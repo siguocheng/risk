@@ -29,6 +29,10 @@ public class Position extends BaseEntity implements Serializable {
     @TableField(value = "conid")
     private Integer conid;
 
+    @Schema(description = "股票简称")
+    @TableField(value = "symbol")
+    private String symbol;
+
     @Schema(description = "账号编号")
     @TableField(value = "account_code")
     private String accountCode;

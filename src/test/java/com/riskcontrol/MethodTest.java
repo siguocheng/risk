@@ -156,8 +156,6 @@ public class MethodTest {
         String barSize = "1 day";         // 日K线 1 secs / 1 min / 5 mins / 1 hour / 1 day
         String whatToShow = "TRADES";     // 取成交价格 MIDPOINT(中间价)、BID、ASK、TRADES(成交)
 
-
-
         m_client.reqHistoricalData(ReqIdConstant.HistoricalDataReqId, ibContract, endDateTime, durationStr, barSize, whatToShow, useRTH, formatDate, keepUpToDate, tagList);
         Object obj = future.get(60 * 1000, TimeUnit.MILLISECONDS);
 
@@ -187,5 +185,22 @@ public class MethodTest {
         }
     }
 
+    @Test
+    public void reqContractDetails() throws ExecutionException, InterruptedException, TimeoutException {
+        com.ib.client.Contract ibContract = new com.ib.client.Contract();
+
+        int conid = 34426421;
+
+        ibContract.symbol("AAPL");
+        ibContract.secType("STK");
+        ibContract.exchange("NASDAQ");
+        ibContract.currency("USD");
+
+        CompletableFuture<Object> future = new CompletableFuture<>();
+        ibkrSynConfig.FUTURE_MAP.put(ReqIdConstant.reqContractDetailsReqId, future);
+
+        m_client.reqContractDetails(ReqIdConstant.reqContractDetailsReqId, ibContract);
+        Object obj = future.get(60 * 1000, TimeUnit.MILLISECONDS);
+    }
 
 }

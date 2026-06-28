@@ -396,7 +396,7 @@ public class IbReconnectTask {
 
         LocalDate yesterday = LocalDate.now().minusDays(1);
 
-        String endDateTime = DateUtil.toIbkrUtcEndTime(yesterday);          // 空 = 取最新数据 20260608 23:59:59
+        String endDateTime = DateUtil.toIbkrUtcEndTime(yesterday.minusYears(2));          // 空 = 取最新数据 20260608 23:59:59
         String durationStr = "1 Y";       // 回溯 1 个月 1 D(1 天)、1 W(1 周)、1 M(1 月)、1 Y(1 年)
         String barSize = "1 day";         // 日K线 1 secs / 1 min / 5 mins / 1 hour / 1 day
         String whatToShow = "TRADES";     // 取成交价格 MIDPOINT(中间价)、BID、ASK、TRADES(成交)
@@ -417,15 +417,15 @@ public class IbReconnectTask {
 
             List<TagValue> tagList = null;
 
-            LocalDate contractMarketLastDate = contractMarket.getContractMarketLastDate();
-            if (contractMarketLastDate != null) {
-                LocalDate now = LocalDate.now().minusDays(1);
-                long days = ChronoUnit.DAYS.between(contractMarketLastDate, now);
-                if (days == 0){
-                    continue;
-                }
-                durationStr = days + " D";
-            }
+//            LocalDate contractMarketLastDate = contractMarket.getContractMarketLastDate();
+//            if (contractMarketLastDate != null) {
+//                LocalDate now = LocalDate.now().minusDays(1);
+//                long days = ChronoUnit.DAYS.between(contractMarketLastDate, now);
+//                if (days == 0){
+//                    continue;
+//                }
+//                durationStr = days + " D";
+//            }
 
             CompletableFuture<Object> future = new CompletableFuture<>();
             ibkrSynConfig.FUTURE_MAP.put(ReqIdConstant.HistoricalDataReqId, future);
@@ -478,7 +478,11 @@ public class IbReconnectTask {
      * 计算var
      */
     public void calcVar(){
-        for (Position position : positionService.list()) {
+
+        LambdaQueryWrapper<Position> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Position::getConid, 265598);
+
+        for (Position position : positionService.list(queryWrapper)) {
             double marketValue = position.getMarketValue().doubleValue();// 市值
             int conid = position.getConid();
             System.out.printf("conid:" + conid);
@@ -807,5 +811,34 @@ public class IbReconnectTask {
         }
 
         log.info("synExecutions end, total executions={}, total commissions={}", executions.size(), commissionAndFeesReports.size());
+    }
+
+    public void synContractDetails() throws ExecutionException, InterruptedException, TimeoutException {
+        LambdaQueryWrapper<ContractMarket> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.ne(ContractMarket::getSecType, "OPT"); // 排除期权
+        queryWrapper.orderByAsc(ContractMarket::getId);
+        List<ContractMarket> list = contractMarketService.list(queryWrapper);
+
+        for (ContractMarket contractMarket : list) {
+
+            com.ib.client.Contract ibContract = new com.ib.client.Contract();
+            int conid = contractMarket.getConid();
+//            ibContract.conid(conid);
+            ibContract.symbol(contractMarket.getSymbol());
+            ibContract.exchange(contractMarket.getExchange());
+            ibContract.secType(contractMarket.getSecType());
+            ibContract.currency(contractMarket.getCurrency());
+            ibContract.localSymbol(contractMarket.getLocalSymbol());
+            CompletableFuture<Object> future = new CompletableFuture<>();
+            ibkrSynConfig.FUTURE_MAP.put(ReqIdConstant.HistoricalDataReqId, future);
+
+            // contractDetails
+            m_client.reqContractDetails(ReqIdConstant.reqContractDetailsReqId, ibContract);
+            Object obj = future.get(60 * 1000, TimeUnit.MILLISECONDS);
+
+            m_client.cancelHistogramData(conid);
+        }
+
+
     }
 }

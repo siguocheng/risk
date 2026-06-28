@@ -183,6 +183,7 @@ public class IbkrWrapper implements EWrapper {
         item.setUnrealizedPnl(unrealizedPNL);
         item.setRealizedPnl(realizedPNL);
         item.setConid(contract.conid());
+        item.setSymbol(contract.symbol());
 
         item.setContract(contract);
 
@@ -247,6 +248,7 @@ public class IbkrWrapper implements EWrapper {
     @Override
     public void contractDetails(int reqId, ContractDetails contractDetails) {
         printCurrentMethod();
+        System.out.println(JSONObject.toJSONString(contractDetails));
     }
 
     @Override
