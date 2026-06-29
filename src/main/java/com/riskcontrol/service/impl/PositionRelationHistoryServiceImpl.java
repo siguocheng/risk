@@ -61,10 +61,10 @@ public class PositionRelationHistoryServiceImpl extends ServiceImpl<PositionRela
 
         queryWrapper.ge(portfolioOverviewBo.getStartDate() != null, 
                 PositionRelationHistory::getDailyDate, 
-                DateUtil.localDateToString(portfolioOverviewBo.getStartDate()))
+                portfolioOverviewBo.getStartDate())
                 .le(portfolioOverviewBo.getEndDate() != null, 
                 PositionRelationHistory::getDailyDate, 
-                DateUtil.localDateToString(portfolioOverviewBo.getEndDate()));
+                portfolioOverviewBo.getEndDate());
 
         if (!CollectionUtils.isEmpty(portfolioOverviewBo.getAccountCodes())) {
             queryWrapper.in(PositionRelationHistory::getAccountCode, portfolioOverviewBo.getAccountCodes());

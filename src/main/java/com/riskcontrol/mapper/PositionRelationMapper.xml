@@ -31,7 +31,8 @@
             c.multiplier,
             c.sec_type,
             pr.unrealized_pnl,
-            pr.realized_pnl
+            pr.realized_pnl,
+            pr.commission_and_fees
         FROM
             trader t
         LEFT JOIN position_relation pr ON t.trader_name = pr.trader_name

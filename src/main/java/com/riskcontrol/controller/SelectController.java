@@ -5,6 +5,7 @@ import com.riskcontrol.common.ResultBean;
 import com.riskcontrol.domain.*;
 import com.riskcontrol.domain.bo.AccountCodeBo;
 import com.riskcontrol.domain.vo.AccountSelectVo;
+import com.riskcontrol.domain.vo.ContractQuery;
 import com.riskcontrol.domain.vo.ReferenceIndexQuery;
 import com.riskcontrol.domain.vo.TraderSelectVo;
 import com.riskcontrol.domain.vo.investmentstrategy.InvestmentStrategySelectQuery;
@@ -20,6 +21,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
@@ -168,6 +170,12 @@ public class SelectController {
     @Resource
     IContractMarketService contractMarketService;
 
+    @Resource
+    IContractService contractService;
+
+    @Resource
+    IContractSectorService contractSectorService;
+
     @Operation(summary = "取得对标指数")
     @PostMapping("/pc/reference-index")
     public ResultBean<List<SelectVo>> referenceIndex(@RequestBody ReferenceIndexQuery query) {
@@ -180,6 +188,49 @@ public class SelectController {
             SelectVo data = new SelectVo();
             data.setLabel(contractMarket.getSymbol());
             data.setValue(contractMarket.getConid() + "");
+            result.add(data);
+        }
+
+        return new ResultBean<>(result);
+    }
+
+    @Operation(summary = "取得合约")
+    @PostMapping("/pc/contract")
+    public ResultBean<List<SelectVo>> getContractList(@RequestBody ContractQuery query) {
+        LambdaQueryWrapper<Contract> queryWrapper = new LambdaQueryWrapper<>();
+        if (StringUtils.isNotEmpty(query.getSymbol())) {
+            queryWrapper.like(Contract::getSymbol, query.getSymbol());
+        }
+        queryWrapper.orderByAsc(Contract::getId);
+
+        List<Contract> list = contractService.list(queryWrapper);
+
+        List<SelectVo> result = new ArrayList<>();
+        for (Contract contract : list) {
+            SelectVo data = new SelectVo();
+            data.setLabel(contract.getSymbol());
+            data.setValue(contract.getConid() + "");
+            result.add(data);
+        }
+
+        return new ResultBean<>(result);
+    }
+
+    @Operation(summary = "取得行业板块")
+    @PostMapping("/pc/contract-sector")
+    public ResultBean<List<SelectVo>> getContractSectorList() {
+        LambdaQueryWrapper<ContractSector> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.in(ContractSector::getType, 1);
+        queryWrapper.select(ContractSector::getSector).groupBy(ContractSector::getSector);
+        List<ContractSector> list = contractSectorService.list(queryWrapper);
+
+        list = list.stream().filter(data -> data != null && StringUtils.isNotEmpty(data.getSector())).distinct().collect(Collectors.toList());
+
+        List<SelectVo> result = new ArrayList<>();
+        for (ContractSector contractSector : list) {
+            SelectVo data = new SelectVo();
+            data.setLabel(contractSector.getSector());
+            data.setValue(contractSector.getSector());
             result.add(data);
         }
 

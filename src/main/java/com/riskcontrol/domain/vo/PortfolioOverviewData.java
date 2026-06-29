@@ -16,14 +16,14 @@ public class PortfolioOverviewData {
     private List<ChartVo> chartList;
 
     @Schema(description = "增长率")
-    private BigDecimal growthRate;
+    private BigDecimal growthRate = new BigDecimal("0.15");
 
     @Schema(description = "delta增长率")
-    private BigDecimal deltaGrowthRate;
+    private BigDecimal deltaGrowthRate = new BigDecimal("0.20");
 
     @Schema(description = "超额收益率")
-    private BigDecimal excessReturn;
+    private BigDecimal excessReturn = new BigDecimal("0.05");
 
     @Schema(description = "收益额")
-    private BigDecimal profitAmount;
+    private BigDecimal profitAmount = new BigDecimal("9999");;
 }

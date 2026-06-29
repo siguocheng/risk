@@ -7,6 +7,10 @@ import com.riskcontrol.domain.ContractMarketHistory;
 import com.riskcontrol.domain.PositionRelationHistory;
 import com.riskcontrol.domain.bo.PortfolioOverviewBo;
 import com.riskcontrol.domain.vo.*;
+import com.riskcontrol.domain.vo.dashboard.PressureTestVo;
+import com.riskcontrol.domain.vo.dashboard.RiskControlQuery;
+import com.riskcontrol.domain.vo.dashboard.RiskControlVarModule;
+import com.riskcontrol.domain.vo.dashboard.VarVo;
 import com.riskcontrol.enums.SetTypeEnum;
 import com.riskcontrol.service.*;
 import com.riskcontrol.util.DateUtil;
@@ -31,6 +35,7 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
     private final IContractMarketHistoryService contractMarketHistoryService;
 
     private final IContractService contractService;
+
 
     @Override
     public PortfolioOverviewData queryPortfolioOverview(PortfolioOverviewBo portfolioOverviewBo) {
@@ -58,6 +63,7 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
             BigDecimal realizedPnl = BigDecimal.ZERO; // 已实现盈亏
             BigDecimal unrealizedPnl = BigDecimal.ZERO; // 未实现盈亏
             BigDecimal sumCost = BigDecimal.ZERO; // 未实现盈亏
+            BigDecimal sumCommissionAndFees = BigDecimal.ZERO; // 佣金及各项费用
 
             for (PortfolioOverviewDetail portfolioOverviewDetail : details) {
 
@@ -83,10 +89,11 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
 
                 realizedPnl = realizedPnl.add(portfolioOverviewDetail.getRealizedPnl()); // 未实现盈亏
                 unrealizedPnl = unrealizedPnl.add(portfolioOverviewDetail.getUnrealizedPnl()); // 实现盈亏
+                sumCommissionAndFees = sumCommissionAndFees.add(portfolioOverviewDetail.getCommissionAndFees());
             }
 
-            // 现金=投入本金-每一个持仓的总成本价
-            availableFunds = data.getYearCapital().subtract(sumCost);
+            // 现金=投入本金-每一个持仓的总成本价-佣金及各项费用
+            availableFunds = data.getYearCapital().subtract(sumCost).subtract(sumCommissionAndFees);
 
             data.setGrossPositionValue(grossPositionValue);
             data.setDeltaExposure(deltaExposure);
@@ -100,10 +107,9 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
         }
 
         List<Integer> referenceIndexConids = portfolioOverviewBo.getReferenceIndexConids();
-        if (referenceIndexConids == null) {
+        if (referenceIndexConids == null || referenceIndexConids.size() == 0) {
             referenceIndexConids = new ArrayList<>();
             referenceIndexConids.add(719582);
-            referenceIndexConids.add(4970027);
         }
 
         portfolioOverviewBo.setReferenceIndexConids(referenceIndexConids);
@@ -232,6 +238,51 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
         viewData.setChartList(chartList);
         viewData.setPortfolioOverviewList(portfolioOverviewList);
         return viewData;
+    }
+
+    @Override
+    public RiskControlVarModule queryVar(RiskControlQuery query) {
+
+        RiskControlVarModule result = new RiskControlVarModule();
+
+        result.setVix(this.getLastVix());
+        VarVo var = new VarVo ();
+        var.setAmount(new BigDecimal("666.66"));
+        var.setConfidence(0.99);
+        var.setDay(3);
+        var.setTotalAssetRatio(new BigDecimal("0.032"));
+
+        PressureTestVo pressureTestVo1 = new PressureTestVo();
+        pressureTestVo1.setScene("2020格斯场景");
+        pressureTestVo1.setAmount(new BigDecimal("92000000"));
+
+        PressureTestVo pressureTestVo2 = new PressureTestVo();
+        pressureTestVo2.setScene("加息暴跌场景");
+        pressureTestVo2.setAmount(new BigDecimal("75000000"));
+
+        List<PressureTestVo> pressureTestVo = new ArrayList<>();
+        pressureTestVo.add(pressureTestVo1);
+        pressureTestVo.add(pressureTestVo2);
+
+
+        result.setVar(var);
+        result.setEs(new BigDecimal("7777"));
+        result.setMaxDrawdown(new BigDecimal("0.187"));
+        result.setIv(new BigDecimal("0.243"));
+        result.setMarginRatio(new BigDecimal("0.78"));
+
+        return result;
+    }
+
+    private BigDecimal getLastVix(){
+        LambdaQueryWrapper<ContractMarketHistory> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(ContractMarketHistory::getConid, 34426421);
+        queryWrapper.orderByDesc(ContractMarketHistory::getDailyDate);
+        queryWrapper.last("LIMIT 1");
+
+        ContractMarketHistory contractMarketHistory = contractMarketHistoryService.getOne(queryWrapper);
+        BigDecimal vixPriceClose = contractMarketHistory != null ? contractMarketHistory.getPriceClose() : BigDecimal.ZERO;
+        return vixPriceClose;
     }
 
     private BigDecimal calDelta(PortfolioOverviewDetail portfolioOverviewDetail){

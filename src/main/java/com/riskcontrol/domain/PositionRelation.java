@@ -50,4 +50,8 @@ public class PositionRelation extends BaseEntity implements Serializable {
     @Schema(description = "已实现盈亏")
     @TableField(value = "realized_pnl")
     private BigDecimal realizedPnl;
+
+    @Schema(description = "佣金及各项费用")
+    @TableField(value = "commission_and_fees")
+    private BigDecimal commissionAndFees;
 }

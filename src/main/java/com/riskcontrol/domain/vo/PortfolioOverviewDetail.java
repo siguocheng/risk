@@ -28,4 +28,6 @@ public class PortfolioOverviewDetail {
 
     @Schema(description = "未实现盈亏")
     private BigDecimal unrealizedPnl;
+
+    private BigDecimal commissionAndFees;
 }

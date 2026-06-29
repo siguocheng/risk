@@ -42,12 +42,12 @@ public class PortfolioOverviewVo {
     private BigDecimal pnl;
 
     @Schema(description = "增长率")
-    private BigDecimal growthRate;
+    private BigDecimal growthRate = new BigDecimal("0.5");
 
     @Schema(description = "delta增长率")
-    private BigDecimal deltaGrowthRate;
+    private BigDecimal deltaGrowthRate = new BigDecimal("0.6");;
 
     @Schema(description = "超额收益率")
-    private BigDecimal excessReturn;
+    private BigDecimal excessReturn = new BigDecimal("0.7");;
 
 }

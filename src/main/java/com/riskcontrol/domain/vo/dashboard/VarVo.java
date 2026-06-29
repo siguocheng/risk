@@ -17,5 +17,8 @@ public class VarVo {
     @Schema(description = "金额")
     private BigDecimal amount;
 
+    @Schema(description = "总资产占比")
+    private BigDecimal totalAssetRatio;
+
 
 }
