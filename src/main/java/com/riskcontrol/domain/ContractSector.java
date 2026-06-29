@@ -7,14 +7,13 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
+import java.util.HashMap;
+import java.util.Map;
+
 @Data
 @TableName("contract_sector")
 @Schema(description = "股票合约板块信息表")
 public class ContractSector extends BaseEntity {
-
-    @TableId(value = "id", type = IdType.AUTO)
-    @Schema(description = "自增主键")
-    private Integer id;
 
     @TableField("conid")
     @Schema(description = "IB合约ID")
@@ -28,23 +27,17 @@ public class ContractSector extends BaseEntity {
     @Schema(description = "行业板块")
     private String sector;
 
-    @TableField("deleted")
-    @Schema(description = "删除标识")
-    private Integer deleted;
+    @TableField("sector_value")
+    @Schema(description = "行业板块中文")
+    private String sectorValue;
 
-    @TableField("create_id")
-    @Schema(description = "创建人")
-    private Long createId;
+    public static Map<String,String> sectorMap = new HashMap<>();
 
-    @TableField("create_time")
-    @Schema(description = "创建时间")
-    private java.time.LocalDateTime createTime;
+    static {
+        sectorMap.put("Technology", "信息技术(科技)");
+        sectorMap.put("Indices", "指数");
+        sectorMap.put("Consumer", "消费");
 
-    @TableField("modified_id")
-    @Schema(description = "更新人")
-    private Long modifiedId;
+    }
 
-    @TableField("modified_time")
-    @Schema(description = "更新时间")
-    private java.time.LocalDateTime modifiedTime;
 }

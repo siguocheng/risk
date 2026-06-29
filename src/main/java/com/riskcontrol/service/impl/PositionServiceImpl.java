@@ -69,10 +69,10 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
         if (operateType == 1) {
             position = this.getById(request.getId());
 
-            avgPln = position.getUnrealizedPnl().divide(position.getPositionQty(), 2, RoundingMode.HALF_UP);
+            avgPln = position.getUnrealizedPnl().divide(position.getPositionQty(), 4, RoundingMode.DOWN);
         } else if (operateType == 2) {
             PositionExecution positionExecution = positionExecutionService.getById(request.getId());
-            avgPln = positionExecution.getRealizedPnl().divide(positionExecution.getShares(), 2, RoundingMode.HALF_UP);
+            avgPln = positionExecution.getRealizedPnl().divide(positionExecution.getShares(), 2, RoundingMode.DOWN);
         }
 
         for (PositionAllocateItem detail : request.getDetails()) {

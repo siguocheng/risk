@@ -60,5 +60,9 @@ public class IbReconnectTaskTest {
         // ibReconnectTask.synAllOrders();
     }
 
+    @Test
+    public void synContractDetails() throws ExecutionException, InterruptedException, TimeoutException {
+        ibReconnectTask.synContractDetails();
+    }
 
 }

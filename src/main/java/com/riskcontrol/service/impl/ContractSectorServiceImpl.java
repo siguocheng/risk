@@ -25,6 +25,7 @@ public class ContractSectorServiceImpl extends ServiceImpl<ContractSectorMapper,
     public boolean saveOrUpdateByConid(ContractSector contractSector) {
         LambdaQueryWrapper<ContractSector> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(ContractSector::getConid, contractSector.getConid());
+        queryWrapper.eq(ContractSector::getType, contractSector.getType());
 
         long count = this.count(queryWrapper);
         if (count > 0) {

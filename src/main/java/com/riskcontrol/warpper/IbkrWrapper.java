@@ -10,6 +10,7 @@ import com.riskcontrol.dao.IbOrderMapper;
 import com.riskcontrol.domain.ContractOption;
 import com.riskcontrol.domain.IbOrder;
 import com.riskcontrol.domain.vo.CommissionAndFeesReportCallbackVo;
+import com.riskcontrol.domain.vo.ContractDetailsCallbackVo;
 import com.riskcontrol.domain.vo.ExecutionCallbackVo;
 import com.riskcontrol.domain.vo.ibkr.*;
 import com.riskcontrol.service.IContractOptionService;
@@ -245,10 +246,14 @@ public class IbkrWrapper implements EWrapper {
         printCurrentMethod();
     }
 
+
+    public final Map<Object, Object> dataMap = new ConcurrentHashMap<>();
     @Override
     public void contractDetails(int reqId, ContractDetails contractDetails) {
         printCurrentMethod();
-        System.out.println(JSONObject.toJSONString(contractDetails));
+
+        ContractDetailsCallbackVo contractDetailsCallbackVo = new ContractDetailsCallbackVo(contractDetails);
+        dataMap.put(reqId, contractDetailsCallbackVo);
     }
 
     @Override
@@ -259,6 +264,11 @@ public class IbkrWrapper implements EWrapper {
     @Override
     public void contractDetailsEnd(int reqId) {
         printCurrentMethod();
+        CompletableFuture<Object> future = ibkrSynConfig.FUTURE_MAP.remove(reqId);
+        Object data = dataMap.remove(reqId);
+        if(future != null){
+            future.complete(data);
+        }
     }
 
     public final Map<Object, List<Object>> listDataMap = new ConcurrentHashMap<>();

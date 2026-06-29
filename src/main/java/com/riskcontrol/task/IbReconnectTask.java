@@ -10,6 +10,7 @@ import com.riskcontrol.constant.AccountKey;
 import com.riskcontrol.constant.ReqIdConstant;
 import com.riskcontrol.domain.*;
 import com.riskcontrol.domain.vo.CommissionAndFeesReportCallbackVo;
+import com.riskcontrol.domain.vo.ContractDetailsCallbackVo;
 import com.riskcontrol.domain.vo.ExecutionCallbackVo;
 import com.riskcontrol.domain.vo.ibkr.*;
 import com.riskcontrol.service.*;
@@ -93,6 +94,9 @@ public class IbReconnectTask {
 
     @Resource
     IContractService contractService;
+
+    @Resource
+    IContractSectorService contractSectorService;
 
     // 30秒检测一次连接状态
     @Scheduled(fixedDelay = 30000)
@@ -485,7 +489,7 @@ public class IbReconnectTask {
         for (Position position : positionService.list(queryWrapper)) {
             double marketValue = position.getMarketValue().doubleValue();// 市值
             int conid = position.getConid();
-            System.out.printf("conid:" + conid);
+            System.out.printf("conid:" + conid + " :" );
             // 取得日价格
             double[] prices = contractMarketHistoryService.queryContractMarketPriceCloseByConid(conid);
             // 95% var
@@ -814,29 +818,57 @@ public class IbReconnectTask {
     }
 
     public void synContractDetails() throws ExecutionException, InterruptedException, TimeoutException {
+        int reqId = ReqIdConstant.reqContractDetailsReqId;
+
         LambdaQueryWrapper<ContractMarket> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.ne(ContractMarket::getSecType, "OPT"); // 排除期权
+        queryWrapper.ne(ContractMarket::getSecType, "BOND"); // 排除期权
         queryWrapper.orderByAsc(ContractMarket::getId);
         List<ContractMarket> list = contractMarketService.list(queryWrapper);
 
         for (ContractMarket contractMarket : list) {
 
-            com.ib.client.Contract ibContract = new com.ib.client.Contract();
-            int conid = contractMarket.getConid();
+            try {
+                com.ib.client.Contract ibContract = new com.ib.client.Contract();
+                int conid = contractMarket.getConid();
 //            ibContract.conid(conid);
-            ibContract.symbol(contractMarket.getSymbol());
-            ibContract.exchange(contractMarket.getExchange());
-            ibContract.secType(contractMarket.getSecType());
-            ibContract.currency(contractMarket.getCurrency());
-            ibContract.localSymbol(contractMarket.getLocalSymbol());
-            CompletableFuture<Object> future = new CompletableFuture<>();
-            ibkrSynConfig.FUTURE_MAP.put(ReqIdConstant.HistoricalDataReqId, future);
+                ibContract.symbol(contractMarket.getSymbol());
+                ibContract.exchange(contractMarket.getExchange());
+                ibContract.secType(contractMarket.getSecType());
+                ibContract.currency(contractMarket.getCurrency());
+                ibContract.localSymbol(contractMarket.getLocalSymbol());
+                CompletableFuture<Object> future = new CompletableFuture<>();
+                ibkrSynConfig.FUTURE_MAP.put(reqId, future);
 
-            // contractDetails
-            m_client.reqContractDetails(ReqIdConstant.reqContractDetailsReqId, ibContract);
-            Object obj = future.get(60 * 1000, TimeUnit.MILLISECONDS);
+                // contractDetails
+                m_client.reqContractDetails(reqId, ibContract);
+                Object obj = future.get(60 * 1000, TimeUnit.MILLISECONDS);
 
-            m_client.cancelHistogramData(conid);
+                ContractDetailsCallbackVo detail = (ContractDetailsCallbackVo)obj;
+
+                ContractSector contractSector1 = new ContractSector();
+                contractSector1.setConid(detail.getConid());
+                contractSector1.setType(1);
+                contractSector1.setSector(detail.getIndustry());
+                contractSector1.setSectorValue(ContractSector.sectorMap.get(detail.getIndustry()));
+
+                ContractSector contractSector2 = new ContractSector();
+                contractSector2.setConid(detail.getConid());
+                contractSector2.setType(2);
+                contractSector2.setSector(detail.getCategory());
+
+                ContractSector contractSector3 = new ContractSector();
+                contractSector3.setConid(detail.getConid());
+                contractSector3.setType(3);
+                contractSector3.setSector(detail.getSubcategory());
+
+                contractSectorService.saveOrUpdateByConid(contractSector1);
+                contractSectorService.saveOrUpdateByConid(contractSector2);
+                contractSectorService.saveOrUpdateByConid(contractSector3);
+            } catch (Exception e) {
+                log.error("合约：{}", JSONObject.toJSONString(contractMarket), e);
+            }
+
         }
 
 
