@@ -22,4 +22,17 @@
         id, daily_date, account_code, conid, strategy_name, trader_name, position_qty, 
         unrealized_pnl, realized_pnl, deleted, create_id, create_time, modified_id, modified_time
     </sql>
+
+    <select id="sumPnlByDate" resultType="com.riskcontrol.domain.PositionRelationHistory">
+        SELECT
+            daily_date,
+            sum(realized_pnl) realized_pnl,
+            sum(unrealized_pnl) unrealized_pnl
+        FROM
+            position_relation_history
+        WHERE daily_date between #{startDate} and #{endDate}
+        GROUP BY
+            daily_date
+        ORDER BY daily_date
+    </select>
 </mapper>

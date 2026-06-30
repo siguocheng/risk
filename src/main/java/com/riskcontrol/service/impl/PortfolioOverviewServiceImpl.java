@@ -1,6 +1,7 @@
 package com.riskcontrol.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.riskcontrol.dao.PositionRelationHistoryMapper;
 import com.riskcontrol.dao.PositionRelationMapper;
 import com.riskcontrol.domain.Contract;
 import com.riskcontrol.domain.ContractMarketHistory;
@@ -18,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -32,6 +34,8 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
 
     private final IPositionRelationHistoryService positionRelationHistoryService;
 
+    private final PositionRelationHistoryMapper positionRelationHistoryMapper;
+
     private final IContractMarketHistoryService contractMarketHistoryService;
 
     private final IContractService contractService;
@@ -40,7 +44,70 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
     @Override
     public PortfolioOverviewData queryPortfolioOverview(PortfolioOverviewBo portfolioOverviewBo) {
 
+        // 整合图表的信息
+        List<ChartVo> chartList = this.getChartList(portfolioOverviewBo);
+        if (chartList.size() > 0) {
+            BigDecimal firstValue = chartList.get(0).getBenchmarks().get(0).getValue1();
+            BigDecimal lastValue = chartList.get(chartList.size() - 1).getBenchmarks().get(0).getValue1();
+
+            // 指数收益率
+            BigDecimal rate = lastValue.subtract(firstValue).divide(firstValue, 2, RoundingMode.HALF_UP);
+
+            portfolioOverviewBo.setReferenceIndexRate(rate);
+        }
+
+        // 整合列表数据
+        List<PortfolioOverviewVo> portfolioOverviewList = this.getPortfolioOverviewList(portfolioOverviewBo);
+
         PortfolioOverviewData viewData = new PortfolioOverviewData();
+        viewData.setChartList(chartList);
+        viewData.setPortfolioOverviewList(portfolioOverviewList);
+        return viewData;
+    }
+
+    private List<ChartVo> getChartList(PortfolioOverviewBo portfolioOverviewBo){
+        // 取得账号的历史收益
+        List<DailyProfitVo> dailyProfitList = this.getDailyProfitList(portfolioOverviewBo);
+
+        // 取得指数的历史收益情况
+        Map<String, List<DailyReturnRateVo>> dailyReturnRateMap = this.getReferenceIndexDailyHistory(portfolioOverviewBo);
+
+        List<ChartVo> chartList = new ArrayList<>();
+        for (DailyProfitVo dailyProfitVo : dailyProfitList) {
+
+            String dailyDate = dailyProfitVo.getDailyDate();
+
+            List<DailyReturnRateVo> contractMarketHistories = dailyReturnRateMap.get(dailyDate);
+
+            // 市场数据没有，就不计算收益
+            if (contractMarketHistories == null) {
+                continue;
+            }
+            ChartVo chartVo = new ChartVo();
+
+            chartVo.setDate(dailyDate);
+            chartVo.setNav(dailyProfitVo.getTotalPnl());
+            chartVo.setPortReturn(dailyProfitVo.getTotalPnlRate());
+
+            List<Benchmark> benchmarks = new ArrayList<>();
+            for (DailyReturnRateVo dailyReturnRateVo : contractMarketHistories) {
+                Benchmark benchmark = new Benchmark();
+                benchmark.setKey(dailyReturnRateVo.getSymbol());
+                benchmark.setName(dailyReturnRateVo.getSymbol());
+                benchmark.setValue(dailyReturnRateVo.getDailyReturnRate());
+                benchmark.setValue1(dailyReturnRateVo.getPriceClose());
+//                benchmark.setValue(dailyReturnRateVo.getPriceClose());
+
+                benchmarks.add(benchmark);
+            }
+            chartVo.setBenchmarks(benchmarks);
+
+            chartList.add(chartVo);
+        }
+        return chartList;
+    }
+
+    private List<PortfolioOverviewVo> getPortfolioOverviewList(PortfolioOverviewBo portfolioOverviewBo){
 
         List<PortfolioOverviewVo> portfolioOverviewList = new ArrayList<>();
 
@@ -54,7 +121,8 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
             List<PortfolioOverviewDetail> details = portfolioOverviewDetailMap.get(s);
             PortfolioOverviewVo data = new PortfolioOverviewVo();
             data.setTraderName(s); // 交易员
-            data.setYearCapital(details.get(0).getCapital());
+            BigDecimal yearCapital = details.get(0).getCapital();
+            data.setYearCapital(yearCapital);
 
 
             BigDecimal grossPositionValue = BigDecimal.ZERO; // 总市值
@@ -62,8 +130,8 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
             BigDecimal availableFunds = BigDecimal.ZERO; // 现金
             BigDecimal realizedPnl = BigDecimal.ZERO; // 已实现盈亏
             BigDecimal unrealizedPnl = BigDecimal.ZERO; // 未实现盈亏
-            BigDecimal sumCost = BigDecimal.ZERO; // 未实现盈亏
-            BigDecimal sumCommissionAndFees = BigDecimal.ZERO; // 佣金及各项费用
+            BigDecimal sumPositionCost = BigDecimal.ZERO; // 总持仓成本
+            BigDecimal sumCost = BigDecimal.ZERO; // 佣金及各项费用
 
             for (PortfolioOverviewDetail portfolioOverviewDetail : details) {
 
@@ -85,15 +153,15 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
                 // 单一资成本
                 BigDecimal singleCost = portfolioOverviewDetail.getAvgCost().multiply(portfolioOverviewDetail.getPositionQty());
                 // 总成本
-                sumCost = sumCost.add(singleCost);
+                sumPositionCost = sumPositionCost.add(singleCost);
 
                 realizedPnl = realizedPnl.add(portfolioOverviewDetail.getRealizedPnl()); // 未实现盈亏
                 unrealizedPnl = unrealizedPnl.add(portfolioOverviewDetail.getUnrealizedPnl()); // 实现盈亏
-                sumCommissionAndFees = sumCommissionAndFees.add(portfolioOverviewDetail.getCommissionAndFees());
+                sumCost = sumCost.add(portfolioOverviewDetail.getCommissionAndFees());
             }
 
             // 现金=投入本金-每一个持仓的总成本价-佣金及各项费用
-            availableFunds = data.getYearCapital().subtract(sumCost).subtract(sumCommissionAndFees);
+            availableFunds = data.getYearCapital().subtract(sumPositionCost);
 
             data.setGrossPositionValue(grossPositionValue);
             data.setDeltaExposure(deltaExposure);
@@ -102,24 +170,68 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
             data.setRealizedPnl(realizedPnl);
             data.setUnrealizedPnl(unrealizedPnl);
             data.setPnl(data.getRealizedPnl().add(data.getUnrealizedPnl()));
+            data.setCost(sumCost);
+            data.setGrowthRate(grossPositionValue.subtract(yearCapital).divide(yearCapital, 2, RoundingMode.HALF_UP));
+            data.setDeltaGrowthRate(deltaExposure.subtract(yearCapital).divide(yearCapital, 2, RoundingMode.HALF_UP));
+            data.setExcessReturn(portfolioOverviewBo.getReferenceIndexRate().subtract(data.getGrowthRate()));
 
             portfolioOverviewList.add(data);
         }
+        return portfolioOverviewList;
+    }
 
+    private List<DailyProfitVo> getDailyProfitList(PortfolioOverviewBo portfolioOverviewBo){
+        // 取得持仓历史收益情况
+        List<PositionRelationHistory> positionRelationHistories = positionRelationHistoryMapper.sumPnlByDate(portfolioOverviewBo.getStartDate(), portfolioOverviewBo.getEndDate());
+
+        // 按日期分组，计算每天的综合收益
+//        Map<String, List<PositionRelationHistory>> historyMap = positionRelationHistories.stream()
+//                .collect(Collectors.groupingBy(PositionRelationHistory::getDailyDate));
+
+        List<DailyProfitVo> dailyProfitList = new ArrayList<>();
+
+        DailyProfitVo previousHistory = null;
+        for (PositionRelationHistory positionRelationHistory : positionRelationHistories) {
+            BigDecimal unrealizedPnl = positionRelationHistory.getUnrealizedPnl();
+            BigDecimal realizedPnl = positionRelationHistory.getRealizedPnl();
+
+            DailyProfitVo dailyProfitVo = new DailyProfitVo();
+            dailyProfitVo.setDailyDate(positionRelationHistory.getDailyDate());
+            dailyProfitVo.setUnrealizedPnl(unrealizedPnl);
+            dailyProfitVo.setRealizedPnl(realizedPnl);
+            dailyProfitVo.setTotalPnl(unrealizedPnl.add(realizedPnl));
+
+            dailyProfitList.add(dailyProfitVo);
+            // 计算日收益率 = (当日收盘价 - 前一日收盘价) / 前一日收盘价
+            if (previousHistory != null && previousHistory.getTotalPnl() != null
+                    && dailyProfitVo.getTotalPnl() != null
+                    && previousHistory.getTotalPnl().compareTo(BigDecimal.ZERO) != 0) {
+                BigDecimal dailyReturnRate = dailyProfitVo.getTotalPnl()
+                        .subtract(previousHistory.getTotalPnl())
+                        .divide(previousHistory.getTotalPnl(), 2, BigDecimal.ROUND_HALF_UP);
+
+                dailyProfitVo.setTotalPnlRate(dailyReturnRate);
+            } else {
+                dailyProfitVo.setTotalPnlRate(BigDecimal.ZERO);
+            }
+            previousHistory = dailyProfitVo;
+        }
+
+        // 按日期排序
+        dailyProfitList.sort((a, b) -> a.getDailyDate().compareTo(b.getDailyDate()));
+        return dailyProfitList;
+    }
+
+    private Map<String, List<DailyReturnRateVo>> getReferenceIndexDailyHistory(PortfolioOverviewBo portfolioOverviewBo){
+        // 对标指数，默认是SPX
         List<Integer> referenceIndexConids = portfolioOverviewBo.getReferenceIndexConids();
         if (referenceIndexConids == null || referenceIndexConids.size() == 0) {
             referenceIndexConids = new ArrayList<>();
             referenceIndexConids.add(719582);
         }
-
         portfolioOverviewBo.setReferenceIndexConids(referenceIndexConids);
-
-        LambdaQueryWrapper<ContractMarketHistory> queryWrapperMarket = new LambdaQueryWrapper<>();
-        queryWrapperMarket.in(ContractMarketHistory::getConid, referenceIndexConids);
-        queryWrapperMarket.ge(ContractMarketHistory::getDailyDate, portfolioOverviewBo.getStartDate());
-        queryWrapperMarket.le(ContractMarketHistory::getDailyDate, portfolioOverviewBo.getEndDate());
-
-        List<ContractMarketHistory> list = contractMarketHistoryService.list(queryWrapperMarket);
+        // 取得对标指数的历史数据
+        List<ContractMarketHistory> list = contractMarketHistoryService.listContractMarketHistoryByConidAndDate(referenceIndexConids, portfolioOverviewBo.getStartDate(), portfolioOverviewBo.getEndDate());
 
         // 按conid分组
         Map<Integer, List<ContractMarketHistory>> conidHistoryMap = list.stream()
@@ -144,12 +256,12 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
                 vo.setPriceClose(history.getPriceClose());
 
                 // 计算日收益率 = (当日收盘价 - 前一日收盘价) / 前一日收盘价
-                if (previousHistory != null && previousHistory.getPriceClose() != null 
-                        && history.getPriceClose() != null 
+                if (previousHistory != null && previousHistory.getPriceClose() != null
+                        && history.getPriceClose() != null
                         && previousHistory.getPriceClose().compareTo(BigDecimal.ZERO) != 0) {
                     BigDecimal dailyReturnRate = history.getPriceClose()
                             .subtract(previousHistory.getPriceClose())
-                            .divide(previousHistory.getPriceClose(), 8, BigDecimal.ROUND_HALF_UP);
+                            .divide(previousHistory.getPriceClose(), 4, BigDecimal.ROUND_HALF_UP);
 
                     BigDecimal dailyReturn = history.getPriceClose().subtract(previousHistory.getPriceClose());
                     vo.setDailyReturnRate(dailyReturnRate);
@@ -168,76 +280,7 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
         Map<String, List<DailyReturnRateVo>> dailyReturnRateMap = dailyReturnRateList.stream()
                 .collect(Collectors.groupingBy(DailyReturnRateVo::getDailyDate));
 
-        // 取得历史收益情况
-        List<PositionRelationHistory> positionRelationHistories = positionRelationHistoryService.listByDateRange(portfolioOverviewBo);
-
-        // 按日期分组，计算每天的综合收益
-        Map<String, List<PositionRelationHistory>> historyMap = positionRelationHistories.stream()
-                .collect(Collectors.groupingBy(PositionRelationHistory::getDailyDate));
-
-        List<DailyProfitVo> dailyProfitList = new ArrayList<>();
-
-        for (String dailyDate : historyMap.keySet()) {
-            List<PositionRelationHistory> histories = historyMap.get(dailyDate);
-
-            BigDecimal totalUnrealizedPnl = BigDecimal.ZERO;
-            BigDecimal totalRealizedPnl = BigDecimal.ZERO;
-
-            for (PositionRelationHistory history : histories) {
-                if (history.getUnrealizedPnl() != null) {
-                    totalUnrealizedPnl = totalUnrealizedPnl.add(history.getUnrealizedPnl());
-                }
-                if (history.getRealizedPnl() != null) {
-                    totalRealizedPnl = totalRealizedPnl.add(history.getRealizedPnl());
-                }
-            }
-
-            DailyProfitVo dailyProfitVo = new DailyProfitVo();
-            dailyProfitVo.setDailyDate(dailyDate);
-            dailyProfitVo.setUnrealizedPnl(totalUnrealizedPnl);
-            dailyProfitVo.setRealizedPnl(totalRealizedPnl);
-            dailyProfitVo.setTotalPnl(totalUnrealizedPnl.add(totalRealizedPnl));
-
-            dailyProfitList.add(dailyProfitVo);
-        }
-
-        // 按日期排序
-        dailyProfitList.sort((a, b) -> b.getDailyDate().compareTo(a.getDailyDate()));
-
-        List<ChartVo> chartList = new ArrayList<>();
-
-        for (DailyProfitVo dailyProfitVo : dailyProfitList) {
-
-            String dailyDate = dailyProfitVo.getDailyDate();
-
-            List<DailyReturnRateVo> contractMarketHistories = dailyReturnRateMap.get(dailyDate);
-
-            // 市场数据没有，就不计算收益
-            if (contractMarketHistories == null) {
-                continue;
-            }
-            ChartVo chartVo = new ChartVo();
-
-            chartVo.setDate(dailyDate);
-            chartVo.setNav(dailyProfitVo.getTotalPnl());
-
-            List<Benchmark> benchmarks = new ArrayList<>();
-            for (DailyReturnRateVo dailyReturnRateVo : contractMarketHistories) {
-                Benchmark benchmark = new Benchmark();
-                benchmark.setKey(dailyReturnRateVo.getSymbol());
-                benchmark.setName(dailyReturnRateVo.getSymbol());
-                benchmark.setValue(dailyReturnRateVo.getPriceClose());
-
-                benchmarks.add(benchmark);
-            }
-            chartVo.setBenchmarks(benchmarks);
-
-            chartList.add(chartVo);
-        }
-
-        viewData.setChartList(chartList);
-        viewData.setPortfolioOverviewList(portfolioOverviewList);
-        return viewData;
+        return dailyReturnRateMap;
     }
 
     @Override
@@ -287,6 +330,10 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
 
     private BigDecimal calDelta(PortfolioOverviewDetail portfolioOverviewDetail){
         BigDecimal deltaExposure = BigDecimal.ZERO;
+
+        if (portfolioOverviewDetail.getDelta() != null && portfolioOverviewDetail.getMultiplier() != null && portfolioOverviewDetail.getMarketPrice() != null) {
+            deltaExposure = portfolioOverviewDetail.getDelta().multiply(portfolioOverviewDetail.getMultiplier()).multiply(portfolioOverviewDetail.getMarketPrice());
+        }
 
         return deltaExposure;
     }

@@ -17,6 +17,9 @@ public class DailyProfitVo {
     @Schema(description = "已实现盈亏")
     private BigDecimal realizedPnl;
 
-    @Schema(description = "综合收益")
+    @Schema(description = "总收益")
     private BigDecimal totalPnl;
+
+    @Schema(description = "总收益率")
+    private BigDecimal totalPnlRate;
 }

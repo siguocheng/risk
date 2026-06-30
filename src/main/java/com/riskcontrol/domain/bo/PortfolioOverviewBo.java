@@ -5,6 +5,7 @@ import com.riskcontrol.util.DateUtil;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
 import java.util.List;
@@ -34,4 +35,7 @@ public class PortfolioOverviewBo {
 
     @Schema(description = "对标指数conid集合")
     private List<Integer> referenceIndexConids;
+
+    @Schema(description = "指数收益率")
+    private BigDecimal referenceIndexRate = BigDecimal.ZERO;
 }

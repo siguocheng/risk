@@ -3,6 +3,8 @@ package com.riskcontrol.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.riskcontrol.domain.ContractMarketHistory;
 
+import java.util.List;
+
 /**
  * 代码模板Service接口
  *
@@ -13,4 +15,6 @@ public interface IContractMarketHistoryService extends IService<ContractMarketHi
     boolean saveOrUpdateContractMarket(ContractMarketHistory contractMarket);
 
     double[] queryContractMarketPriceCloseByConid(int conid);
+
+    List<ContractMarketHistory> listContractMarketHistoryByConidAndDate(List<Integer> conids, String startDate, String endDate);
 }

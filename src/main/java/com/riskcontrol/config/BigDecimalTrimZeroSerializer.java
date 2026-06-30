@@ -17,7 +17,7 @@ public class BigDecimalTrimZeroSerializer extends JsonSerializer<BigDecimal> {
             return;
         }
         // 去除末尾多余0
-        BigDecimal twoScale = value.setScale(2, RoundingMode.HALF_UP);
+        BigDecimal twoScale = value.setScale(4, RoundingMode.HALF_UP);
 
         BigDecimal trimVal = twoScale.stripTrailingZeros();
         // toPlainString 杜绝科学计数

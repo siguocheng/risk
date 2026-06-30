@@ -78,7 +78,7 @@ public class PositionRelationHistoryServiceImpl extends ServiceImpl<PositionRela
             queryWrapper.in(PositionRelationHistory::getStrategyName, portfolioOverviewBo.getStrategyNames());
         }
 
-        queryWrapper.orderByDesc(PositionRelationHistory::getDailyDate);
+        queryWrapper.orderByAsc(PositionRelationHistory::getDailyDate);
 
         return this.list(queryWrapper);
     }

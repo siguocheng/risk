@@ -60,4 +60,15 @@ public class ContractMarketHistoryServiceImpl extends ServiceImpl<ContractMarket
 
         return doubleArr;
     }
+
+    @Override
+    public List<ContractMarketHistory> listContractMarketHistoryByConidAndDate(List<Integer> conids, String startDate, String endDate) {
+
+        LambdaQueryWrapper<ContractMarketHistory> queryWrapperMarket = new LambdaQueryWrapper<>();
+        queryWrapperMarket.in(ContractMarketHistory::getConid, conids);
+        queryWrapperMarket.ge(ContractMarketHistory::getDailyDate, startDate);
+        queryWrapperMarket.le(ContractMarketHistory::getDailyDate, endDate);
+
+        return this.list(queryWrapperMarket);
+    }
 }

@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 
 @Data
 public class PortfolioOverviewVo {
@@ -42,12 +43,12 @@ public class PortfolioOverviewVo {
     private BigDecimal pnl;
 
     @Schema(description = "增长率")
-    private BigDecimal growthRate = new BigDecimal("0.5");
+    private BigDecimal growthRate;
 
     @Schema(description = "delta增长率")
-    private BigDecimal deltaGrowthRate = new BigDecimal("0.6");;
+    private BigDecimal deltaGrowthRate;;
 
     @Schema(description = "超额收益率")
-    private BigDecimal excessReturn = new BigDecimal("0.7");;
+    private BigDecimal excessReturn;;
 
 }

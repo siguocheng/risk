@@ -90,6 +90,7 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
             if (operateType == 1) {
                 history.setPositionId(request.getId());
                 history.setUnrealizedPnl(avgPln.multiply(allocateQty));
+                history.setCommissionAndFees(BigDecimal.ZERO);
             }
             // 交易分配
             else if (operateType == 2) {
