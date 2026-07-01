@@ -17,9 +17,11 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -53,18 +55,14 @@ public class PositionExecutionServiceImpl extends ServiceImpl<PositionExecutionM
     @Override
     public IPage<PositionExecutionPage> queryPage(PositionExecutionQuery query) {
         Page<PositionExecution> page = new Page<>(query.getPageNum(), query.getPageSize());
-        
+
         LambdaQueryWrapper<PositionExecution> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(query.getOrderId() != null, PositionExecution::getOrderId, query.getOrderId())
-                .eq(query.getClientId() != null, PositionExecution::getClientId, query.getClientId())
-                .eq(StringUtils.hasText(query.getExecId()), PositionExecution::getExecId, query.getExecId())
-                .eq(StringUtils.hasText(query.getAccountCode()), PositionExecution::getAccountCode, query.getAccountCode())
-                .eq(StringUtils.hasText(query.getExchange()), PositionExecution::getExchange, query.getExchange())
-                .eq(StringUtils.hasText(query.getSide()), PositionExecution::getSide, query.getSide())
-                .eq(query.getPermId() != null, PositionExecution::getPermId, query.getPermId())
-                .eq(StringUtils.hasText(query.getModelCode()), PositionExecution::getModelCode, query.getModelCode())
-                .eq(StringUtils.hasText(query.getSubmitter()), PositionExecution::getSubmitter, query.getSubmitter())
-                .orderByDesc(PositionExecution::getCreateTime);
+        if (!CollectionUtils.isEmpty(query.getAccountCodes())) {
+            queryWrapper.eq(PositionExecution::getAccountCode, query.getAccountCodes());
+        }
+        if (!CollectionUtils.isEmpty(query.getConids())) {
+            queryWrapper.eq(PositionExecution::getConid, query.getConids());
+        }
 
         IPage<PositionExecution> entityPage = this.page(page, queryWrapper);
 
@@ -85,6 +83,8 @@ public class PositionExecutionServiceImpl extends ServiceImpl<PositionExecutionM
             if (contract != null) {
                 vo.setSymbol(contract.getSymbol());
             }
+
+            vo.setPositionAllocateDetails(positionAllocateHistoryService.listPositionAllocateHistoryByKey(null, entity.getId()));
 
             return vo;
         });

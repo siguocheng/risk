@@ -14,4 +14,6 @@ import java.util.List;
 public interface IPositionAllocateHistoryService extends IService<PositionAllocateHistory> {
 
     List<PositionAllocateHistory> listPositionAllocateHistoryByKey(Long positionId, Long positionExecutionId);
+
+    void delPositionAllocateHistoryByKey(Long positionId, Long positionExecutionId);
 }

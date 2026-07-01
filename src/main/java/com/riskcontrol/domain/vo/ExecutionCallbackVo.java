@@ -7,6 +7,7 @@ import lombok.Data;
 public class ExecutionCallbackVo {
 
     private int conid;
+    private String symbol;
     private int orderId;
     private int clientId;
     private String execId;
@@ -35,6 +36,7 @@ public class ExecutionCallbackVo {
 
     public ExecutionCallbackVo(Contract contract, Execution execution){
         this.conid = contract.conid();
+        this.symbol = contract.symbol();
         this.orderId = execution.orderId();
         this.orderId = execution.orderId();
         this.clientId = execution.clientId();

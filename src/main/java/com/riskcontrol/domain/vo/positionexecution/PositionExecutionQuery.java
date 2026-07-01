@@ -1,11 +1,16 @@
 package com.riskcontrol.domain.vo.positionexecution;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.riskcontrol.domain.bo.BasePageQuery;
+import com.riskcontrol.util.DateUtil;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.TemporalAdjusters;
+import java.util.List;
 
 /**
  * 成交明细查询条件VO
@@ -17,39 +22,26 @@ import java.time.LocalDateTime;
 @EqualsAndHashCode(callSuper = true)
 public class PositionExecutionQuery extends BasePageQuery {
 
-    @Schema(description = "订单ID")
-    private Integer orderId;
+    @Schema(description = "账户集合")
+    private List<String> accountCodes;
 
-    @Schema(description = "客户ID")
-    private Integer clientId;
+    @Schema(description = "交易员集合")
+    private List<String> tradeNames;
 
-    @Schema(description = "成交ID")
-    private String execId;
+    @Schema(description = "策略集合")
+    private List<String> strategyNames;
 
-    @Schema(description = "账户号")
-    private String accountCode;
+    @Schema(description = "开始时间，默认当年第一天")
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private String startDate = DateUtil.localDateToString(LocalDate.now().with(TemporalAdjusters.firstDayOfMonth()));
 
-    @Schema(description = "交易所")
-    private String exchange;
+    @Schema(description = "结束时间，默认是当天")
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private String endDate = DateUtil.localDateToString(LocalDate.now());
 
-    @Schema(description = "买卖方向")
-    private String side;
+    @Schema(description = "标的")
+    private List<Integer> conids;
 
-    @Schema(description = "全局唯一permId")
-    private Long permId;
-
-    @Schema(description = "模型编码")
-    private String modelCode;
-
-    @Schema(description = "提交人")
-    private String submitter;
-
-    @Schema(description = "分配状态：0未分配 1部分分配 2已分配")
-    private Integer status;
-
-    @Schema(description = "成交时间-开始")
-    private LocalDateTime timeStart;
-
-    @Schema(description = "成交时间-结束")
-    private LocalDateTime timeEnd;
+    @Schema(description = "板框")
+    private List<String> sectors;
 }

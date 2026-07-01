@@ -1,10 +1,12 @@
 package com.riskcontrol.domain.vo.positionexecution;
 
+import com.riskcontrol.domain.PositionAllocateHistory;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 成交明细分页VO
@@ -53,4 +55,7 @@ public class PositionExecutionPage {
 
     @Schema(description = "未分配数量")
     private BigDecimal remainQty;
+
+    @Schema(description = "分配明细")
+    private List<PositionAllocateHistory> positionAllocateDetails;
 }

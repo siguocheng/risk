@@ -44,14 +44,15 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
     @Override
     public PortfolioOverviewData queryPortfolioOverview(PortfolioOverviewBo portfolioOverviewBo) {
 
+        PortfolioOverviewData viewData = new PortfolioOverviewData();
+
         // 整合图表的信息
         List<ChartVo> chartList = this.getChartList(portfolioOverviewBo);
+        BigDecimal rate = BigDecimal.ZERO; // 指数收益率
         if (chartList.size() > 0) {
             BigDecimal firstValue = chartList.get(0).getBenchmarks().get(0).getValue1();
             BigDecimal lastValue = chartList.get(chartList.size() - 1).getBenchmarks().get(0).getValue1();
-
-            // 指数收益率
-            BigDecimal rate = lastValue.subtract(firstValue).divide(firstValue, 2, RoundingMode.HALF_UP);
+            rate = lastValue.subtract(firstValue).divide(firstValue, 2, RoundingMode.HALF_UP);
 
             portfolioOverviewBo.setReferenceIndexRate(rate);
         }
@@ -59,7 +60,20 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
         // 整合列表数据
         List<PortfolioOverviewVo> portfolioOverviewList = this.getPortfolioOverviewList(portfolioOverviewBo);
 
-        PortfolioOverviewData viewData = new PortfolioOverviewData();
+        if (portfolioOverviewList.size() > 0) {
+            BigDecimal profitAmount = BigDecimal.ZERO; // 总的收益额
+            BigDecimal yearCapital = BigDecimal.ZERO; // 总的本金
+            for (PortfolioOverviewVo portfolioOverviewVo : portfolioOverviewList) {
+                profitAmount = profitAmount.add(portfolioOverviewVo.getPnl());
+                yearCapital = yearCapital.add(portfolioOverviewVo.getYearCapital());
+            }
+            BigDecimal growthRate = profitAmount.divide(yearCapital, 4, RoundingMode.HALF_UP); // 增长率
+
+            viewData.setProfitAmount(profitAmount);
+            viewData.setGrowthRate(growthRate);
+            viewData.setExcessReturn(growthRate.subtract(rate));
+        }
+
         viewData.setChartList(chartList);
         viewData.setPortfolioOverviewList(portfolioOverviewList);
         return viewData;
@@ -171,8 +185,8 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
             data.setUnrealizedPnl(unrealizedPnl);
             data.setPnl(data.getRealizedPnl().add(data.getUnrealizedPnl()));
             data.setCost(sumCost);
-            data.setGrowthRate(grossPositionValue.subtract(yearCapital).divide(yearCapital, 2, RoundingMode.HALF_UP));
-            data.setDeltaGrowthRate(deltaExposure.subtract(yearCapital).divide(yearCapital, 2, RoundingMode.HALF_UP));
+            data.setGrowthRate(grossPositionValue.subtract(yearCapital).divide(yearCapital, 4, RoundingMode.HALF_UP));
+            data.setDeltaGrowthRate(deltaExposure.subtract(yearCapital).divide(yearCapital, 4, RoundingMode.HALF_UP));
             data.setExcessReturn(portfolioOverviewBo.getReferenceIndexRate().subtract(data.getGrowthRate()));
 
             portfolioOverviewList.add(data);
@@ -208,7 +222,7 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
                     && previousHistory.getTotalPnl().compareTo(BigDecimal.ZERO) != 0) {
                 BigDecimal dailyReturnRate = dailyProfitVo.getTotalPnl()
                         .subtract(previousHistory.getTotalPnl())
-                        .divide(previousHistory.getTotalPnl(), 2, BigDecimal.ROUND_HALF_UP);
+                        .divide(previousHistory.getTotalPnl(), 4, BigDecimal.ROUND_HALF_UP);
 
                 dailyProfitVo.setTotalPnlRate(dailyReturnRate);
             } else {

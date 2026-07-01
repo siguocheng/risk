@@ -33,13 +33,6 @@ public class PositionController extends BaseController {
 
     private final IPositionService positionService;
 
-    @Operation(summary = "维护持仓分配记录")
-    @PostMapping("/pc/allocate")
-    @ResourceMethod(btnCode = "btn-pc-position-allocate", level = 3)
-    public ResultBean<Boolean> allocatePosition(@RequestBody PositionAllocateRequest request) {
-        return new ResultBean<>(positionService.allocatePosition(request));
-    }
-
     @Operation(summary = "持仓列表分页查询")
     @PostMapping("/pc/query-page")
     @ResourceMethod(btnCode = "btn-pc-position-query-page", level = 3)

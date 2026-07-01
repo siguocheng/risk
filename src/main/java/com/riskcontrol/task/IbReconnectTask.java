@@ -25,12 +25,11 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.text.SimpleDateFormat;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -171,6 +170,8 @@ public class IbReconnectTask {
 
             for (PositionCallbackVo positionCallbackVo : positions) {
 
+                long count = positionService.count();
+
                 // 维护最新持仓
                 Position position = new Position();
                 BeanUtils.copyProperties(positionCallbackVo, position);
@@ -202,6 +203,30 @@ public class IbReconnectTask {
                 // 维护合约市场信息
                 ContractMarket contractMarket = new ContractMarket(ibContract);
                 contractMarketService.saveOrUpdateByConid(contractMarket);
+
+                // 第一次同步持仓，需要将持仓的信息转化为交易的信息，方便后面计算收益和成本
+                if (count  == 0) {
+                    PositionExecution positionExecution = new PositionExecution();
+                    positionExecution.setConid(position.getConid());
+                    positionExecution.setAccountCode(position.getAccountCode());
+                    positionExecution.setOrderId(99);
+                    positionExecution.setTime(DateUtil.localDateTimeToString(LocalDateTime.now()));
+                    positionExecution.setExchange(contract.getExchange());
+                    if (position.getPositionQty().compareTo(BigDecimal.ZERO) == 1) {
+                        positionExecution.setSide("BOT");
+                    } else if (position.getPositionQty().compareTo(BigDecimal.ZERO) == -1){
+                        positionExecution.setSide("SLD");
+                    }
+                    positionExecution.setShares(position.getPositionQty().abs());
+                    positionExecution.setPrice(position.getAvgCost());
+                    positionExecution.setCumQty(position.getPositionQty());
+                    positionExecution.setAvgPrice(position.getAvgCost());
+                    positionExecution.setCommissionAndFees(BigDecimal.ZERO);
+                    positionExecution.setCurrency(contract.getCurrency());
+                    positionExecution.setRealizedPnl(BigDecimal.ZERO);
+                    positionExecutionService.save(positionExecution);
+                }
+
 
                 log.info("synAccount synSinglePnl:{}", accountCode);
                 this.synSinglePnl(accountCode,"" , positionCallbackVo.getConid());
@@ -740,9 +765,21 @@ public class IbReconnectTask {
         int reqId = ReqIdConstant.reqExecutions;
         CompletableFuture<Object> future = ibkrSynConfig.setAndGetCompletableFuture(reqId);
 
+        // 1. 构建2天前美东时间字符串 IB格式 yyyyMMdd HH:mm:ss
+        Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("UTC"));
+        cal.add(Calendar.DAY_OF_YEAR, -7);
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd-HH:mm:ss");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        String filterTime = sdf.format(cal.getTime());
+
+        // 2. 执行过滤器
+        ExecutionFilter filter = new ExecutionFilter();
+//        filter.time(filterTime);
+        filter.lastNDays(2);
+
         // execDetails
         // execDetailsEnd
-        m_client.reqExecutions(reqId, new ExecutionFilter());
+        m_client.reqExecutions(reqId, filter);
 
         Object obj = future.get(ibkrSynConfig.timeout, TimeUnit.MILLISECONDS);
         List<Object> result = (List<Object>) obj;
@@ -771,6 +808,7 @@ public class IbReconnectTask {
 
             // 从ExecutionCallbackVo设置字段
             positionExecution.setConid(execution.getConid());
+            positionExecution.setSymbol(execution.getSymbol());
             positionExecution.setOrderId(execution.getOrderId());
             positionExecution.setClientId(execution.getClientId());
             positionExecution.setExecId(execution.getExecId());

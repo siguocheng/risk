@@ -19,6 +19,10 @@ public class PositionExecution extends BaseEntity {
     @TableField(value = "conid")
     private Integer conid;
 
+    @Schema(description = "股票简称")
+    @TableField(value = "symbol")
+    private String symbol;
+
     @Schema(description = "订单ID orderId")
     @TableField(value = "order_id")
     private Integer orderId;

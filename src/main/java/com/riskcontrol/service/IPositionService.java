@@ -23,7 +23,7 @@ public interface IPositionService extends IService<Position>  {
      * @param request 分配请求
      * @return 是否成功
      */
-    boolean allocatePosition(PositionAllocateRequest request);
+    Boolean allocatePosition(PositionAllocateRequest request);
 
     /**
      * 分页查询持仓列表

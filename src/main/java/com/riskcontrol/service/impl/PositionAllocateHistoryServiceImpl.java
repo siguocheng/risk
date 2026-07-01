@@ -1,6 +1,7 @@
 package com.riskcontrol.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.riskcontrol.dao.PositionAllocateHistoryMapper;
 import com.riskcontrol.domain.PositionAllocateHistory;
@@ -31,5 +32,14 @@ public class PositionAllocateHistoryServiceImpl extends ServiceImpl<PositionAllo
                 .orderByDesc(PositionAllocateHistory::getCreateTime);
 
         return this.list(queryWrapper);
+    }
+
+    @Override
+    public void delPositionAllocateHistoryByKey(Long positionId, Long positionExecutionId) {
+        LambdaUpdateWrapper<PositionAllocateHistory> updateWrapper = new LambdaUpdateWrapper<>();
+        updateWrapper.eq(positionId != null, PositionAllocateHistory::getPositionId, positionId)
+                .eq(positionExecutionId != null, PositionAllocateHistory::getPositionExecutionId, positionExecutionId);
+
+        this.remove(updateWrapper);
     }
 }

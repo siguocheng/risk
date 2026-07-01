@@ -58,7 +58,7 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean allocatePosition(PositionAllocateRequest request) {
+    public Boolean allocatePosition(PositionAllocateRequest request) {
 
         Integer operateType = request.getOperateType(); // 操作类型 1持仓分配 2交易分配
 
@@ -77,10 +77,16 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
             avgCommissionAnFees = positionExecution.getCommissionAndFees().divide(positionExecution.getShares(), 2, RoundingMode.DOWN);
         }
 
+        if (operateType == 1) {
+            positionAllocateHistoryService.delPositionAllocateHistoryByKey(request.getId(), null);
+        } else if (operateType == 2) {
+            positionAllocateHistoryService.delPositionAllocateHistoryByKey(null, request.getId());
+        }
+
         for (PositionAllocateItem detail : request.getDetails()) {
 
+            // 维护分配标
             PositionAllocateHistory history = new PositionAllocateHistory();
-
             BeanUtils.copyProperties(detail, history);
             String strategyName = detail.getStrategyName();
             String traderName = detail.getTraderName();
@@ -132,7 +138,7 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
                 }
                 // 交易分配
                 else if (operateType == 2) {
-                    relation.setRealizedPnl(relation.getRealizedPnl().add(history.getRealizedPnl()));
+//                    relation.setRealizedPnl(relation.getRealizedPnl().add(history.getRealizedPnl()));
                 }
                 relation.setPositionQty(relation.getPositionQty().add(allocateQty));
 

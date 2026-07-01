@@ -1,5 +1,6 @@
 package com.riskcontrol;
 
+import com.alibaba.fastjson2.JSONObject;
 import com.ib.client.Contract;
 import com.ib.client.EClientSocket;
 import com.ib.client.ExecutionFilter;
@@ -191,9 +192,9 @@ public class MethodTest {
 
         int conid = 34426421;
 
-        ibContract.symbol("AAPL");
+        ibContract.symbol("AMD");
         ibContract.secType("STK");
-        ibContract.exchange("NASDAQ");
+        ibContract.exchange("AMEX");
         ibContract.currency("USD");
 
         CompletableFuture<Object> future = new CompletableFuture<>();
@@ -201,6 +202,8 @@ public class MethodTest {
 
         m_client.reqContractDetails(ReqIdConstant.reqContractDetailsReqId, ibContract);
         Object obj = future.get(60 * 1000, TimeUnit.MILLISECONDS);
+
+        System.out.println(JSONObject.toJSONString(obj));
     }
 
 }
