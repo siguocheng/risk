@@ -64,4 +64,44 @@ public class Position extends BaseEntity implements Serializable {
     @Schema(description = "实现盈亏")
     @TableField(value = "realized_pnl")
     private BigDecimal realizedPnl;
+
+    @Schema(description = "日收益")
+    @TableField(value = "daily_pnl")
+    private BigDecimal dailyPnl;
+
+    @Schema(description = "持仓股数")
+    @TableField(value = "cal_position_qty")
+    private BigDecimal calPositionQty;
+
+    @Schema(description = "平均成本价")
+    @TableField(value = "cal_avg_cost")
+    private BigDecimal calAvgCost;
+
+    @Schema(description = "未实现盈亏")
+    @TableField(value = "cal_unrealized_pnl")
+    private BigDecimal calUnrealizedPnl;
+
+    @Schema(description = "实现盈亏")
+    @TableField(value = "cal_realized_pnl")
+    private BigDecimal calRealizedPnl;
+
+    @Schema(description = "计算日未实现收益")
+    @TableField(value = "cal_daily_unrealized_pnl")
+    private BigDecimal calDailyUnrealizedPnl;
+
+    @Schema(description = "计算日已实现收益")
+    @TableField(value = "cal_daily_realized_pnl")
+    private BigDecimal calDailyRealizedPnl;
+
+    @Schema(description = "最后一次交易操作的id")
+    @TableField(value = "position_execution_id")
+    private Long positionExecutionId;
+
+    @Schema(description = "累计佣金及各项费用")
+    @TableField(value = "acc_commission_and_fees")
+    private BigDecimal accCommissionAndFees;
+
+    @Schema(description = "日收益的日期")
+    @TableField(value = "pnl_daily_date")
+    private String pnlDailyDate;
 }

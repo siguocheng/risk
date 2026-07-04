@@ -32,4 +32,6 @@ public interface IPositionService extends IService<Position>  {
      * @return 分页结果
      */
     IPage<PositionPage> queryPage(PositionQuery query);
+
+    Position getPositionByConid(String accountCode, int conid);
 }

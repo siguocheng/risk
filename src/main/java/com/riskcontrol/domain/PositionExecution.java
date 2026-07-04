@@ -1,6 +1,8 @@
 package com.riskcontrol.domain;
 
 import com.baomidou.mybatisplus.annotation.TableField;
+import com.riskcontrol.domain.vo.CommissionAndFeesReportCallbackVo;
+import com.riskcontrol.domain.vo.ExecutionCallbackVo;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -126,4 +128,73 @@ public class PositionExecution extends BaseEntity {
     @Schema(description = "收益兑付日期")
     @TableField(value = "yield_redemption_date")
     private Long yieldRedemptionDate;
+
+    @Schema(description = "日期")
+    @TableField(value = "date")
+    private String date;
+
+    @Schema(description = "剩余数量")
+    @TableField(value = "remain_qty")
+    private BigDecimal remainQty;
+
+    @Schema(description = "入库操作")
+    @TableField(value = "opt_type")
+    private String optType;
+
+    @Schema(description = "市场价格")
+    @TableField(value = "market_price")
+    private BigDecimal marketPrice;
+
+    @Schema(description = "本次交易的未实现收益")
+    @TableField(value = "cal_execution_unrealized_pnl")
+    private BigDecimal calExecutionUnrealizedPnl;
+
+    @Schema(description = "本次交易的已实现收益")
+    @TableField(value = "cal_execution_realized_pnl")
+    private BigDecimal calExecutionRealizedPnl;
+
+    @Schema(description = "核算状态 0未核算 1已核算")
+    @TableField(value = "status")
+    private Integer status;
+
+    public PositionExecution(){
+
+    }
+
+    public PositionExecution(ExecutionCallbackVo execution, CommissionAndFeesReportCallbackVo commissionReport, Position position){
+        this.conid = execution.getConid();
+        this.symbol = execution.getSymbol();
+        this.orderId = execution.getOrderId();
+        this.clientId = execution.getClientId();
+        this.execId = execution.getExecId();
+        this.time = execution.getTime();
+        this.accountCode = execution.getAcctNumber();
+        this.exchange =execution.getExchange();
+        this.side = execution.getSide();
+        this.shares = execution.getShares().value();
+        this.price = BigDecimal.valueOf(execution.getPrice());
+        this.permId = execution.getPermId();
+        this.liquidation = execution.getLiquidation();
+        this.cumQty = execution.getCumQty().value();
+        this.avgPrice = BigDecimal.valueOf(execution.getAvgPrice());
+        this.orderRef = execution.getOrderRef();
+        this.evRule = execution.getEvRule();
+        this.evMultiplier = BigDecimal.valueOf(execution.getEvMultiplier());
+        this.modelCode = execution.getModelCode();
+        this.lastLiquidity = execution.getLastLiquidity() != null ? execution.getLastLiquidity().name() : "";
+        this.pendingPriceRevision = execution.isPendingPriceRevision();
+        this.submitter = execution.getSubmitter();
+        this.optExerciseOrLapseType = execution.getOptExerciseOrLapseType() != null ? execution.getOptExerciseOrLapseType().name() : "";
+        this.date = execution.getTime().substring(0,9);
+        this.marketPrice = position.getMarketPrice();
+        this.status = 0;
+
+        if (commissionReport != null) {
+            this.commissionAndFees = BigDecimal.valueOf(commissionReport.getCommissionAndFees());
+            this.currency = commissionReport.getCurrency();
+            this.realizedPnl = BigDecimal.valueOf(commissionReport.getRealizedPNL());
+            this.yield = BigDecimal.valueOf(commissionReport.getYield());
+            this.yieldRedemptionDate = (long) commissionReport.getYieldRedemptionDate();
+        }
+    }
 }

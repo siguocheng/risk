@@ -13,18 +13,23 @@ import com.riskcontrol.domain.vo.CommissionAndFeesReportCallbackVo;
 import com.riskcontrol.domain.vo.ContractDetailsCallbackVo;
 import com.riskcontrol.domain.vo.ExecutionCallbackVo;
 import com.riskcontrol.domain.vo.ibkr.*;
+import com.riskcontrol.enums.PositionExecutionOptTypeEnum;
+import com.riskcontrol.enums.SetTypeEnum;
+import com.riskcontrol.enums.TradeSideEnum;
 import com.riskcontrol.service.*;
 import com.riskcontrol.util.BigDecimalUtil;
 import com.riskcontrol.util.DateUtil;
 import com.riskcontrol.util.RiskMetricsUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -34,6 +39,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Component
@@ -167,11 +173,9 @@ public class IbReconnectTask {
             // 持仓信息
             List<PositionCallbackVo> positions = (List<PositionCallbackVo>)result.remove("position");
 
+            long count = positionService.count();
 
             for (PositionCallbackVo positionCallbackVo : positions) {
-
-                long count = positionService.count();
-
                 // 维护最新持仓
                 Position position = new Position();
                 BeanUtils.copyProperties(positionCallbackVo, position);
@@ -182,6 +186,21 @@ public class IbReconnectTask {
                 position.setMarketValue(BigDecimal.valueOf(positionCallbackVo.getMarketValue()));
                 position.setRealizedPnl(BigDecimal.valueOf(positionCallbackVo.getRealizedPnl()));
                 position.setConid(positionCallbackVo.getConid());
+                // 只有第一次通过需要维护这几个字段，后面都是根据交易信息来计算得到的
+                if (count == 0) {
+                    position.setCalPositionQty(positionCallbackVo.getPosition());
+                    position.setCalAvgCost(BigDecimal.valueOf(positionCallbackVo.getAvgCost()));
+                    position.setCalUnrealizedPnl(BigDecimal.valueOf(positionCallbackVo.getUnrealizedPnl()));
+                    position.setCalRealizedPnl(BigDecimal.valueOf(positionCallbackVo.getRealizedPnl()));
+                    position.setAccCommissionAndFees(BigDecimal.ZERO);
+                } else {
+                    position.setCalPositionQty(BigDecimal.ZERO);
+                    position.setCalAvgCost(BigDecimal.ZERO);
+                    position.setCalUnrealizedPnl(BigDecimal.ZERO);
+                    position.setCalRealizedPnl(BigDecimal.ZERO);
+                    position.setAccCommissionAndFees(BigDecimal.ZERO);
+                }
+
                 positionService.saveOrUpdatePosition(position);
 
                 // 维护历史持仓情况
@@ -209,27 +228,55 @@ public class IbReconnectTask {
                     PositionExecution positionExecution = new PositionExecution();
                     positionExecution.setConid(position.getConid());
                     positionExecution.setAccountCode(position.getAccountCode());
+                    positionExecution.setSymbol(position.getSymbol());
+                    positionExecution.setClientId(0);
                     positionExecution.setOrderId(99);
                     positionExecution.setTime(DateUtil.localDateTimeToString(LocalDateTime.now()));
                     positionExecution.setExchange(contract.getExchange());
+                    positionExecution.setExecId(UUID.randomUUID().toString());
                     if (position.getPositionQty().compareTo(BigDecimal.ZERO) == 1) {
-                        positionExecution.setSide("BOT");
+                        positionExecution.setSide(TradeSideEnum.BOT.name());
                     } else if (position.getPositionQty().compareTo(BigDecimal.ZERO) == -1){
-                        positionExecution.setSide("SLD");
+                        positionExecution.setSide(TradeSideEnum.SLD.name());
                     }
                     positionExecution.setShares(position.getPositionQty().abs());
-                    positionExecution.setPrice(position.getAvgCost());
+                    positionExecution.setPermId(position.getId());
+
                     positionExecution.setCumQty(position.getPositionQty());
-                    positionExecution.setAvgPrice(position.getAvgCost());
+
                     positionExecution.setCommissionAndFees(BigDecimal.ZERO);
                     positionExecution.setCurrency(contract.getCurrency());
                     positionExecution.setRealizedPnl(BigDecimal.ZERO);
-                    positionExecutionService.save(positionExecution);
+                    positionExecution.setDate(DateUtil.localDateToString(LocalDate.now(), "yyyyMMdd"));
+                    BigDecimal shares = null;
+                    if (TradeSideEnum.SLD.name().equals(positionExecution.getSide())) {
+                        shares = positionExecution.getShares().negate();
+                    } else if (TradeSideEnum.BOT.name().equals(positionExecution.getSide())){
+                        shares = positionExecution.getShares();
+                    }
+                    positionExecution.setRemainQty(shares);
+                    positionExecution.setOptType(PositionExecutionOptTypeEnum.IN.name());
+                    positionExecution.setMarketPrice(position.getMarketPrice()); // 市场价格
+                    // 买入价格
+                    if (SetTypeEnum.OPT.getCode().equals(contract.getSecType()) || SetTypeEnum.FOP.getCode().equals(contract.getSecType())) {
+                        positionExecution.setPrice(position.getAvgCost().divide(new BigDecimal(contract.getMultiplier()), 4, RoundingMode.HALF_UP));
+                        positionExecution.setAvgPrice(positionExecution.getPrice());
+                    } else {
+                        positionExecution.setPrice(position.getAvgCost());
+                        positionExecution.setAvgPrice(position.getAvgCost());
+                    }
+
+                    if (StringUtils.isNotEmpty(positionExecution.getSide())) {
+                        positionExecutionService.save(positionExecution);
+                    }
+
+                    position.setPositionExecutionId(positionExecution.getId());
+                    positionService.updateById(position);
                 }
 
 
                 log.info("synAccount synSinglePnl:{}", accountCode);
-                this.synSinglePnl(accountCode,"" , positionCallbackVo.getConid());
+                this.synSinglePnl(accountCode,"" , positionCallbackVo.getConid(),position);
             }
 
             // 将key中带-P,-S后缀的key移除掉
@@ -262,6 +309,9 @@ public class IbReconnectTask {
             }
 
         }
+
+        // 同步交易信息TODO
+        this.synExecutions();
         log.info("synAccount end");
     }
 
@@ -387,11 +437,12 @@ public class IbReconnectTask {
      * @throws InterruptedException
      * @throws TimeoutException
      */
-    public void synSinglePnl(String accountCode, String modelCode, int conid) throws ExecutionException, InterruptedException, TimeoutException {
+    public void synSinglePnl(String accountCode, String modelCode, int conid, Position position) throws ExecutionException, InterruptedException, TimeoutException {
         int reqId = ReqIdConstant.reqPnLSingleId;
         CompletableFuture<Object> future = new CompletableFuture<>();
         ibkrSynConfig.FUTURE_MAP.put(reqId, future);
         // 最后一个参数是modelCode
+        // pnlSingle
         m_client.reqPnLSingle(reqId, accountCode, modelCode, conid);
 //        Object obj = future.get(ibkrSynConfig.timeout, TimeUnit.MILLISECONDS);
         try{
@@ -408,6 +459,10 @@ public class IbReconnectTask {
             contractDailyPnl.setDailyDate(LocalDate.now());
 
             contractDailyPnlService.saveOrUpdateContractDailyPnl(contractDailyPnl);
+            if (position != null) {
+                position.setDailyPnl(BigDecimalUtil.doubleToDecimal(result.getDailyPnL()));
+                positionService.updateById(position);
+            }
         } catch (Exception e) {
             log.error("账号:{} conid：{},异常",  accountCode, conid, e);
         }
@@ -775,7 +830,7 @@ public class IbReconnectTask {
         // 2. 执行过滤器
         ExecutionFilter filter = new ExecutionFilter();
 //        filter.time(filterTime);
-        filter.lastNDays(2);
+        filter.lastNDays(4);
 
         // execDetails
         // execDetailsEnd
@@ -795,6 +850,11 @@ public class IbReconnectTask {
             }
         }
 
+        executions.sort(Comparator.comparing(ExecutionCallbackVo::getTime));
+
+        executions = executions.stream().filter(data -> data.getTime().compareTo("20260630 10:26:57 US/Eastern") >=0).collect(Collectors.toList());
+
+        log.info(JSONObject.toJSONString(executions));
         // 将commissionAndFeesReports按execId建立索引
         Map<String, CommissionAndFeesReportCallbackVo> commissionMap = new HashMap<>();
         for (CommissionAndFeesReportCallbackVo report : commissionAndFeesReports) {
@@ -804,55 +864,161 @@ public class IbReconnectTask {
         // 合并数据并保存到数据库
         List<PositionExecution> executionList = new ArrayList<>();
         for (ExecutionCallbackVo execution : executions) {
-            PositionExecution positionExecution = new PositionExecution();
+            int conid = execution.getConid();
+            Position position = positionService.getPositionByConid(execution.getAcctNumber(), conid);
 
-            // 从ExecutionCallbackVo设置字段
-            positionExecution.setConid(execution.getConid());
-            positionExecution.setSymbol(execution.getSymbol());
-            positionExecution.setOrderId(execution.getOrderId());
-            positionExecution.setClientId(execution.getClientId());
-            positionExecution.setExecId(execution.getExecId());
-            positionExecution.setTime(execution.getTime());
-            positionExecution.setAccountCode(execution.getAcctNumber());
-            positionExecution.setExchange(execution.getExchange());
-            positionExecution.setSide(execution.getSide());
-            positionExecution.setShares(execution.getShares().value());
-            positionExecution.setPrice(BigDecimal.valueOf(execution.getPrice()));
-            positionExecution.setPermId(execution.getPermId());
-            positionExecution.setLiquidation(execution.getLiquidation());
-            positionExecution.setCumQty(execution.getCumQty().value());
-            positionExecution.setAvgPrice(BigDecimal.valueOf(execution.getAvgPrice()));
-            positionExecution.setOrderRef(execution.getOrderRef());
-            positionExecution.setEvRule(execution.getEvRule());
-            positionExecution.setEvMultiplier(BigDecimal.valueOf(execution.getEvMultiplier()));
-            positionExecution.setModelCode(execution.getModelCode());
-            positionExecution.setLastLiquidity(execution.getLastLiquidity() != null ? execution.getLastLiquidity().name() : "");
-            positionExecution.setPendingPriceRevision(execution.isPendingPriceRevision());
-            positionExecution.setSubmitter(execution.getSubmitter());
-            positionExecution.setOptExerciseOrLapseType(execution.getOptExerciseOrLapseType() != null ? execution.getOptExerciseOrLapseType().name() : "");
-
-            // 从CommissionAndFeesReportCallbackVo合并字段
             CommissionAndFeesReportCallbackVo commissionReport = commissionMap.get(execution.getExecId());
-            if (commissionReport != null) {
-                positionExecution.setCommissionAndFees(BigDecimal.valueOf(commissionReport.getCommissionAndFees()));
-                positionExecution.setCurrency(commissionReport.getCurrency());
-                positionExecution.setRealizedPnl(BigDecimal.valueOf(commissionReport.getRealizedPNL()));
-                positionExecution.setYield(BigDecimal.valueOf(commissionReport.getYield()));
-                positionExecution.setYieldRedemptionDate((long) commissionReport.getYieldRedemptionDate());
-            }
+            PositionExecution positionExecution = new PositionExecution(execution, commissionReport, position);
 
+//            String optType = "";
+//            String side = positionExecution.getSide();// BOT是买 SLD是卖
+//
+//            if (position.getCalPositionQty() == null || position.getCalPositionQty().compareTo(BigDecimal.ZERO) == 0) {
+//                optType = PositionExecutionOptTypeEnum.IN.name();
+//            } else if (position.getCalPositionQty().compareTo(BigDecimal.ZERO) == 1) {
+//                if (TradeSideEnum.BOT.name().equals(side)) {
+//                    optType = PositionExecutionOptTypeEnum.IN.name();
+//                } else if (TradeSideEnum.SLD.name().equals(side)) {
+//                    optType = PositionExecutionOptTypeEnum.OUT.name();
+//                }
+//            } else if (position.getCalPositionQty().compareTo(BigDecimal.ZERO) == -1) {
+//                if (TradeSideEnum.BOT.name().equals(side)) {
+//                    optType = PositionExecutionOptTypeEnum.OUT.name();
+//                } else if (TradeSideEnum.SLD.name().equals(side)) {
+//                    optType = PositionExecutionOptTypeEnum.IN.name();
+//                }
+//            }
+//
+//            Contract contract = contractService.getByConid(conid);
+//
+//            BigDecimal calPositionQty = position.getCalPositionQty(); // 数量
+//            BigDecimal calAvgCost = position.getCalAvgCost(); // 成本
+//            BigDecimal calUnrealizedPnl = position.getCalAvgCost(); // 未实现收益
+//            BigDecimal calRealizedPnl = position.getCalAvgCost(); // 已实现收益
+//            BigDecimal accCommissionAndFees = position.getAccCommissionAndFees(); // 持仓的累计佣金和其他费用
+//
+//            BigDecimal executionPrice = positionExecution.getPrice(); // 交易价
+//            BigDecimal executionQty = positionExecution.getShares(); // 交易数量
+//            BigDecimal marketPrice = positionExecution.getMarketPrice();// 市场价
+//
+//            BigDecimal calExecutionUnrealizedPnl = BigDecimal.ZERO; // 本次交易的未实现收益
+//            BigDecimal calExecutionRealizedPnl = BigDecimal.ZERO; // 本次交易的已实现收益
+//
+//            BigDecimal executionCommissionAndFees = positionExecution.getCommissionAndFees();// 交易的佣金和其他费用
+//            BigDecimal multiplier = new BigDecimal(contract.getMultiplier());// 期权一手的数量
+//
+//            // 入库操作
+//            if (PositionExecutionOptTypeEnum.IN.name().equals(optType)) {
+//                // 期权和期货期权
+//                if (SetTypeEnum.OPT.getCode().equals(contract.getSecType()) || SetTypeEnum.FOP.getCode().equals(contract.getSecType())) {
+//                    calAvgCost = calAvgCost.multiply(calPositionQty).add(executionPrice.multiply(multiplier).multiply(positionExecution.getShares())).divide(calPositionQty.add(executionQty), 4, RoundingMode.HALF_UP);
+//
+//                    // 看涨
+//                    if (contract.getOptRight().equals("C")) {
+//                        // 买看涨
+//                        if (TradeSideEnum.BOT.name().equals(side)) {
+//                            calExecutionUnrealizedPnl = (marketPrice.subtract(executionPrice)).multiply(multiplier).multiply(executionQty); // 本次交易的未实现收益=(市场价-交易价)**每张的数量*交易数量
+//                        }
+//                        // 卖看涨
+//                        else if (TradeSideEnum.SLD.name().equals(side)) {
+//                            calExecutionUnrealizedPnl = (executionPrice.subtract(marketPrice)).multiply(multiplier).multiply(executionQty); // 本次交易的未实现收益=(交易价-)*每张的数量*交易数量
+//                        }
+//
+//                        calUnrealizedPnl = calUnrealizedPnl.add(calExecutionUnrealizedPnl);
+//                        accCommissionAndFees = accCommissionAndFees.add(executionCommissionAndFees);
+//                    }
+//                    // 看跌
+//                    else if (contract.getOptRight().equals("P")) {
+//                        // 买看跌
+//                        if (TradeSideEnum.BOT.name().equals(side)) {
+//                            calExecutionUnrealizedPnl = (marketPrice.subtract(executionPrice)).multiply(multiplier).multiply(executionQty); // 本次交易的未实现收益=(市场价-交易价)*每张的数量*交易数量
+//                        }
+//                        // 卖看跌
+//                        else if (TradeSideEnum.SLD.name().equals(side)) {
+//                            calExecutionUnrealizedPnl = (executionPrice.subtract(marketPrice)).multiply(multiplier).multiply(executionQty); // 本次交易的未实现收益=(交易价-)*每张的数量*交易数量
+//                        }
+//                        calUnrealizedPnl = calUnrealizedPnl.add(calExecutionUnrealizedPnl);
+//                        accCommissionAndFees = accCommissionAndFees.add(executionCommissionAndFees);
+//                    }
+//                } else {
+//                    calAvgCost = calAvgCost.multiply(calPositionQty).add(executionPrice.multiply(positionExecution.getShares())).divide(calPositionQty.add(executionQty), 4, RoundingMode.HALF_UP);
+//                    calExecutionUnrealizedPnl = (marketPrice.subtract(executionPrice)).multiply(executionQty); // 本次交易的未实现收益=(市场价-交易价)*交易数量
+//                    calUnrealizedPnl = calUnrealizedPnl.add(calExecutionUnrealizedPnl);
+//                    accCommissionAndFees = accCommissionAndFees.add(executionCommissionAndFees);
+//                }
+//            }
+//            // 出库操作
+//            else if (PositionExecutionOptTypeEnum.OUT.name().equals(optType)) {
+//                LambdaQueryWrapper<PositionExecution> queryWrapper = new LambdaQueryWrapper<>();
+//                queryWrapper.eq(PositionExecution::getOptType, PositionExecutionOptTypeEnum.IN.name());
+//                queryWrapper.eq(PositionExecution::getAccountCode, positionExecution.getAccountCode());
+//                queryWrapper.eq(PositionExecution::getConid, positionExecution.getConid());
+//                queryWrapper.gt(PositionExecution::getDate, positionExecution.getDate());
+//                queryWrapper.orderByAsc(PositionExecution::getTime);
+//            }
+//
+//            // 维护持仓数量
+//            BigDecimal shares = positionExecution.getShares();
+//            if (TradeSideEnum.SLD.name().equals(side)) {
+//                shares = shares.negate();
+//            }
+//            if (position.getCalPositionQty() == null) {
+//                position.setCalPositionQty(shares);
+//            } else {
+//                position.setCalPositionQty(shares.add(position.getCalPositionQty()));
+//            }
+//            position.setCalAvgCost(calAvgCost);
+//            position.setCalRealizedPnl(calRealizedPnl);
+//            position.setCalUnrealizedPnl(calUnrealizedPnl);
+//            position.setAccCommissionAndFees(accCommissionAndFees);
+//
+//            positionService.updateById(position);
             executionList.add(positionExecution);
-        }
 
-        // 批量保存到数据库
-        if (!executionList.isEmpty()) {
-            for (PositionExecution execution : executionList) {
-                positionExecutionService.saveOrUpdateByExecId(execution);
-            }
-            log.info("synExecutions saved {} records", executionList.size());
+//            positionExecution.setCalExecutionUnrealizedPnl(calExecutionUnrealizedPnl);
+//            positionExecution.setCalExecutionRealizedPnl(calExecutionRealizedPnl);
+
+            positionExecutionService.saveOrUpdateByExecId(positionExecution);
         }
 
         log.info("synExecutions end, total executions={}, total commissions={}", executions.size(), commissionAndFeesReports.size());
+    }
+
+    public BigDecimal calUnrealizedPnl(Contract contract, Position position, PositionExecution positionExecution){
+        String side = positionExecution.getSide();
+
+        BigDecimal calUnrealizedPnl = BigDecimal.ZERO;
+        // 期权和期货期权
+        if (SetTypeEnum.OPT.getCode().equals(contract.getSecType()) || SetTypeEnum.FOP.getCode().equals(contract.getSecType())) {
+            // 看涨
+            if (contract.getOptRight().equals("C")) {
+                // 买看涨
+                if (TradeSideEnum.BOT.name().equals(side)) {
+
+                }
+                // 卖看跌
+                else if (TradeSideEnum.SLD.name().equals(side)) {
+
+                }
+            } else if (contract.getOptRight().equals("P")) {
+                // 买看涨
+                if (TradeSideEnum.BOT.name().equals(side)) {
+
+                }
+                // 卖看跌
+                else if (TradeSideEnum.SLD.name().equals(side)) {
+
+                }
+            }
+        }
+        // 期货
+        else if (SetTypeEnum.FUT.getCode().equals(contract.getSecType())) {
+
+        } else {
+            calUnrealizedPnl = position.getMarketPrice().subtract(position.getAvgCost()).multiply(position.getCalPositionQty());
+        }
+
+        return calUnrealizedPnl;
     }
 
     public void synContractDetails() throws ExecutionException, InterruptedException, TimeoutException {

@@ -10,6 +10,7 @@ import com.riskcontrol.domain.vo.position.PositionAllocateItem;
 import com.riskcontrol.domain.vo.position.PositionAllocateRequest;
 import com.riskcontrol.domain.vo.position.PositionPage;
 import com.riskcontrol.domain.vo.position.PositionQuery;
+import com.riskcontrol.enums.TradeSideEnum;
 import com.riskcontrol.service.*;
 import org.springframework.beans.BeanUtils;
 import lombok.RequiredArgsConstructor;
@@ -63,16 +64,27 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
         Integer operateType = request.getOperateType(); // 操作类型 1持仓分配 2交易分配
 
         List<PositionAllocateHistory> historyList = new ArrayList<>();
-        Position position;
 
         BigDecimal avgPln = BigDecimal.ZERO; // 每一股的盈亏
         BigDecimal avgCommissionAnFees = BigDecimal.ZERO;
         if (operateType == 1) {
-            position = this.getById(request.getId());
+            Position position = this.getById(request.getId());
 
             avgPln = position.getUnrealizedPnl().divide(position.getPositionQty(), 4, RoundingMode.DOWN);
         } else if (operateType == 2) {
-            PositionExecution positionExecution = positionExecutionService.getById(request.getId());
+            PositionExecution positionExecution = positionExecutionService.getById(request.getId()); // 交易信息
+            Position position = this.getPositionByConid(positionExecution.getAccountCode(), positionExecution.getConid()); // 持仓信息
+            BigDecimal qty = BigDecimal.ZERO;
+            if (positionExecution.getSide().equals(TradeSideEnum.BOT.name())) {
+                qty = positionExecution.getShares();
+            } else if (positionExecution.getSide().equals(TradeSideEnum.SLD.name())) {
+                qty = positionExecution.getShares().negate();
+            }
+            // 根据交易的买入方向，增加或者扣减持仓的数量，重新计算未实现收益(重新定一个字段，可以和IB进行对照)
+            // 当前交易有没日内交易，优先对有日内的交易进行持仓数量、持仓未实现收益、持仓已实现收益，持仓的成本进行计算
+            // 如果不存在，就按照FIFO的原则，根据交易进行持仓数量、持仓未实现收益、持仓已实现收益，持仓的成本进行计算
+            // 股票，期权，期货的收益计算方式不一样
+
             avgPln = positionExecution.getRealizedPnl().divide(positionExecution.getShares(), 2, RoundingMode.DOWN);
             avgCommissionAnFees = positionExecution.getCommissionAndFees().divide(positionExecution.getShares(), 2, RoundingMode.DOWN);
         }
@@ -181,5 +193,13 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
         });
 
         return pageList;
+    }
+
+    @Override
+    public Position getPositionByConid(String accountCode, int conid) {
+        LambdaQueryWrapper<Position> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Position::getConid, conid);
+        queryWrapper.eq(Position::getAccountCode, accountCode);
+        return this.getOne(queryWrapper);
     }
 }
