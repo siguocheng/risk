@@ -71,4 +71,20 @@ public class ContractMarketHistoryServiceImpl extends ServiceImpl<ContractMarket
 
         return this.list(queryWrapperMarket);
     }
+
+    @Override
+    public BigDecimal getMarketPriceByConidAndDate(int conid, String dailyDate) {
+
+        LambdaQueryWrapper<ContractMarketHistory> queryWrapperMarket = new LambdaQueryWrapper<>();
+        queryWrapperMarket.eq(ContractMarketHistory::getConid, conid);
+        queryWrapperMarket.eq(ContractMarketHistory::getDailyDate, dailyDate);
+
+        ContractMarketHistory contractMarketHistory = this.getOne(queryWrapperMarket);
+
+        if (contractMarketHistory != null) {
+            return contractMarketHistory.getPriceClose();
+        }
+
+        return null;
+    }
 }

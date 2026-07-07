@@ -3,9 +3,11 @@ package com.riskcontrol.domain;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.riskcontrol.domain.vo.ibkr.PositionCallbackVo;
+import com.riskcontrol.util.DateUtil;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.springframework.beans.BeanUtils;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -26,7 +28,7 @@ public class PositionHistory extends BaseEntity implements Serializable {
 
     @Schema(description = "持仓日期")
     @TableField(value = "position_date")
-    private LocalDate positionDate;
+    private String positionDate;
 
     @Schema(description = "合约id")
     @TableField(value = "conid")
@@ -72,11 +74,16 @@ public class PositionHistory extends BaseEntity implements Serializable {
 
     }
 
+    public PositionHistory(Position position, String date){
+        BeanUtils.copyProperties(position, this);
+        this.positionDate = date;
+    }
+
     public PositionHistory(PositionCallbackVo positionCallbackVo){
         if (positionCallbackVo == null) {
             return;
         }
-        this.positionDate = LocalDate.now();
+        this.positionDate = DateUtil.localDateToString(LocalDate.now());
         this.accountCode = positionCallbackVo.getAccountCode();
         this.modelCode = positionCallbackVo.getModelCode();
         this.conid = positionCallbackVo.getConid() != null ? positionCallbackVo.getConid().longValue() : null;

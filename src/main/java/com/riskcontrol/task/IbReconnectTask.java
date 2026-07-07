@@ -205,7 +205,7 @@ public class IbReconnectTask {
 
                 // 维护历史持仓情况
                 PositionHistory positionHistory = new PositionHistory(positionCallbackVo);
-                positionHistory.setPositionDate(now);
+                positionHistory.setPositionDate(DateUtil.localDateToString(now));
                 positionHistoryService.saveOrUpdatePositionHistory(positionHistory);
 
                 com.ib.client.Contract ibContract = positionCallbackVo.getContract();
@@ -830,7 +830,7 @@ public class IbReconnectTask {
         // 2. 执行过滤器
         ExecutionFilter filter = new ExecutionFilter();
 //        filter.time(filterTime);
-        filter.lastNDays(4);
+        filter.lastNDays(7);
 
         // execDetails
         // execDetailsEnd

@@ -3,6 +3,7 @@ package com.riskcontrol.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.riskcontrol.domain.ContractMarketHistory;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
@@ -17,4 +18,6 @@ public interface IContractMarketHistoryService extends IService<ContractMarketHi
     double[] queryContractMarketPriceCloseByConid(int conid);
 
     List<ContractMarketHistory> listContractMarketHistoryByConidAndDate(List<Integer> conids, String startDate, String endDate);
+
+    BigDecimal getMarketPriceByConidAndDate(int conid, String dailyDate);
 }

@@ -186,7 +186,10 @@ public class PositionExecution extends BaseEntity {
         this.submitter = execution.getSubmitter();
         this.optExerciseOrLapseType = execution.getOptExerciseOrLapseType() != null ? execution.getOptExerciseOrLapseType().name() : "";
         this.date = execution.getTime().substring(0,9);
-        this.marketPrice = position.getMarketPrice();
+        if (position != null) {
+            this.marketPrice = position.getMarketPrice();
+        }
+
         this.status = 0;
 
         if (commissionReport != null) {
