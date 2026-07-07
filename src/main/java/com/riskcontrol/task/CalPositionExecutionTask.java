@@ -67,13 +67,13 @@ public class CalPositionExecutionTask {
                     List<PositionExecution> positionExecutionsDateConid = positionExecutionDateConidGroup.get(conid);
 
                     BigDecimal buyQty = positionExecutionsDateConid.stream()
-                            .filter(t -> TradeSideEnum.BOT.name().equals(t.getSide()) && t.getPrice().compareTo(BigDecimal.ZERO) == 1)
+                            .filter(t -> TradeSideEnum.BOT.name().equals(t.getSide()))
                             .map(PositionExecution::getShares)
                             .filter(qty -> qty != null)
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
                     BigDecimal sellQty = positionExecutionsDateConid.stream()
-                            .filter(t -> TradeSideEnum.SLD.name().equals(t.getSide()) && t.getPrice().compareTo(BigDecimal.ZERO) == 1)
+                            .filter(t -> TradeSideEnum.SLD.name().equals(t.getSide()))
                             .map(PositionExecution::getShares)
                             .filter(qty -> qty != null)
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
@@ -201,15 +201,6 @@ public class CalPositionExecutionTask {
                 ? trade.getShares()
                 : trade.getShares().negate();
         BigDecimal newQty = oldQty.add(signedQty);
-
-        if (oldQty.compareTo(BigDecimal.ZERO) == 0) {
-            position.setCalAvgCost(trade.getPrice());
-        } else {
-            BigDecimal newAvgCost = nvl(position.getCalAvgCost()).multiply(oldQty)
-                    .add(trade.getPrice().multiply(signedQty))
-                    .divide(newQty, 4, RoundingMode.HALF_UP);
-            position.setCalAvgCost(newAvgCost);
-        }
         position.setCalPositionQty(newQty);
 
         if (marketPrice != null) {
@@ -296,18 +287,44 @@ public class CalPositionExecutionTask {
         return positionExecutionService.list(queryWrapper);
     }
 
-    private BigDecimal sumRemainInLotsUnrealized(String accountCode, int conid, BigDecimal marketPrice, BigDecimal multiplier) {
-        if (marketPrice == null) {
-            return BigDecimal.ZERO;
-        }
-
+    private List<PositionExecution> listRemainInLots(String accountCode, int conid) {
         LambdaQueryWrapper<PositionExecution> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(PositionExecution::getAccountCode, accountCode);
         queryWrapper.eq(PositionExecution::getConid, conid);
         queryWrapper.eq(PositionExecution::getOptType, PositionExecutionOptTypeEnum.IN.name());
         queryWrapper.gt(PositionExecution::getRemainQty, BigDecimal.ZERO);
+        return positionExecutionService.list(queryWrapper);
+    }
 
-        List<PositionExecution> inLots = positionExecutionService.list(queryWrapper);
+    private BigDecimal sumRemainInLotsCostBasis(String accountCode, int conid, BigDecimal multiplier) {
+        BigDecimal total = BigDecimal.ZERO;
+        for (PositionExecution lot : listRemainInLots(accountCode, conid)) {
+            total = total.add(nvl(lot.getPrice()).multiply(nvl(lot.getRemainQty())).multiply(multiplier));
+        }
+        return total;
+    }
+
+    private BigDecimal sumRemainInLotsQty(String accountCode, int conid) {
+        BigDecimal total = BigDecimal.ZERO;
+        for (PositionExecution lot : listRemainInLots(accountCode, conid)) {
+            total = total.add(nvl(lot.getRemainQty()));
+        }
+        return total;
+    }
+
+    private BigDecimal deriveCalAvgCostFromCostBasis(BigDecimal costBasis, BigDecimal totalRemainQty, BigDecimal multiplier) {
+        if (totalRemainQty.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
+        return costBasis.divide(totalRemainQty.multiply(multiplier), 4, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal sumRemainInLotsUnrealized(String accountCode, int conid, BigDecimal marketPrice, BigDecimal multiplier) {
+        if (marketPrice == null) {
+            return BigDecimal.ZERO;
+        }
+
+        List<PositionExecution> inLots = listRemainInLots(accountCode, conid);
         BigDecimal total = BigDecimal.ZERO;
         for (PositionExecution lot : inLots) {
             BigDecimal qty = nvl(lot.getRemainQty());
@@ -346,13 +363,7 @@ public class CalPositionExecutionTask {
             }
         }
 
-        LambdaQueryWrapper<PositionExecution> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(PositionExecution::getAccountCode, accountCode);
-        queryWrapper.eq(PositionExecution::getConid, conid);
-        queryWrapper.eq(PositionExecution::getOptType, PositionExecutionOptTypeEnum.IN.name());
-        queryWrapper.gt(PositionExecution::getRemainQty, BigDecimal.ZERO);
-
-        List<PositionExecution> inLots = positionExecutionService.list(queryWrapper);
+        List<PositionExecution> inLots = listRemainInLots(accountCode, conid);
         BigDecimal total = BigDecimal.ZERO;
         for (PositionExecution lot : inLots) {
             BigDecimal qty = nvl(lot.getRemainQty());
@@ -379,17 +390,22 @@ public class CalPositionExecutionTask {
 
     private void rollupPositionDailyPnl(Position position, String accountCode, int conid, String date,
                                         BigDecimal calDailyRealizedPnl, BigDecimal multiplier) {
-        if (date.equals(position.getPnlDailyDate())) {
+        if (date.equals(position.getPositionDate())) {
             position.setCalDailyRealizedPnl(nvl(position.getCalDailyRealizedPnl()).add(calDailyRealizedPnl));
         } else {
             position.setCalDailyRealizedPnl(calDailyRealizedPnl);
-            position.setPnlDailyDate(date);
+            position.setPositionDate(date);
         }
         position.setCalRealizedPnl(nvl(position.getCalRealizedPnl()).add(calDailyRealizedPnl));
 
         BigDecimal todayClose = resolveMarketClosePrice(conid, date);
         position.setCalDailyUnrealizedPnl(sumDailyUnrealizedPnl(accountCode, conid, date, todayClose, multiplier));
         position.setCalUnrealizedPnl(sumRemainInLotsUnrealized(accountCode, conid, todayClose, multiplier));
+
+        BigDecimal costBasis = sumRemainInLotsCostBasis(accountCode, conid, multiplier);
+        BigDecimal totalRemainQty = sumRemainInLotsQty(accountCode, conid);
+        position.setCalCostBasis(costBasis);
+        position.setCalAvgCost(deriveCalAvgCostFromCostBasis(costBasis, totalRemainQty, multiplier));
     }
 
     private BigDecimal resolveMarketClosePrice(int conid, String date) {
@@ -441,6 +457,9 @@ public class CalPositionExecutionTask {
         }
         if (position.getCalAvgCost() == null) {
             position.setCalAvgCost(BigDecimal.ZERO);
+        }
+        if (position.getCalCostBasis() == null) {
+            position.setCalCostBasis(BigDecimal.ZERO);
         }
         if (position.getCalRealizedPnl() == null) {
             position.setCalRealizedPnl(BigDecimal.ZERO);
@@ -550,8 +569,8 @@ public class CalPositionExecutionTask {
 
         positionService.updateById(position);
 
-        if (position.getPnlDailyDate().equals(date)) {
-            position.setPnlDailyDate(date);
+        if (position.getPositionDate().equals(date)) {
+            position.setPositionDate(date);
             PositionHistory positionHistory = new PositionHistory(position, date);
             positionHistoryService.saveOrUpdatePositionHistory(positionHistory);
         }
@@ -563,14 +582,14 @@ public class CalPositionExecutionTask {
             BigDecimal currentCalRealizedPnl = position.getCalRealizedPnl() != null ? position.getCalRealizedPnl() : BigDecimal.ZERO;
             position.setCalRealizedPnl(currentCalRealizedPnl.add(realizedPnl));
 
-            String pnlDailyDate = position.getPnlDailyDate();
+            String pnlDailyDate = position.getPositionDate();
             BigDecimal currentCalDailyRealizedPnl = position.getCalDailyRealizedPnl() != null ? position.getCalDailyRealizedPnl() : BigDecimal.ZERO;
 
             if (date.equals(pnlDailyDate)) {
                 position.setCalDailyRealizedPnl(currentCalDailyRealizedPnl.add(realizedPnl));
             } else {
                 position.setCalDailyRealizedPnl(realizedPnl);
-                position.setPnlDailyDate(date);
+                position.setPositionDate(date);
             }
 
             positionService.updateById(position);

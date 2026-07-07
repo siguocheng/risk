@@ -82,6 +82,10 @@ public class PositionHistory extends BaseEntity implements Serializable {
     @TableField(value = "cal_avg_cost")
     private BigDecimal calAvgCost;
 
+    @Schema(description = "持仓成本（当前持有 Lot 成本合计）")
+    @TableField(value = "cal_cost_basis")
+    private BigDecimal calCostBasis;
+
     @Schema(description = "未实现盈亏")
     @TableField(value = "cal_unrealized_pnl")
     private BigDecimal calUnrealizedPnl;

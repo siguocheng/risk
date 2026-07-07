@@ -77,6 +77,10 @@ public class Position extends BaseEntity implements Serializable {
     @TableField(value = "cal_avg_cost")
     private BigDecimal calAvgCost;
 
+    @Schema(description = "持仓成本（当前持有 Lot 成本合计）")
+    @TableField(value = "cal_cost_basis")
+    private BigDecimal calCostBasis;
+
     @Schema(description = "未实现盈亏")
     @TableField(value = "cal_unrealized_pnl")
     private BigDecimal calUnrealizedPnl;
@@ -101,7 +105,7 @@ public class Position extends BaseEntity implements Serializable {
     @TableField(value = "acc_commission_and_fees")
     private BigDecimal accCommissionAndFees;
 
-    @Schema(description = "日收益的日期")
-    @TableField(value = "pnl_daily_date")
-    private String pnlDailyDate;
+    @Schema(description = "持仓日期")
+    @TableField(value = "position_date")
+    private String positionDate;
 }
