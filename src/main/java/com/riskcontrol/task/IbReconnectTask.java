@@ -247,7 +247,7 @@ public class IbReconnectTask {
                     positionExecution.setCommissionAndFees(BigDecimal.ZERO);
                     positionExecution.setCurrency(contract.getCurrency());
                     positionExecution.setRealizedPnl(BigDecimal.ZERO);
-                    positionExecution.setDate(DateUtil.localDateToString(LocalDate.now(), "yyyyMMdd"));
+                    positionExecution.setExecutionDate(DateUtil.localDateToString(LocalDate.now(), "yyyy-MM-dd"));
                     BigDecimal shares = null;
                     if (TradeSideEnum.SLD.name().equals(positionExecution.getSide())) {
                         shares = positionExecution.getShares().negate();

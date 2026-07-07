@@ -6,12 +6,15 @@ import com.riskcontrol.enums.PositionExecutionOptTypeEnum;
 import com.riskcontrol.enums.SetTypeEnum;
 import com.riskcontrol.enums.TradeSideEnum;
 import com.riskcontrol.service.*;
+import com.riskcontrol.util.DateUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -51,7 +54,7 @@ public class CalPositionExecutionTask {
             }
 
             Map<String, List<PositionExecution>> positionExecutionDateGroup = positionExecutionsAccountCode.stream()
-                    .collect(Collectors.groupingBy(pe -> pe.getDate()));
+                    .collect(Collectors.groupingBy(PositionExecution::getExecutionDate, TreeMap::new,Collectors.toList()));
 
             for (String date : positionExecutionDateGroup.keySet()) {
                 List<PositionExecution> positionExecutionsDate = positionExecutionDateGroup.get(date);
@@ -59,8 +62,8 @@ public class CalPositionExecutionTask {
                 Map<Integer, List<PositionExecution>> positionExecutionDateConidGroup = positionExecutionsDate.stream()
                         .collect(Collectors.groupingBy(pe -> pe.getConid()));
 
-                Boolean isDayTrade = false;
                 for (Integer conid : positionExecutionDateConidGroup.keySet()) {
+                    log.info("cal conid :{}", conid);
                     List<PositionExecution> positionExecutionsDateConid = positionExecutionDateConidGroup.get(conid);
 
                     BigDecimal buyQty = positionExecutionsDateConid.stream()
@@ -75,17 +78,21 @@ public class CalPositionExecutionTask {
                             .filter(qty -> qty != null)
                             .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-                    if (buyQty.compareTo(sellQty) == 0) {
-                        isDayTrade = true;
-                    }
+                    boolean isDayTrade = buyQty.compareTo(sellQty) == 0;
+
+                    log.info("cal conid :{} 日内交易:{}", conid, isDayTrade);
 
                     Contract contract = contractService.getByConid(conid);
 
                     // 如果是日内交易
-                    if (isDayTrade){
-                        contract.setMultiplier("1");
+                    if (isDayTrade) {
+                        log.info("cal conid :{} SecType:{}", conid, contract.getSecType());
+                        if (StringUtils.isEmpty(contract.getMultiplier())) {
+                            contract.setMultiplier("1");
+                        }
                         this.handleDayTrades(positionExecutionsDateConid, accountCode, date, contract);
                     } else {
+                        log.info("cal conid :{} SecType:{}", conid, contract.getSecType());
                         if (contract.getSecType().equals(SetTypeEnum.OPT.getCode())) {
                             this.handleNoDayTradesOpt(positionExecutionsDateConid, accountCode, date, contract);
                         } else {
@@ -101,137 +108,356 @@ public class CalPositionExecutionTask {
         trades.sort(Comparator.comparing(PositionExecution::getTime));
 
         Position position = positionService.getPositionByConid(accountCode, conid);
-        for (PositionExecution execution : trades) {
-            this.handleNoDayTradesPosition(position, execution);
+        initPositionCalFields(position);
+
+        BigDecimal multiplier = BigDecimal.ONE;
+        BigDecimal calDailyRealizedPnl = BigDecimal.ZERO;
+        BigDecimal marketPrice = resolveMarketClosePrice(conid, date);
+
+        for (PositionExecution trade : trades) {
+            String optType = resolveOptType(position, trade);
+            if (PositionExecutionOptTypeEnum.IN.name().equals(optType)) {
+                handleNoDayTradesOptIn(position, trade, multiplier, marketPrice);
+            } else {
+                BigDecimal pnl = handleNoDayTradesOptOut(position, trade, multiplier, marketPrice);
+                calDailyRealizedPnl = calDailyRealizedPnl.add(pnl);
+            }
+            positionExecutionService.updateById(trade);
         }
 
-        BigDecimal marketPrice = contractMarketHistoryService.getMarketPriceByConidAndDate(conid, date);
-
-        BigDecimal calUnrealizedPnl = marketPrice.subtract(position.getCalAvgCost()).multiply(position.getPositionQty());
-
-        position.setCalDailyUnrealizedPnl(calUnrealizedPnl.subtract(position.getCalUnrealizedPnl()));
-        position.setCalUnrealizedPnl(calUnrealizedPnl);
+        rollupPositionDailyPnl(position, accountCode, conid, date, calDailyRealizedPnl, multiplier);
         positionService.updateById(position);
 
         PositionHistory positionHistory = new PositionHistory(position, date);
         positionHistoryService.saveOrUpdatePositionHistory(positionHistory);
     }
 
-    private void handleNoDayTradesPosition(Position position, PositionExecution execution){
-        BigDecimal positionQty = position.getPositionQty();
-        String side = execution.getSide();
-        BigDecimal executionQty = execution.getShares();
-        // 持仓是负数
-        if (positionQty.compareTo(BigDecimal.ZERO) == -1) {
-            if (TradeSideEnum.BOT.name().equals(side)) {
-                BigDecimal hesunQty = executionQty;
+    private void handleNoDayTradesOpt(List<PositionExecution> trades, String accountCode, String date, Contract contract) {
+        trades.sort(Comparator.comparing(PositionExecution::getTime));
 
-                LambdaQueryWrapper<PositionExecution> queryWrapper = new LambdaQueryWrapper<>();
-                queryWrapper.eq(PositionExecution::getAccountCode, position.getAccountCode());
-                queryWrapper.eq(PositionExecution::getConid, position.getConid());
-                queryWrapper.gt(PositionExecution::getRemainQty, BigDecimal.ZERO);
-                queryWrapper.orderByAsc(PositionExecution::getTime);
-                List<PositionExecution> list = positionExecutionService.list(queryWrapper);
+        int conid = contract.getConid();
+        BigDecimal multiplier = this.getMultiplier(contract);
+        Position position = positionService.getPositionByConid(accountCode, conid);
+        initPositionCalFields(position);
 
-                BigDecimal pnl = BigDecimal.ZERO;
-                for (PositionExecution positionExecution : list) {
-                    BigDecimal remainQty = positionExecution.getRemainQty();
+        BigDecimal calDailyRealizedPnl = BigDecimal.ZERO;
+        BigDecimal marketPrice = resolveMarketClosePrice(conid, date);
 
-                    if (hesunQty.compareTo(remainQty) == 1) {
-                        pnl = pnl.add(positionExecution.getPrice().subtract(execution.getPrice()).multiply(remainQty));
-                        positionExecution.setRemainQty(BigDecimal.ZERO);
+        log.info("cal conid :{} date:{} marketPrice:{}", conid, date, marketPrice);
 
-                        execution.setCalExecutionRealizedPnl(execution.getCalExecutionRealizedPnl().add(pnl));
-
-                        hesunQty = hesunQty.subtract(remainQty);
-                    } else {
-                        pnl = pnl.add(positionExecution.getPrice().subtract(execution.getPrice()).multiply(hesunQty));
-                        positionExecution.setRemainQty(remainQty.subtract(hesunQty));
-
-                        execution.setCalExecutionRealizedPnl(execution.getCalExecutionRealizedPnl().add(pnl));
-                        positionExecutionService.updateById(positionExecution);
-                        break;
-                    }
-                }
-                position.setCalRealizedPnl(position.getCalRealizedPnl().add(pnl));
-                position.setPositionQty(positionQty.add(hesunQty));
-
-                if (hesunQty.compareTo(BigDecimal.ZERO) == -1) {
-                    this.handleNoDayTradesPosition(position, execution);
-                }
-            } else if (TradeSideEnum.SLD.name().equals(side)) {
-                executionQty = executionQty.negate();
-                BigDecimal avgCost = position.getCalAvgCost().multiply(position.getCalPositionQty()).add(execution.getPrice().multiply(executionQty)).divide(position.getCalPositionQty().add(executionQty));
-
-                position.setCalAvgCost(avgCost); // 持仓成本
-                position.setCalPositionQty(position.getPositionQty().add(executionQty)); // 持仓数量
-                execution.setRemainQty(execution.getShares()); // 入库的数量
-
-                positionExecutionService.updateById(execution);
+        BigDecimal commissionAndFeesSum = BigDecimal.ZERO;
+        for (PositionExecution trade : trades) {
+            String optType = resolveOptType(position, trade);
+            log.info("cal conid :{} PositionExecutionId:{} optType:{}", conid, trade.getId(), optType);
+            if (PositionExecutionOptTypeEnum.IN.name().equals(optType)) {
+                handleNoDayTradesOptIn(position, trade, multiplier, marketPrice);
+            } else {
+                BigDecimal pnl = handleNoDayTradesOptOut(position, trade, multiplier, marketPrice);
+                calDailyRealizedPnl = calDailyRealizedPnl.add(pnl);
             }
-        } else if (positionQty.compareTo(BigDecimal.ZERO) == 1) {
-            if (TradeSideEnum.BOT.name().equals(side)) {
-                executionQty = executionQty.negate();
-                BigDecimal avgCost = position.getCalAvgCost().multiply(position.getCalPositionQty()).add(execution.getPrice().multiply(executionQty)).divide(position.getCalPositionQty().add(executionQty));
+            trade.setStatus(1);
+            positionExecutionService.updateById(trade);
 
-                position.setCalAvgCost(avgCost); // 持仓成本
-                position.setCalPositionQty(position.getPositionQty().add(executionQty)); // 持仓数量
-                execution.setRemainQty(execution.getShares()); // 入库的数量
-
-                positionExecutionService.updateById(execution);
-            } else if (TradeSideEnum.SLD.name().equals(side)) {
-                BigDecimal hesunQty = executionQty;
-
-                LambdaQueryWrapper<PositionExecution> queryWrapper = new LambdaQueryWrapper<>();
-                queryWrapper.eq(PositionExecution::getAccountCode, position.getAccountCode());
-                queryWrapper.eq(PositionExecution::getConid, position.getConid());
-                queryWrapper.gt(PositionExecution::getRemainQty, BigDecimal.ZERO);
-                queryWrapper.orderByAsc(PositionExecution::getTime);
-                List<PositionExecution> list = positionExecutionService.list(queryWrapper);
-
-                BigDecimal pnl = BigDecimal.ZERO;
-                for (PositionExecution positionExecution : list) {
-                    BigDecimal remainQty = positionExecution.getRemainQty();
-
-                    if (hesunQty.compareTo(remainQty) == 1) {
-                        pnl = pnl.add(positionExecution.getPrice().subtract(execution.getPrice()).multiply(remainQty));
-                        positionExecution.setRemainQty(BigDecimal.ZERO);
-
-                        execution.setCalExecutionRealizedPnl(execution.getCalExecutionRealizedPnl().add(pnl));
-
-                        hesunQty = hesunQty.subtract(remainQty);
-                    } else {
-                        pnl = pnl.add(positionExecution.getPrice().subtract(execution.getPrice()).multiply(hesunQty));
-                        positionExecution.setRemainQty(remainQty.subtract(hesunQty));
-
-                        execution.setCalExecutionRealizedPnl(execution.getCalExecutionRealizedPnl().add(pnl));
-                        positionExecutionService.updateById(positionExecution);
-                        break;
-                    }
-                }
-                position.setCalRealizedPnl(position.getCalRealizedPnl().add(pnl));
-                position.setPositionQty(positionQty.add(hesunQty));
-
-                if (hesunQty.compareTo(BigDecimal.ZERO) == -1) {
-                    this.handleNoDayTradesPosition(position, execution);
-                }
+            if (trade.getCommissionAndFees() != null) {
+                commissionAndFeesSum = commissionAndFeesSum.add(trade.getCommissionAndFees());
             }
+        }
+
+        rollupPositionDailyPnl(position, accountCode, conid, date, calDailyRealizedPnl, multiplier);
+        if (position.getAccCommissionAndFees() == null) {
+            position.setAccCommissionAndFees(commissionAndFeesSum);
         } else {
-            if (TradeSideEnum.BOT.name().equals(side)) {
+            position.setAccCommissionAndFees(position.getAccCommissionAndFees().add(commissionAndFeesSum));
+        }
+        positionService.updateById(position);
 
-            } else if (TradeSideEnum.SLD.name().equals(side)) {
-                executionQty = executionQty.negate();
+        PositionHistory positionHistory = new PositionHistory(position, date);
+        positionHistoryService.saveOrUpdatePositionHistory(positionHistory);
+    }
+
+    private String resolveOptType(Position position, PositionExecution trade) {
+        BigDecimal calPositionQty = nvl(position.getCalPositionQty());
+        String side = trade.getSide();
+
+        if (calPositionQty.compareTo(BigDecimal.ZERO) == 0) {
+            return PositionExecutionOptTypeEnum.IN.name();
+        }
+        if (calPositionQty.compareTo(BigDecimal.ZERO) > 0) {
+            return TradeSideEnum.BOT.name().equals(side)
+                    ? PositionExecutionOptTypeEnum.IN.name()
+                    : PositionExecutionOptTypeEnum.OUT.name();
+        }
+        return TradeSideEnum.BOT.name().equals(side)
+                ? PositionExecutionOptTypeEnum.OUT.name()
+                : PositionExecutionOptTypeEnum.IN.name();
+    }
+
+    private void handleNoDayTradesOptIn(Position position, PositionExecution trade, BigDecimal multiplier, BigDecimal marketPrice) {
+        trade.setOptType(PositionExecutionOptTypeEnum.IN.name());
+        trade.setRemainQty(trade.getShares());
+
+        BigDecimal oldQty = nvl(position.getCalPositionQty());
+        BigDecimal signedQty = TradeSideEnum.BOT.name().equals(trade.getSide())
+                ? trade.getShares()
+                : trade.getShares().negate();
+        BigDecimal newQty = oldQty.add(signedQty);
+
+        if (oldQty.compareTo(BigDecimal.ZERO) == 0) {
+            position.setCalAvgCost(trade.getPrice());
+        } else {
+            BigDecimal newAvgCost = nvl(position.getCalAvgCost()).multiply(oldQty)
+                    .add(trade.getPrice().multiply(signedQty))
+                    .divide(newQty, 4, RoundingMode.HALF_UP);
+            position.setCalAvgCost(newAvgCost);
+        }
+        position.setCalPositionQty(newQty);
+
+        if (marketPrice != null) {
+            BigDecimal unrealized;
+            if (TradeSideEnum.BOT.name().equals(trade.getSide())) {
+                unrealized = marketPrice.subtract(trade.getPrice()).multiply(multiplier).multiply(trade.getShares());
+            } else {
+                unrealized = trade.getPrice().subtract(marketPrice).multiply(multiplier).multiply(trade.getShares());
             }
-            position.setCalPositionQty(executionQty);
-            position.setCalAvgCost(execution.getPrice());
+            trade.setCalExecutionUnrealizedPnl(unrealized);
         }
     }
 
-    private void handleNoDayTradesOpt(List<PositionExecution> trades, String accountCode, String date, Contract contract) {
+    private BigDecimal handleNoDayTradesOptOut(Position position, PositionExecution trade, BigDecimal multiplier, BigDecimal marketPrice) {
+        BigDecimal outPrice = trade.getPrice().compareTo(BigDecimal.ZERO) == 0 ? BigDecimal.ZERO : trade.getPrice();
+        BigDecimal outQty = trade.getShares();
+        boolean closingLong = TradeSideEnum.SLD.name().equals(trade.getSide());
+        String matchInSide = closingLong ? TradeSideEnum.BOT.name() : TradeSideEnum.SLD.name();
 
-        for (PositionExecution trade : trades) {
+        BigDecimal remainOutQty = outQty;
+        BigDecimal totalPnl = BigDecimal.ZERO;
+        List<PositionExecution> inLots = listInLots(position.getAccountCode(), position.getConid(), matchInSide);
+        for (PositionExecution inLot : inLots) {
+            if (remainOutQty.compareTo(BigDecimal.ZERO) <= 0) {
+                break;
+            }
+            BigDecimal lotRemainQty = nvl(inLot.getRemainQty());
+            if (lotRemainQty.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+            BigDecimal matchQty = remainOutQty.min(lotRemainQty);
+            BigDecimal lotPnl = closingLong
+                    ? outPrice.subtract(inLot.getPrice()).multiply(multiplier).multiply(matchQty)
+                    : inLot.getPrice().subtract(outPrice).multiply(multiplier).multiply(matchQty);
+            totalPnl = totalPnl.add(lotPnl);
 
+            inLot.setRemainQty(lotRemainQty.subtract(matchQty));
+            positionExecutionService.updateById(inLot);
+            remainOutQty = remainOutQty.subtract(matchQty);
         }
+
+        trade.setCalExecutionRealizedPnl(nvl(trade.getCalExecutionRealizedPnl()).add(totalPnl));
+        trade.setOptType(PositionExecutionOptTypeEnum.OUT.name());
+
+        BigDecimal matchedQty = outQty.subtract(remainOutQty);
+        BigDecimal calPositionQty = nvl(position.getCalPositionQty());
+        if (closingLong) {
+            position.setCalPositionQty(calPositionQty.subtract(matchedQty));
+        } else {
+            position.setCalPositionQty(calPositionQty.add(matchedQty));
+        }
+
+        if (remainOutQty.compareTo(BigDecimal.ZERO) > 0) {
+            saveOverflowOpenLot(position, trade, remainOutQty, multiplier, marketPrice);
+        }
+
+        return totalPnl;
+    }
+
+    private void saveOverflowOpenLot(Position position, PositionExecution trade, BigDecimal remainQty,
+                                     BigDecimal multiplier, BigDecimal marketPrice) {
+        PositionExecution openLot = new PositionExecution();
+        openLot.setAccountCode(trade.getAccountCode());
+        openLot.setConid(trade.getConid());
+        openLot.setSymbol(trade.getSymbol());
+        openLot.setSide(trade.getSide());
+        openLot.setPrice(trade.getPrice());
+        openLot.setShares(remainQty);
+        openLot.setTime(trade.getTime());
+        openLot.setExecutionDate(trade.getExecutionDate());
+        openLot.setStatus(0);
+        handleNoDayTradesOptIn(position, openLot, multiplier, marketPrice);
+        positionExecutionService.save(openLot);
+    }
+
+    private List<PositionExecution> listInLots(String accountCode, int conid, String inSide) {
+        LambdaQueryWrapper<PositionExecution> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(PositionExecution::getAccountCode, accountCode);
+        queryWrapper.eq(PositionExecution::getConid, conid);
+        queryWrapper.eq(PositionExecution::getOptType, PositionExecutionOptTypeEnum.IN.name());
+        queryWrapper.eq(PositionExecution::getSide, inSide);
+        queryWrapper.gt(PositionExecution::getRemainQty, BigDecimal.ZERO);
+        queryWrapper.orderByAsc(PositionExecution::getTime);
+        return positionExecutionService.list(queryWrapper);
+    }
+
+    private BigDecimal sumRemainInLotsUnrealized(String accountCode, int conid, BigDecimal marketPrice, BigDecimal multiplier) {
+        if (marketPrice == null) {
+            return BigDecimal.ZERO;
+        }
+
+        LambdaQueryWrapper<PositionExecution> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(PositionExecution::getAccountCode, accountCode);
+        queryWrapper.eq(PositionExecution::getConid, conid);
+        queryWrapper.eq(PositionExecution::getOptType, PositionExecutionOptTypeEnum.IN.name());
+        queryWrapper.gt(PositionExecution::getRemainQty, BigDecimal.ZERO);
+
+        List<PositionExecution> inLots = positionExecutionService.list(queryWrapper);
+        BigDecimal total = BigDecimal.ZERO;
+        for (PositionExecution lot : inLots) {
+            BigDecimal qty = nvl(lot.getRemainQty());
+            BigDecimal price = nvl(lot.getPrice());
+            if (TradeSideEnum.BOT.name().equals(lot.getSide())) {
+                total = total.add(marketPrice.subtract(price).multiply(multiplier).multiply(qty));
+            } else {
+                total = total.add(price.subtract(marketPrice).multiply(multiplier).multiply(qty));
+            }
+        }
+        return total;
+    }
+
+    /**
+     * 当日未实现盈亏：仅统计收盘仍持有的仓位，今日因市价变动新增的浮盈浮亏。
+     * 昨仓今持：(todayClose - yesterdayClose) × remainQty × multiplier
+     * 今买今持：(todayClose - buyPrice) × remainQty × multiplier
+     */
+    private BigDecimal sumDailyUnrealizedPnl(String accountCode, int conid, String date,
+                                             BigDecimal todayClose, BigDecimal multiplier) {
+        if (todayClose == null) {
+            return BigDecimal.ZERO;
+        }
+
+        LocalDate tradeDate = parseTradeDate(date);
+        String normalizedDate = tradeDate != null
+                ? DateUtil.localDateToString(tradeDate, "yyyyMMdd")
+                : date;
+
+        BigDecimal yesterdayClose = null;
+        if (tradeDate != null) {
+            LocalDate prevDate = tradeDate.minusDays(1);
+            yesterdayClose = resolveMarketClosePrice(conid, DateUtil.localDateToString(prevDate, "yyyyMMdd"));
+            if (yesterdayClose == null) {
+                yesterdayClose = resolveMarketClosePrice(conid, DateUtil.localDateToString(prevDate));
+            }
+        }
+
+        LambdaQueryWrapper<PositionExecution> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(PositionExecution::getAccountCode, accountCode);
+        queryWrapper.eq(PositionExecution::getConid, conid);
+        queryWrapper.eq(PositionExecution::getOptType, PositionExecutionOptTypeEnum.IN.name());
+        queryWrapper.gt(PositionExecution::getRemainQty, BigDecimal.ZERO);
+
+        List<PositionExecution> inLots = positionExecutionService.list(queryWrapper);
+        BigDecimal total = BigDecimal.ZERO;
+        for (PositionExecution lot : inLots) {
+            BigDecimal qty = nvl(lot.getRemainQty());
+            BigDecimal lotPrice = nvl(lot.getPrice());
+            boolean isLong = TradeSideEnum.BOT.name().equals(lot.getSide());
+            boolean openedToday = normalizedDate.equals(normalizeTradeDate(lot.getExecutionDate()));
+
+            BigDecimal dailyPnl;
+            if (openedToday) {
+                dailyPnl = isLong
+                        ? todayClose.subtract(lotPrice)
+                        : lotPrice.subtract(todayClose);
+            } else if (yesterdayClose != null) {
+                dailyPnl = isLong
+                        ? todayClose.subtract(yesterdayClose)
+                        : yesterdayClose.subtract(todayClose);
+            } else {
+                continue;
+            }
+            total = total.add(dailyPnl.multiply(multiplier).multiply(qty));
+        }
+        return total;
+    }
+
+    private void rollupPositionDailyPnl(Position position, String accountCode, int conid, String date,
+                                        BigDecimal calDailyRealizedPnl, BigDecimal multiplier) {
+        if (date.equals(position.getPnlDailyDate())) {
+            position.setCalDailyRealizedPnl(nvl(position.getCalDailyRealizedPnl()).add(calDailyRealizedPnl));
+        } else {
+            position.setCalDailyRealizedPnl(calDailyRealizedPnl);
+            position.setPnlDailyDate(date);
+        }
+        position.setCalRealizedPnl(nvl(position.getCalRealizedPnl()).add(calDailyRealizedPnl));
+
+        BigDecimal todayClose = resolveMarketClosePrice(conid, date);
+        position.setCalDailyUnrealizedPnl(sumDailyUnrealizedPnl(accountCode, conid, date, todayClose, multiplier));
+        position.setCalUnrealizedPnl(sumRemainInLotsUnrealized(accountCode, conid, todayClose, multiplier));
+    }
+
+    private BigDecimal resolveMarketClosePrice(int conid, String date) {
+        BigDecimal price = contractMarketHistoryService.getMarketPriceByConidAndDate(conid, date);
+        if (price != null) {
+            return price;
+        }
+        LocalDate localDate = parseTradeDate(date);
+        if (localDate == null) {
+            return null;
+        }
+        price = contractMarketHistoryService.getMarketPriceByConidAndDate(conid, DateUtil.localDateToString(localDate));
+        if (price != null) {
+            return price;
+        }
+        return contractMarketHistoryService.getMarketPriceByConidAndDate(conid, DateUtil.localDateToString(localDate, "yyyyMMdd"));
+    }
+
+    private LocalDate parseTradeDate(String date) {
+        if (StringUtils.isEmpty(date)) {
+            return null;
+        }
+        String trimmed = date.trim();
+        if (trimmed.length() >= 10 && trimmed.charAt(4) == '-') {
+            return DateUtil.stringToLocalDate(trimmed.substring(0, 10), "yyyy-MM-dd");
+        }
+        if (trimmed.length() >= 8) {
+            return DateUtil.stringToLocalDate(trimmed.substring(0, 8), "yyyyMMdd");
+        }
+        return null;
+    }
+
+    private String normalizeTradeDate(String date) {
+        LocalDate localDate = parseTradeDate(date);
+        if (localDate != null) {
+            return DateUtil.localDateToString(localDate, "yyyyMMdd");
+        }
+        return date;
+    }
+
+    private BigDecimal getMultiplier(Contract contract) {
+        String multiplier = contract.getMultiplier();
+        return new BigDecimal(multiplier);
+    }
+
+    private void initPositionCalFields(Position position) {
+        if (position.getCalPositionQty() == null) {
+            position.setCalPositionQty(BigDecimal.ZERO);
+        }
+        if (position.getCalAvgCost() == null) {
+            position.setCalAvgCost(BigDecimal.ZERO);
+        }
+        if (position.getCalRealizedPnl() == null) {
+            position.setCalRealizedPnl(BigDecimal.ZERO);
+        }
+        if (position.getCalUnrealizedPnl() == null) {
+            position.setCalUnrealizedPnl(BigDecimal.ZERO);
+        }
+        if (position.getCalDailyRealizedPnl() == null) {
+            position.setCalDailyRealizedPnl(BigDecimal.ZERO);
+        }
+        if (position.getCalDailyUnrealizedPnl() == null) {
+            position.setCalDailyUnrealizedPnl(BigDecimal.ZERO);
+        }
+    }
+
+    private BigDecimal nvl(BigDecimal value) {
+        return value == null ? BigDecimal.ZERO : value;
     }
 
     private void handleDayTrades(List<PositionExecution> intradayTrades, String accountCode, String date, Contract contract) {

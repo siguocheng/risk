@@ -3,6 +3,7 @@ package com.riskcontrol.domain;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.riskcontrol.domain.vo.CommissionAndFeesReportCallbackVo;
 import com.riskcontrol.domain.vo.ExecutionCallbackVo;
+import com.riskcontrol.util.DateUtil;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -130,8 +131,8 @@ public class PositionExecution extends BaseEntity {
     private Long yieldRedemptionDate;
 
     @Schema(description = "日期")
-    @TableField(value = "date")
-    private String date;
+    @TableField(value = "execution_date")
+    private String executionDate;
 
     @Schema(description = "剩余数量")
     @TableField(value = "remain_qty")
@@ -185,7 +186,7 @@ public class PositionExecution extends BaseEntity {
         this.pendingPriceRevision = execution.isPendingPriceRevision();
         this.submitter = execution.getSubmitter();
         this.optExerciseOrLapseType = execution.getOptExerciseOrLapseType() != null ? execution.getOptExerciseOrLapseType().name() : "";
-        this.date = execution.getTime().substring(0,9);
+        this.executionDate = DateUtil.localDateToString(DateUtil.stringToLocalDate(execution.getTime().substring(0,8), "yyyyMMdd"));
         if (position != null) {
             this.marketPrice = position.getMarketPrice();
         }

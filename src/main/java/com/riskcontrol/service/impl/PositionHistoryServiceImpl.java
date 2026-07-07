@@ -32,6 +32,7 @@ public class PositionHistoryServiceImpl extends ServiceImpl<PositionHistoryMappe
             // 存在则更新
             return this.update(positionHistory, queryWrapper);
         } else {
+            positionHistory.setId(null);
             // 不存在则新增
             return this.save(positionHistory);
         }

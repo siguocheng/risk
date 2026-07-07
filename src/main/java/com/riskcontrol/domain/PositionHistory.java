@@ -32,7 +32,7 @@ public class PositionHistory extends BaseEntity implements Serializable {
 
     @Schema(description = "合约id")
     @TableField(value = "conid")
-    private Long conid;
+    private Integer conid;
 
     @Schema(description = "股票简称")
     @TableField(value = "symbol")
@@ -70,6 +70,42 @@ public class PositionHistory extends BaseEntity implements Serializable {
     @TableField(value = "realized_pnl")
     private BigDecimal realizedPnl;
 
+    @Schema(description = "日收益")
+    @TableField(value = "daily_pnl")
+    private BigDecimal dailyPnl;
+
+    @Schema(description = "持仓股数")
+    @TableField(value = "cal_position_qty")
+    private BigDecimal calPositionQty;
+
+    @Schema(description = "平均成本价")
+    @TableField(value = "cal_avg_cost")
+    private BigDecimal calAvgCost;
+
+    @Schema(description = "未实现盈亏")
+    @TableField(value = "cal_unrealized_pnl")
+    private BigDecimal calUnrealizedPnl;
+
+    @Schema(description = "实现盈亏")
+    @TableField(value = "cal_realized_pnl")
+    private BigDecimal calRealizedPnl;
+
+    @Schema(description = "计算日未实现收益")
+    @TableField(value = "cal_daily_unrealized_pnl")
+    private BigDecimal calDailyUnrealizedPnl;
+
+    @Schema(description = "计算日已实现收益")
+    @TableField(value = "cal_daily_realized_pnl")
+    private BigDecimal calDailyRealizedPnl;
+
+    @Schema(description = "最后一次交易操作的id")
+    @TableField(value = "position_execution_id")
+    private Long positionExecutionId;
+
+    @Schema(description = "累计佣金及各项费用")
+    @TableField(value = "acc_commission_and_fees")
+    private BigDecimal accCommissionAndFees;
+
     public PositionHistory(){
 
     }
@@ -86,7 +122,7 @@ public class PositionHistory extends BaseEntity implements Serializable {
         this.positionDate = DateUtil.localDateToString(LocalDate.now());
         this.accountCode = positionCallbackVo.getAccountCode();
         this.modelCode = positionCallbackVo.getModelCode();
-        this.conid = positionCallbackVo.getConid() != null ? positionCallbackVo.getConid().longValue() : null;
+        this.conid = positionCallbackVo.getConid() != null ? positionCallbackVo.getConid() : null;
         this.symbol = positionCallbackVo.getSymbol();
         this.positionQty = positionCallbackVo.getPosition();
         this.avgCost = positionCallbackVo.getAvgCost() != null ? BigDecimal.valueOf(positionCallbackVo.getAvgCost()) : null;
