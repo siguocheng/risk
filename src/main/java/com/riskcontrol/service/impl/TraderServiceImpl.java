@@ -32,6 +32,7 @@ public class TraderServiceImpl extends ServiceImpl<TraderMapper, Trader> impleme
                     TraderPage page = new TraderPage();
                     page.setId(trader.getId());
                     page.setTraderName(trader.getTraderName());
+                    page.setModifiedTime(trader.getModifiedTime());
                     return page;
                 });
     }
@@ -42,6 +43,7 @@ public class TraderServiceImpl extends ServiceImpl<TraderMapper, Trader> impleme
         // 创建交易员
         Trader trader = new Trader();
         trader.setTraderName(modify.getTraderName());
+        trader.setCapital(modify.getCapital());
         this.save(trader);
 
         return trader.getId();
@@ -56,6 +58,7 @@ public class TraderServiceImpl extends ServiceImpl<TraderMapper, Trader> impleme
             throw new RuntimeException("交易员不存在");
         }
         trader.setTraderName(modify.getTraderName());
+        trader.setCapital(modify.getCapital());
         this.updateById(trader);
 
         return modify.getId();

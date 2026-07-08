@@ -23,7 +23,6 @@ public class TraderModify {
     private String traderName;
 
     @Schema(description = "本金")
-    @TableField(value = "本金")
     private BigDecimal capital;
 
     @Schema(description = "关联的账号列表")

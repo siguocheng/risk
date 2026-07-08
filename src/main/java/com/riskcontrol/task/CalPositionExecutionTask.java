@@ -11,6 +11,7 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -41,6 +42,7 @@ public class CalPositionExecutionTask {
     IContractMarketHistoryService contractMarketHistoryService;
 
 
+    @Transactional(rollbackFor = Exception.class)
     public void cal(){
 
         List<AccountCurrency> list = accountCurrencyService.list(); // 取得账号
@@ -114,6 +116,7 @@ public class CalPositionExecutionTask {
         BigDecimal calDailyRealizedPnl = BigDecimal.ZERO;
         BigDecimal marketPrice = resolveMarketClosePrice(conid, date);
 
+        BigDecimal commissionAndFeesSum = BigDecimal.ZERO;
         for (PositionExecution trade : trades) {
             String optType = resolveOptType(position, trade);
             if (PositionExecutionOptTypeEnum.IN.name().equals(optType)) {
@@ -122,10 +125,19 @@ public class CalPositionExecutionTask {
                 BigDecimal pnl = handleNoDayTradesOptOut(position, trade, multiplier, marketPrice);
                 calDailyRealizedPnl = calDailyRealizedPnl.add(pnl);
             }
+            trade.setStatus(1);
             positionExecutionService.updateById(trade);
+            if (trade.getCommissionAndFees() != null) {
+                commissionAndFeesSum = commissionAndFeesSum.add(trade.getCommissionAndFees());
+            }
         }
 
         rollupPositionDailyPnl(position, accountCode, conid, date, calDailyRealizedPnl, multiplier);
+        if (position.getAccCommissionAndFees() == null) {
+            position.setAccCommissionAndFees(commissionAndFeesSum);
+        } else {
+            position.setAccCommissionAndFees(position.getAccCommissionAndFees().add(commissionAndFeesSum));
+        }
         positionService.updateById(position);
 
         PositionHistory positionHistory = new PositionHistory(position, date);
@@ -271,7 +283,9 @@ public class CalPositionExecutionTask {
         openLot.setShares(remainQty);
         openLot.setTime(trade.getTime());
         openLot.setExecutionDate(trade.getExecutionDate());
-        openLot.setStatus(0);
+        openLot.setStatus(1);
+        openLot.setOrderId(trade.getId().intValue());
+        openLot.setExecId(trade.getExecId());
         handleNoDayTradesOptIn(position, openLot, multiplier, marketPrice);
         positionExecutionService.save(openLot);
     }
