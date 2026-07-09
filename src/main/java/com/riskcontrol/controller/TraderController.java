@@ -3,6 +3,7 @@ package com.riskcontrol.controller;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.riskcontrol.annotation.ResourceMethod;
 import com.riskcontrol.common.ResultBean;
+import com.riskcontrol.domain.vo.trader.TraderDetail;
 import com.riskcontrol.domain.vo.trader.TraderModify;
 import com.riskcontrol.domain.vo.trader.TraderPage;
 import com.riskcontrol.domain.vo.trader.TraderQuery;
@@ -55,5 +56,12 @@ public class TraderController extends BaseController {
     @ResourceMethod(btnCode = "btn-pc-trader-delete", level = 3)
     public ResultBean<Long> delete(@RequestBody TraderModify modify){
         return new ResultBean<>(traderService.delete(modify.getId()));
+    }
+
+    @Operation(summary = "交易员详情")
+    @PostMapping("/pc/detail")
+    @ResourceMethod(btnCode = "btn-pc-trader-detail", level = 3)
+    public ResultBean<TraderDetail> detail(@RequestBody TraderModify modify){
+        return new ResultBean<>(traderService.getDetail(modify.getId()));
     }
 }

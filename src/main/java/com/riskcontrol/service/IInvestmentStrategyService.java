@@ -6,6 +6,7 @@ import com.riskcontrol.domain.InvestmentStrategy;
 import com.riskcontrol.domain.vo.investmentstrategy.InvestmentStrategyModify;
 import com.riskcontrol.domain.vo.investmentstrategy.InvestmentStrategyPage;
 import com.riskcontrol.domain.vo.investmentstrategy.InvestmentStrategyQuery;
+import com.riskcontrol.domain.vo.investmentstrategy.InvestmentStrategysModify;
 
 /**
  * 投资策略Service接口
@@ -19,7 +20,7 @@ public interface IInvestmentStrategyService extends IService<InvestmentStrategy>
 
     Long create(InvestmentStrategyModify modify);
 
-    Long update(InvestmentStrategyModify modify);
+    Integer update(InvestmentStrategysModify modify);
 
     Long delete(Long id);
 }

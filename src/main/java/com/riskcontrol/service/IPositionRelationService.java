@@ -19,23 +19,8 @@ public interface IPositionRelationService extends IService<PositionRelation> {
 
     IPage<PositionRelationPage> queryPage(PositionRelationQuery query);
 
-    Long create(PositionRelationModify modify);
-
-    Long update(PositionRelationModify modify);
-
-    Long delete(Long id);
-
-    /**
-     * 根据账户、合约、策略、交易员更新持仓数量
-     *
-     * @param accountCode   账户代码
-     * @param conid         合约ID
-     * @param strategyName  策略名称
-     * @param traderName    交易员名称
-     * @param qty           持仓数量（正数增加，负数减少）
-     * @return 是否成功
-     */
     boolean saveOrUpdatePositionQty(String accountCode, Integer conid, String strategyName, String traderName, BigDecimal qty);
 
     PositionRelation getPositionRelationByKey(String accountCode, Integer conid, String strategyName, String traderName);
+
 }

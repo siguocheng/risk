@@ -21,39 +21,18 @@ import org.springframework.web.bind.annotation.RestController;
  * @author zpc
  * @date 2026-06-19
  */
-@Tag(description = "综合关系", name = "综合关系")
+@Tag(description = "持仓", name = "持仓")
 @RestController
-@RequestMapping("/composite-relation")
+@RequestMapping("/position-relation")
 public class PositionRelationController extends BaseController {
 
     @Resource
-    IPositionRelationService compositeRelationService;
+    IPositionRelationService positionRelationService;
 
     @Operation(summary = "综合关系列表")
     @PostMapping("/pc/query-page")
     @ResourceMethod(btnCode = "btn-pc-composite-relation-query-page", level = 3)
     public ResultBean<IPage<PositionRelationPage>> queryList(@RequestBody PositionRelationQuery query) {
-        return new ResultBean<>(compositeRelationService.queryPage(query));
-    }
-
-    @Operation(summary = "新增综合关系")
-    @PostMapping("/pc/create")
-    @ResourceMethod(btnCode = "btn-pc-composite-relation-create", level = 3)
-    public ResultBean<Long> create(@RequestBody PositionRelationModify modify) {
-        return new ResultBean<>(compositeRelationService.create(modify));
-    }
-
-    @Operation(summary = "更新综合关系")
-    @PostMapping("/pc/update")
-    @ResourceMethod(btnCode = "btn-pc-composite-relation-update", level = 3)
-    public ResultBean<Long> update(@RequestBody PositionRelationModify modify) {
-        return new ResultBean<>(compositeRelationService.update(modify));
-    }
-
-    @Operation(summary = "删除综合关系")
-    @PostMapping("/pc/delete")
-    @ResourceMethod(btnCode = "btn-pc-composite-relation-delete", level = 3)
-    public ResultBean<Long> delete(@RequestBody PositionRelationModify modify) {
-        return new ResultBean<>(compositeRelationService.delete(modify.getId()));
+        return new ResultBean<>(positionRelationService.queryPage(query));
     }
 }

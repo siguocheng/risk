@@ -158,6 +158,13 @@
             <!-- version 3.3.5，和boot版本保持一致 -->
         </dependency>
 
+        <!-- jackson java8时间支持 -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
+            <!-- 版本和项目jackson主版本保持一致，SpringBoot可省略version由父工程管理 -->
+        </dependency>
+
     </dependencies>
 
     <build>

@@ -1,20 +1,15 @@
 package com.riskcontrol.domain.vo.trader;
 
-import com.baomidou.mybatisplus.annotation.TableField;
+import com.riskcontrol.domain.TraderModifiedHistory;
+import com.riskcontrol.domain.vo.TraderModifiedHistoryVo;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
 import java.math.BigDecimal;
 import java.util.List;
 
-/**
- * 交易员维护VO
- *
- * @author zpc
- * @date 2026-06-18
- */
 @Data
-public class TraderModify {
+public class TraderDetail {
 
     @Schema(description = "交易员ID")
     private Long id;
@@ -24,4 +19,7 @@ public class TraderModify {
 
     @Schema(description = "本金")
     private BigDecimal capital;
+
+    @Schema(description = "修改历史记录")
+    private List<TraderModifiedHistoryVo> modifiedHistoryList;
 }

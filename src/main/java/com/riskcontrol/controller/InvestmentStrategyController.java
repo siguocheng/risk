@@ -6,6 +6,7 @@ import com.riskcontrol.common.ResultBean;
 import com.riskcontrol.domain.vo.investmentstrategy.InvestmentStrategyModify;
 import com.riskcontrol.domain.vo.investmentstrategy.InvestmentStrategyPage;
 import com.riskcontrol.domain.vo.investmentstrategy.InvestmentStrategyQuery;
+import com.riskcontrol.domain.vo.investmentstrategy.InvestmentStrategysModify;
 import com.riskcontrol.service.IInvestmentStrategyService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -36,24 +37,27 @@ public class InvestmentStrategyController extends BaseController {
         return new ResultBean<>(investmentStrategyService.queryPage(query));
     }
 
-    @Operation(summary = "新增投资策略")
-    @PostMapping("/pc/create")
-    @ResourceMethod(btnCode = "btn-pc-investment-strategy-create", level = 3)
-    public ResultBean<Long> create(@RequestBody InvestmentStrategyModify modify) {
-        return new ResultBean<>(investmentStrategyService.create(modify));
-    }
-
     @Operation(summary = "更新投资策略")
     @PostMapping("/pc/update")
     @ResourceMethod(btnCode = "btn-pc-investment-strategy-update", level = 3)
-    public ResultBean<Long> update(@RequestBody InvestmentStrategyModify modify) {
+    public ResultBean<Integer> update(@RequestBody InvestmentStrategysModify modify) {
         return new ResultBean<>(investmentStrategyService.update(modify));
     }
 
-    @Operation(summary = "删除投资策略")
-    @PostMapping("/pc/delete")
-    @ResourceMethod(btnCode = "btn-pc-investment-strategy-delete", level = 3)
-    public ResultBean<Long> delete(@RequestBody InvestmentStrategyModify modify) {
-        return new ResultBean<>(investmentStrategyService.delete(modify.getId()));
-    }
+
+//    @Operation(summary = "新增投资策略")
+//    @PostMapping("/pc/create")
+//    @ResourceMethod(btnCode = "btn-pc-investment-strategy-create", level = 3)
+//    public ResultBean<Long> create(@RequestBody InvestmentStrategyModify modify) {
+//        return new ResultBean<>(investmentStrategyService.create(modify));
+//    }
+//
+//
+//
+//    @Operation(summary = "删除投资策略")
+//    @PostMapping("/pc/delete")
+//    @ResourceMethod(btnCode = "btn-pc-investment-strategy-delete", level = 3)
+//    public ResultBean<Long> delete(@RequestBody InvestmentStrategyModify modify) {
+//        return new ResultBean<>(investmentStrategyService.delete(modify.getId()));
+//    }
 }

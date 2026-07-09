@@ -3,6 +3,7 @@ package com.riskcontrol.service;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.riskcontrol.domain.Trader;
+import com.riskcontrol.domain.vo.trader.TraderDetail;
 import com.riskcontrol.domain.vo.trader.TraderModify;
 import com.riskcontrol.domain.vo.trader.TraderPage;
 import com.riskcontrol.domain.vo.trader.TraderQuery;
@@ -21,4 +22,6 @@ public interface ITraderService extends IService<Trader> {
     Long update(TraderModify modify);
 
     Long delete(Long id);
+
+    TraderDetail getDetail(Long id);
 }
