@@ -1,7 +1,10 @@
 package com.riskcontrol.dao;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.riskcontrol.domain.PositionRelationHistory;
+import com.riskcontrol.domain.vo.positionrelation.PositionRelationHistoryPage;
+import com.riskcontrol.domain.vo.positionrelation.PositionRelationHistoryQuery;
 import org.apache.ibatis.annotations.Param;
 
 import java.util.List;
@@ -15,4 +18,6 @@ import java.util.List;
 public interface PositionRelationHistoryMapper extends BaseMapper<PositionRelationHistory> {
 
     List<PositionRelationHistory> sumPnlByDate(@Param("startDate") String startDate, @Param("endDate") String endDate);
+
+    IPage<PositionRelationHistoryPage> queryPage(IPage<PositionRelationHistoryPage> page, @Param("query") PositionRelationHistoryQuery query);
 }

@@ -42,6 +42,6 @@ public class PositionExecutionQuery extends BasePageQuery {
     @Schema(description = "标的")
     private List<Integer> conids;
 
-    @Schema(description = "板框")
+    @Schema(description = "板块")
     private List<String> sectors;
 }

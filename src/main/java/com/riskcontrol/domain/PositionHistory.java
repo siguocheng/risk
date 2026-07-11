@@ -110,6 +110,10 @@ public class PositionHistory extends BaseEntity implements Serializable {
     @TableField(value = "acc_commission_and_fees")
     private BigDecimal accCommissionAndFees;
 
+    @Schema(description = "市场收盘价")
+    @TableField(value = "cal_market_price")
+    private BigDecimal calMarketPrice;
+
     public PositionHistory(){
 
     }

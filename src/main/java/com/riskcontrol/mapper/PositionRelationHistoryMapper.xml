@@ -35,4 +35,59 @@
             daily_date
         ORDER BY daily_date
     </select>
+
+    <select id="queryPage" resultType="com.riskcontrol.domain.vo.positionrelation.PositionRelationHistoryPage">
+        SELECT
+            prh.id,
+            prh.daily_date,
+            prh.account_code,
+            prh.conid,
+            prh.strategy_name,
+            prh.trader_name,
+            prh.position_qty,
+            prh.unrealized_pnl,
+            prh.realized_pnl,
+            prh.commission_and_fees,
+            prh.market_price,
+            prh.modified_time,
+            c.sec_type,
+            c.multiplier,
+            c.symbol
+        FROM
+            position_relation_history prh
+        LEFT JOIN contract c ON prh.conid = c.conid
+        WHERE
+            1=1
+            <if test="query.dailyDate != null and query.dailyDate != ''">
+                AND prh.daily_date = #{query.dailyDate}
+            </if>
+            <if test="query.accountCodes != null and query.accountCodes.size() > 0">
+                AND prh.account_code IN
+                <foreach collection="query.accountCodes" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="query.conids != null and query.conids.size() > 0">
+                AND prh.conid IN
+                <foreach collection="query.conids" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="query.strategyNames != null and query.strategyNames.size() > 0">
+                AND prh.strategy_name IN
+                <foreach collection="query.strategyNames" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="query.traderNames != null and query.traderNames.size() > 0">
+                AND prh.trader_name IN
+                <foreach collection="query.traderNames" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="query.secType != null and query.secType != ''">
+                AND c.sec_type = #{query.secType}
+            </if>
+        ORDER BY prh.daily_date DESC
+    </select>
 </mapper>

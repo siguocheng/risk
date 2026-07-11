@@ -255,6 +255,7 @@ public class IbReconnectTask {
                         shares = positionExecution.getShares();
                     }
                     positionExecution.setRemainQty(shares);
+                    positionExecution.setAllocateRemainQty(shares);
                     positionExecution.setOptType(PositionExecutionOptTypeEnum.IN.name());
                     positionExecution.setMarketPrice(position.getMarketPrice()); // 市场价格
                     // 买入价格
@@ -861,122 +862,12 @@ public class IbReconnectTask {
             commissionMap.put(report.getExecId(), report);
         }
 
-        // 合并数据并保存到数据库
-        List<PositionExecution> executionList = new ArrayList<>();
         for (ExecutionCallbackVo execution : executions) {
             int conid = execution.getConid();
             Position position = positionService.getPositionByConid(execution.getAcctNumber(), conid);
 
             CommissionAndFeesReportCallbackVo commissionReport = commissionMap.get(execution.getExecId());
             PositionExecution positionExecution = new PositionExecution(execution, commissionReport, position);
-
-//            String optType = "";
-//            String side = positionExecution.getSide();// BOT是买 SLD是卖
-//
-//            if (position.getCalPositionQty() == null || position.getCalPositionQty().compareTo(BigDecimal.ZERO) == 0) {
-//                optType = PositionExecutionOptTypeEnum.IN.name();
-//            } else if (position.getCalPositionQty().compareTo(BigDecimal.ZERO) == 1) {
-//                if (TradeSideEnum.BOT.name().equals(side)) {
-//                    optType = PositionExecutionOptTypeEnum.IN.name();
-//                } else if (TradeSideEnum.SLD.name().equals(side)) {
-//                    optType = PositionExecutionOptTypeEnum.OUT.name();
-//                }
-//            } else if (position.getCalPositionQty().compareTo(BigDecimal.ZERO) == -1) {
-//                if (TradeSideEnum.BOT.name().equals(side)) {
-//                    optType = PositionExecutionOptTypeEnum.OUT.name();
-//                } else if (TradeSideEnum.SLD.name().equals(side)) {
-//                    optType = PositionExecutionOptTypeEnum.IN.name();
-//                }
-//            }
-//
-//            Contract contract = contractService.getByConid(conid);
-//
-//            BigDecimal calPositionQty = position.getCalPositionQty(); // 数量
-//            BigDecimal calAvgCost = position.getCalAvgCost(); // 成本
-//            BigDecimal calUnrealizedPnl = position.getCalAvgCost(); // 未实现收益
-//            BigDecimal calRealizedPnl = position.getCalAvgCost(); // 已实现收益
-//            BigDecimal accCommissionAndFees = position.getAccCommissionAndFees(); // 持仓的累计佣金和其他费用
-//
-//            BigDecimal executionPrice = positionExecution.getPrice(); // 交易价
-//            BigDecimal executionQty = positionExecution.getShares(); // 交易数量
-//            BigDecimal marketPrice = positionExecution.getMarketPrice();// 市场价
-//
-//            BigDecimal calExecutionUnrealizedPnl = BigDecimal.ZERO; // 本次交易的未实现收益
-//            BigDecimal calExecutionRealizedPnl = BigDecimal.ZERO; // 本次交易的已实现收益
-//
-//            BigDecimal executionCommissionAndFees = positionExecution.getCommissionAndFees();// 交易的佣金和其他费用
-//            BigDecimal multiplier = new BigDecimal(contract.getMultiplier());// 期权一手的数量
-//
-//            // 入库操作
-//            if (PositionExecutionOptTypeEnum.IN.name().equals(optType)) {
-//                // 期权和期货期权
-//                if (SetTypeEnum.OPT.getCode().equals(contract.getSecType()) || SetTypeEnum.FOP.getCode().equals(contract.getSecType())) {
-//                    calAvgCost = calAvgCost.multiply(calPositionQty).add(executionPrice.multiply(multiplier).multiply(positionExecution.getShares())).divide(calPositionQty.add(executionQty), 4, RoundingMode.HALF_UP);
-//
-//                    // 看涨
-//                    if (contract.getOptRight().equals("C")) {
-//                        // 买看涨
-//                        if (TradeSideEnum.BOT.name().equals(side)) {
-//                            calExecutionUnrealizedPnl = (marketPrice.subtract(executionPrice)).multiply(multiplier).multiply(executionQty); // 本次交易的未实现收益=(市场价-交易价)**每张的数量*交易数量
-//                        }
-//                        // 卖看涨
-//                        else if (TradeSideEnum.SLD.name().equals(side)) {
-//                            calExecutionUnrealizedPnl = (executionPrice.subtract(marketPrice)).multiply(multiplier).multiply(executionQty); // 本次交易的未实现收益=(交易价-)*每张的数量*交易数量
-//                        }
-//
-//                        calUnrealizedPnl = calUnrealizedPnl.add(calExecutionUnrealizedPnl);
-//                        accCommissionAndFees = accCommissionAndFees.add(executionCommissionAndFees);
-//                    }
-//                    // 看跌
-//                    else if (contract.getOptRight().equals("P")) {
-//                        // 买看跌
-//                        if (TradeSideEnum.BOT.name().equals(side)) {
-//                            calExecutionUnrealizedPnl = (marketPrice.subtract(executionPrice)).multiply(multiplier).multiply(executionQty); // 本次交易的未实现收益=(市场价-交易价)*每张的数量*交易数量
-//                        }
-//                        // 卖看跌
-//                        else if (TradeSideEnum.SLD.name().equals(side)) {
-//                            calExecutionUnrealizedPnl = (executionPrice.subtract(marketPrice)).multiply(multiplier).multiply(executionQty); // 本次交易的未实现收益=(交易价-)*每张的数量*交易数量
-//                        }
-//                        calUnrealizedPnl = calUnrealizedPnl.add(calExecutionUnrealizedPnl);
-//                        accCommissionAndFees = accCommissionAndFees.add(executionCommissionAndFees);
-//                    }
-//                } else {
-//                    calAvgCost = calAvgCost.multiply(calPositionQty).add(executionPrice.multiply(positionExecution.getShares())).divide(calPositionQty.add(executionQty), 4, RoundingMode.HALF_UP);
-//                    calExecutionUnrealizedPnl = (marketPrice.subtract(executionPrice)).multiply(executionQty); // 本次交易的未实现收益=(市场价-交易价)*交易数量
-//                    calUnrealizedPnl = calUnrealizedPnl.add(calExecutionUnrealizedPnl);
-//                    accCommissionAndFees = accCommissionAndFees.add(executionCommissionAndFees);
-//                }
-//            }
-//            // 出库操作
-//            else if (PositionExecutionOptTypeEnum.OUT.name().equals(optType)) {
-//                LambdaQueryWrapper<PositionExecution> queryWrapper = new LambdaQueryWrapper<>();
-//                queryWrapper.eq(PositionExecution::getOptType, PositionExecutionOptTypeEnum.IN.name());
-//                queryWrapper.eq(PositionExecution::getAccountCode, positionExecution.getAccountCode());
-//                queryWrapper.eq(PositionExecution::getConid, positionExecution.getConid());
-//                queryWrapper.gt(PositionExecution::getDate, positionExecution.getDate());
-//                queryWrapper.orderByAsc(PositionExecution::getTime);
-//            }
-//
-//            // 维护持仓数量
-//            BigDecimal shares = positionExecution.getShares();
-//            if (TradeSideEnum.SLD.name().equals(side)) {
-//                shares = shares.negate();
-//            }
-//            if (position.getCalPositionQty() == null) {
-//                position.setCalPositionQty(shares);
-//            } else {
-//                position.setCalPositionQty(shares.add(position.getCalPositionQty()));
-//            }
-//            position.setCalAvgCost(calAvgCost);
-//            position.setCalRealizedPnl(calRealizedPnl);
-//            position.setCalUnrealizedPnl(calUnrealizedPnl);
-//            position.setAccCommissionAndFees(accCommissionAndFees);
-//
-//            positionService.updateById(position);
-            executionList.add(positionExecution);
-
-//            positionExecution.setCalExecutionUnrealizedPnl(calExecutionUnrealizedPnl);
-//            positionExecution.setCalExecutionRealizedPnl(calExecutionRealizedPnl);
 
             positionExecutionService.saveOrUpdateByExecId(positionExecution);
         }

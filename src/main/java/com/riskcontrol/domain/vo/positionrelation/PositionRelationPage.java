@@ -17,18 +17,24 @@ public class PositionRelationPage {
     @Schema(description = "ID")
     private Long id;
 
+    @Schema(description = "交易员")
+    private String traderName;
+
+    @Schema(description = "策略名称")
+    private String strategyName;
+
     @Schema(description = "账号id")
     private String accountCode;
 
     @Schema(description = "合约id")
     private Integer conid;
 
-    @Schema(description = "策略名称")
-    private String strategyName;
-
-    @Schema(description = "交易员")
-    private String traderName;
+    @Schema(description = "合约")
+    private String symbol;
 
     @Schema(description = "持仓股数")
     private BigDecimal positionQty;
+
+    @Schema(description = "市场价")
+    private BigDecimal marketPrice;
 }

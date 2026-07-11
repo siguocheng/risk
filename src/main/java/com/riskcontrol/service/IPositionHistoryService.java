@@ -18,4 +18,6 @@ public interface IPositionHistoryService extends IService<PositionHistory> {
      * @return 是否成功
      */
     boolean saveOrUpdatePositionHistory(PositionHistory positionHistory);
+
+    PositionHistory getPositionHistoryByKey(String positionDate, Integer conid, String accountCode);
 }

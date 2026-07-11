@@ -11,6 +11,7 @@ import com.riskcontrol.domain.vo.position.PositionAllocateRequest;
 import com.riskcontrol.domain.vo.position.PositionPage;
 import com.riskcontrol.domain.vo.position.PositionQuery;
 import com.riskcontrol.enums.TradeSideEnum;
+import com.riskcontrol.exception.BusinessException;
 import com.riskcontrol.service.*;
 import org.springframework.beans.BeanUtils;
 import lombok.RequiredArgsConstructor;
@@ -36,10 +37,12 @@ import java.util.List;
 public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> implements IPositionService {
 
     private final IPositionRelationService positionRelationService;
+    private final IPositionRelationHistoryService positionRelationHistoryService;
     private final IPositionAllocateHistoryService positionAllocateHistoryService;
 
     private final IPositionExecutionService positionExecutionService;
     private final IAccountContractService contractService;
+    private final IPositionHistoryService positionHistoryService;
 
     @Override
     public boolean saveOrUpdatePosition(Position position) {
@@ -65,97 +68,94 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
 
         List<PositionAllocateHistory> historyList = new ArrayList<>();
 
-        BigDecimal avgPln = BigDecimal.ZERO; // 每一股的盈亏
+        BigDecimal avgRealizedPln = BigDecimal.ZERO; // 每一股的已实现盈亏
+        BigDecimal avgUnRealizedPln = BigDecimal.ZERO; // 每一股的未实现盈亏
         BigDecimal avgCommissionAnFees = BigDecimal.ZERO;
-        if (operateType == 1) {
-            Position position = this.getById(request.getId());
-
-            avgPln = position.getUnrealizedPnl().divide(position.getPositionQty(), 4, RoundingMode.DOWN);
-        } else if (operateType == 2) {
+        if (operateType == 2) {
             PositionExecution positionExecution = positionExecutionService.getById(request.getId()); // 交易信息
-            Position position = this.getPositionByConid(positionExecution.getAccountCode(), positionExecution.getConid()); // 持仓信息
+
+            String executionDate = positionExecution.getExecutionDate(); // 交易日期
+
+            PositionHistory positionHistory = positionHistoryService.getPositionHistoryByKey(executionDate, positionExecution.getConid(), positionExecution.getAccountCode());
+
+            List<PositionAllocateItem> positionAllocateList = request.getDetails();
+
             BigDecimal qty = BigDecimal.ZERO;
-            if (positionExecution.getSide().equals(TradeSideEnum.BOT.name())) {
-                qty = positionExecution.getShares();
-            } else if (positionExecution.getSide().equals(TradeSideEnum.SLD.name())) {
-                qty = positionExecution.getShares().negate();
-            }
-            // 根据交易的买入方向，增加或者扣减持仓的数量，重新计算未实现收益(重新定一个字段，可以和IB进行对照)
-            // 当前交易有没日内交易，优先对有日内的交易进行持仓数量、持仓未实现收益、持仓已实现收益，持仓的成本进行计算
-            // 如果不存在，就按照FIFO的原则，根据交易进行持仓数量、持仓未实现收益、持仓已实现收益，持仓的成本进行计算
-            // 股票，期权，期货的收益计算方式不一样
 
-            avgPln = positionExecution.getRealizedPnl().divide(positionExecution.getShares(), 2, RoundingMode.DOWN);
+            BigDecimal accAllocateQty = positionAllocateList.stream()
+                    .map(item -> item.getAllocateQty() == null ? BigDecimal.ZERO : item.getAllocateQty())
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            if (qty.compareTo(accAllocateQty) == 1) {
+                throw new BusinessException("交易的总数量大于分配的合计数量");
+            }
+
+            avgRealizedPln = positionExecution.getCalExecutionRealizedPnl().divide(positionExecution.getShares(), 2, RoundingMode.DOWN);
+            avgUnRealizedPln = positionExecution.getCalExecutionUnrealizedPnl().divide(positionExecution.getShares(), 2, RoundingMode.DOWN);
             avgCommissionAnFees = positionExecution.getCommissionAndFees().divide(positionExecution.getShares(), 2, RoundingMode.DOWN);
-        }
 
-        if (operateType == 1) {
-            positionAllocateHistoryService.delPositionAllocateHistoryByKey(request.getId(), null);
-        } else if (operateType == 2) {
+            // 删除分配记录重新添加
             positionAllocateHistoryService.delPositionAllocateHistoryByKey(null, request.getId());
-        }
 
-        for (PositionAllocateItem detail : request.getDetails()) {
+            for (PositionAllocateItem detail : positionAllocateList) {
 
-            // 维护分配标
-            PositionAllocateHistory history = new PositionAllocateHistory();
-            BeanUtils.copyProperties(detail, history);
-            String strategyName = detail.getStrategyName();
-            String traderName = detail.getTraderName();
-            BigDecimal allocateQty = detail.getAllocateQty(); // 分配数量
+                // 维护分配记录
+                PositionAllocateHistory allocateHistory = new PositionAllocateHistory();
+                BeanUtils.copyProperties(detail, allocateHistory);
+                String strategyName = detail.getStrategyName();
+                String traderName = detail.getTraderName();
+                String accountCode = detail.getAccountCode();
+                int conid = detail.getConid();
+                BigDecimal allocateQty = detail.getAllocateQty(); // 分配数量
 
-            // 持仓分配
-            if (operateType == 1) {
-                history.setPositionId(request.getId());
-                history.setUnrealizedPnl(avgPln.multiply(allocateQty));
-                history.setCommissionAndFees(BigDecimal.ZERO);
+                BigDecimal accRealizedPln = avgRealizedPln.multiply(allocateQty);
+                BigDecimal accUnRealizedPln = avgUnRealizedPln.multiply(allocateQty);
+                BigDecimal accCommissionAnFees = avgCommissionAnFees.multiply(allocateQty);
+
+                allocateHistory.setPositionExecutionId(request.getId());
+                allocateHistory.setRealizedPnl(accRealizedPln);
+                allocateHistory.setUnrealizedPnl(accUnRealizedPln);
+                allocateHistory.setCommissionAndFees(accCommissionAnFees);
+                positionAllocateHistoryService.saveOrUpdate(allocateHistory);
+
+                PositionRelationHistory positionRelationHistory = positionRelationHistoryService.getPositionRelationHistoryByKey(executionDate, accountCode, conid, strategyName, traderName);
+
+                if (positionExecution.getSide().equals(TradeSideEnum.BOT.name())) {
+
+                } else if (positionExecution.getSide().equals(TradeSideEnum.SLD.name())) {
+                    allocateQty = allocateQty.negate();
+                }
+
+                if (positionRelationHistory == null) {
+                    // 新增：直接保存到position_relation表
+                    positionRelationHistory = new PositionRelationHistory();
+                    positionRelationHistory.setDailyDate(executionDate);
+                    positionRelationHistory.setAccountCode(detail.getAccountCode());
+                    positionRelationHistory.setConid(detail.getConid());
+                    positionRelationHistory.setStrategyName(strategyName);
+                    positionRelationHistory.setTraderName(traderName);
+                    // 交易分配
+                    positionRelationHistory.setPositionQty(allocateQty);
+                    positionRelationHistory.setDailyUnrealizedPnl(accUnRealizedPln);
+                    positionRelationHistory.setDailyRealizedPnl(accRealizedPln);
+                    positionRelationHistory.setCommissionAndFees(accCommissionAnFees);
+                    positionRelationHistory.setMarketPrice(positionExecution.getMarketPrice());
+
+                    positionRelationHistoryService.save(positionRelationHistory);
+                } else {
+
+                    // 交易分配
+                    positionRelationHistory.setPositionQty(positionRelationHistory.getPositionQty().add(allocateQty));
+                    positionRelationHistory.setUnrealizedPnl(positionRelationHistory.getUnrealizedPnl().add(accUnRealizedPln));
+                    positionRelationHistory.setRealizedPnl(positionRelationHistory.getRealizedPnl().add(accRealizedPln));
+                    positionRelationHistory.setCommissionAndFees(positionRelationHistory.getCommissionAndFees().add(accCommissionAnFees));
+
+                    positionRelationHistoryService.updateById(positionRelationHistory);
+                }
+                positionExecution.setAllocateRemainQty(positionExecution.getAllocateRemainQty().subtract(detail.getAllocateQty()));
             }
-            // 交易分配
-            else if (operateType == 2) {
-                history.setPositionExecutionId(request.getId());
-                history.setRealizedPnl(avgPln.multiply(allocateQty));
-                history.setCommissionAndFees(avgCommissionAnFees.multiply(allocateQty));
-            }
 
-            positionAllocateHistoryService.saveOrUpdate(history);
-
-            // 修改：更新position_relation表
-            PositionRelation relation = positionRelationService.getPositionRelationByKey(detail.getAccountCode(), detail.getConid(), strategyName, traderName);
-            if (relation == null) {
-                // 新增：直接保存到position_relation表
-                relation = new PositionRelation();
-                relation.setAccountCode(detail.getAccountCode());
-                relation.setConid(detail.getConid());
-                relation.setStrategyName(strategyName);
-                relation.setTraderName(traderName);
-                relation.setPositionQty(allocateQty);
-
-                // 持仓分配
-                if (operateType == 1) {
-                    relation.setUnrealizedPnl(history.getUnrealizedPnl());
-                    relation.setRealizedPnl(BigDecimal.ZERO);
-                }
-                // 交易分配
-                else if (operateType == 2) {
-                    relation.setUnrealizedPnl(BigDecimal.ZERO);
-                    relation.setRealizedPnl(history.getRealizedPnl());
-                    relation.setCommissionAndFees(history.getCommissionAndFees());
-                }
-
-                positionRelationService.save(relation);
-            } else {
-                // 持仓分配
-                if (operateType == 1) {
-                    relation.setUnrealizedPnl(relation.getUnrealizedPnl().add(history.getUnrealizedPnl()));
-                }
-                // 交易分配
-                else if (operateType == 2) {
-//                    relation.setRealizedPnl(relation.getRealizedPnl().add(history.getRealizedPnl()));
-                }
-                relation.setPositionQty(relation.getPositionQty().add(allocateQty));
-
-                positionRelationService.updateById(relation);
-            }
+            positionExecutionService.updateById(positionExecution);
         }
 
         return true;

@@ -37,4 +37,15 @@ public class PositionHistoryServiceImpl extends ServiceImpl<PositionHistoryMappe
             return this.save(positionHistory);
         }
     }
+
+    @Override
+    public PositionHistory getPositionHistoryByKey(String positionDate, Integer conid, String accountCode) {
+
+        LambdaQueryWrapper<PositionHistory> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(PositionHistory::getAccountCode, accountCode)
+                .eq(PositionHistory::getConid, conid)
+                .eq(PositionHistory::getPositionDate, positionDate);
+
+        return this.getOne(queryWrapper);
+    }
 }

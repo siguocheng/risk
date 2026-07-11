@@ -158,6 +158,14 @@ public class PositionExecution extends BaseEntity {
     @TableField(value = "status")
     private Integer status;
 
+    @Schema(description = "交易分配的剩余数量")
+    @TableField(value = "allocate_remain_qty")
+    private BigDecimal allocateRemainQty;
+
+    @Schema(description = "市场价格")
+    @TableField(value = "cal_market_price")
+    private BigDecimal calMarketPrice;
+
     public PositionExecution(){
 
     }
@@ -187,6 +195,8 @@ public class PositionExecution extends BaseEntity {
         this.submitter = execution.getSubmitter();
         this.optExerciseOrLapseType = execution.getOptExerciseOrLapseType() != null ? execution.getOptExerciseOrLapseType().name() : "";
         this.executionDate = DateUtil.localDateToString(DateUtil.stringToLocalDate(execution.getTime().substring(0,8), "yyyyMMdd"));
+        this.remainQty = shares;
+        this.allocateRemainQty = shares;
         if (position != null) {
             this.marketPrice = position.getMarketPrice();
         }

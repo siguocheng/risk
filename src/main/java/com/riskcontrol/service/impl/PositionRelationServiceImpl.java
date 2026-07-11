@@ -9,6 +9,7 @@ import com.riskcontrol.domain.vo.positionrelation.PositionRelationModify;
 import com.riskcontrol.domain.vo.positionrelation.PositionRelationPage;
 import com.riskcontrol.domain.vo.positionrelation.PositionRelationQuery;
 import com.riskcontrol.dao.PositionRelationMapper;
+import com.riskcontrol.service.IPositionRelationHistoryService;
 import com.riskcontrol.service.IPositionRelationService;
 import com.riskcontrol.service.IPositionService;
 import jakarta.annotation.Resource;
@@ -30,6 +31,9 @@ public class PositionRelationServiceImpl extends ServiceImpl<PositionRelationMap
 
 //    @Resource
 //    IPositionService positionService;
+
+    @Resource
+    IPositionRelationHistoryService positionRelationHistoryService;
 
     @Override
     public IPage<PositionRelationPage> queryPage(PositionRelationQuery query) {

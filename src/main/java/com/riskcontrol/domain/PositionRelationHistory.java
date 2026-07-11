@@ -59,4 +59,20 @@ public class PositionRelationHistory extends BaseEntity implements Serializable 
     @Schema(description = "实现盈亏")
     @TableField(value = "realized_pnl")
     private BigDecimal realizedPnl;
+
+    @Schema(description = "佣金及各项费用")
+    @TableField(value = "commission_and_fees")
+    private BigDecimal commissionAndFees;
+
+    @Schema(description = "市场价")
+    @TableField(value = "market_price")
+    private BigDecimal marketPrice;
+
+    @Schema(description = "日未实现盈亏")
+    @TableField(value = "daily_unrealized_pnl")
+    private BigDecimal dailyUnrealizedPnl;
+
+    @Schema(description = "日已实现盈亏")
+    @TableField(value = "daily_realized_pnl")
+    private BigDecimal dailyRealizedPnl;
 }

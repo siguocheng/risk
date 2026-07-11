@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @author zpc
  * @date 2026-06-19
  */
-@Tag(description = "持仓", name = "持仓")
+@Tag(description = "分配后的持仓", name = "分配后的持仓")
 @RestController
 @RequestMapping("/position-relation")
 public class PositionRelationController extends BaseController {
@@ -29,9 +29,9 @@ public class PositionRelationController extends BaseController {
     @Resource
     IPositionRelationService positionRelationService;
 
-    @Operation(summary = "综合关系列表")
+    @Operation(summary = "分配后的持仓的列表")
     @PostMapping("/pc/query-page")
-    @ResourceMethod(btnCode = "btn-pc-composite-relation-query-page", level = 3)
+    @ResourceMethod(btnCode = "btn-pc-position-relation-query-page", level = 3)
     public ResultBean<IPage<PositionRelationPage>> queryList(@RequestBody PositionRelationQuery query) {
         return new ResultBean<>(positionRelationService.queryPage(query));
     }

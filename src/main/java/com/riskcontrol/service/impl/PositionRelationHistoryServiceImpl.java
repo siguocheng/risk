@@ -1,10 +1,13 @@
 package com.riskcontrol.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.riskcontrol.dao.PositionRelationHistoryMapper;
 import com.riskcontrol.domain.PositionRelationHistory;
 import com.riskcontrol.domain.bo.PortfolioOverviewBo;
+import com.riskcontrol.domain.vo.positionrelation.PositionRelationHistoryPage;
+import com.riskcontrol.domain.vo.positionrelation.PositionRelationHistoryQuery;
 import com.riskcontrol.service.IPositionRelationHistoryService;
 import com.riskcontrol.util.DateUtil;
 import lombok.RequiredArgsConstructor;
@@ -27,15 +30,29 @@ import java.util.List;
 public class PositionRelationHistoryServiceImpl extends ServiceImpl<PositionRelationHistoryMapper, PositionRelationHistory> implements IPositionRelationHistoryService {
 
     @Override
-    public List<PositionRelationHistory> listByKey(String accountCode, Integer conid, String strategyName, String traderName) {
+    public List<PositionRelationHistory> listByKey(String dailyDate, String accountCode, Integer conid, String strategyName, String traderName) {
         LambdaQueryWrapper<PositionRelationHistory> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(StringUtils.hasText(accountCode), PositionRelationHistory::getAccountCode, accountCode)
                 .eq(conid != null, PositionRelationHistory::getConid, conid)
                 .eq(StringUtils.hasText(strategyName), PositionRelationHistory::getStrategyName, strategyName)
                 .eq(StringUtils.hasText(traderName), PositionRelationHistory::getTraderName, traderName)
+                .eq(StringUtils.hasText(dailyDate), PositionRelationHistory::getDailyDate, dailyDate)
                 .orderByDesc(PositionRelationHistory::getCreateTime);
 
         return this.list(queryWrapper);
+    }
+
+    @Override
+    public PositionRelationHistory getPositionRelationHistoryByKey(String dailyDate, String accountCode, Integer conid, String strategyName, String traderName) {
+        LambdaQueryWrapper<PositionRelationHistory> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(StringUtils.hasText(accountCode), PositionRelationHistory::getAccountCode, accountCode)
+                .eq(conid != null, PositionRelationHistory::getConid, conid)
+                .eq(StringUtils.hasText(strategyName), PositionRelationHistory::getStrategyName, strategyName)
+                .eq(StringUtils.hasText(traderName), PositionRelationHistory::getTraderName, traderName)
+                .eq(StringUtils.hasText(dailyDate), PositionRelationHistory::getDailyDate, dailyDate)
+                .orderByDesc(PositionRelationHistory::getCreateTime);
+
+        return this.getOne(queryWrapper);
     }
 
     @Override
@@ -81,5 +98,10 @@ public class PositionRelationHistoryServiceImpl extends ServiceImpl<PositionRela
         queryWrapper.orderByAsc(PositionRelationHistory::getDailyDate);
 
         return this.list(queryWrapper);
+    }
+
+    @Override
+    public IPage<PositionRelationHistoryPage> queryPage(PositionRelationHistoryQuery query) {
+        return this.baseMapper.queryPage(query.build(), query);
     }
 }

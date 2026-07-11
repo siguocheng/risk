@@ -1,5 +1,6 @@
 package com.riskcontrol.domain.vo.positionexecution;
 
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.riskcontrol.domain.PositionAllocateHistory;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -42,19 +43,25 @@ public class PositionExecutionPage {
     private BigDecimal shares;
 
     @Schema(description = "成交单价")
-    private String price;
+    private BigDecimal price;
 
     @Schema(description = "佣金及各项费用")
-    private String commissionAndFees;
+    private BigDecimal commissionAndFees;
 
     @Schema(description = "结算币种")
     private String currency;
 
-    @Schema(description = "已实现盈亏")
-    private BigDecimal realizedPnl;
+    @Schema(description = "本次交易的未实现收益")
+    private BigDecimal calExecutionUnrealizedPnl;
 
-    @Schema(description = "未分配数量")
-    private BigDecimal remainQty;
+    @Schema(description = "本次交易的已实现收益")
+    private BigDecimal calExecutionRealizedPnl;
+
+    @Schema(description = "交易分配的剩余数量")
+    private BigDecimal allocateRemainQty;
+
+    @Schema(description = "合约乘数")
+    private String multiplier;
 
     @Schema(description = "分配明细")
     private List<PositionAllocateHistory> positionAllocateDetails;

@@ -6,11 +6,13 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.riskcontrol.dao.PositionExecutionMapper;
 import com.riskcontrol.domain.AccountContract;
+import com.riskcontrol.domain.Contract;
 import com.riskcontrol.domain.PositionAllocateHistory;
 import com.riskcontrol.domain.PositionExecution;
 import com.riskcontrol.domain.vo.positionexecution.PositionExecutionPage;
 import com.riskcontrol.domain.vo.positionexecution.PositionExecutionQuery;
 import com.riskcontrol.service.IAccountContractService;
+import com.riskcontrol.service.IContractService;
 import com.riskcontrol.service.IPositionAllocateHistoryService;
 import com.riskcontrol.service.IPositionExecutionService;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +39,7 @@ public class PositionExecutionServiceImpl extends ServiceImpl<PositionExecutionM
 
     private final IPositionAllocateHistoryService positionAllocateHistoryService;
 
-    private final IAccountContractService contractService;
+    private final IContractService contractService;
 
     @Override
     public boolean saveOrUpdateByExecId(PositionExecution positionExecution) {
@@ -58,13 +60,14 @@ public class PositionExecutionServiceImpl extends ServiceImpl<PositionExecutionM
 
         LambdaQueryWrapper<PositionExecution> queryWrapper = new LambdaQueryWrapper<>();
         if (!CollectionUtils.isEmpty(query.getAccountCodes())) {
-            queryWrapper.eq(PositionExecution::getAccountCode, query.getAccountCodes());
+            queryWrapper.in(PositionExecution::getAccountCode, query.getAccountCodes());
         }
         if (!CollectionUtils.isEmpty(query.getConids())) {
-            queryWrapper.eq(PositionExecution::getConid, query.getConids());
+            queryWrapper.in(PositionExecution::getConid, query.getConids());
         }
+        queryWrapper.orderByAsc(PositionExecution::getTime);
 
-        IPage<PositionExecution> entityPage = this.page(page, queryWrapper);
+        IPage<PositionExecution> entityPage = this.page(page, queryWrapper); // 取得符合条件的交易
 
 
         IPage<PositionExecutionPage> pageList = entityPage.convert(entity -> {
@@ -76,14 +79,10 @@ public class PositionExecutionServiceImpl extends ServiceImpl<PositionExecutionM
             BigDecimal sum = positionAllocateHistories.stream()
                     .map(item -> item.getAllocateQty() == null ? BigDecimal.ZERO : item.getAllocateQty())
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
-            vo.setRemainQty(vo.getShares().subtract(sum));
 
-            AccountContract contract = contractService.getContractByConid(vo.getAccountCode(), vo.getConid());
+            Contract contract = contractService.getByConid(vo.getConid());
 
-            if (contract != null) {
-                vo.setSymbol(contract.getSymbol());
-            }
-
+            vo.setMultiplier(contract.getMultiplier());
             vo.setPositionAllocateDetails(positionAllocateHistoryService.listPositionAllocateHistoryByKey(null, entity.getId()));
 
             return vo;

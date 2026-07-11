@@ -168,6 +168,7 @@ public class CalPositionExecutionTask {
                 calDailyRealizedPnl = calDailyRealizedPnl.add(pnl);
             }
             trade.setStatus(1);
+            trade.setCalMarketPrice(marketPrice);
             positionExecutionService.updateById(trade);
 
             if (trade.getCommissionAndFees() != null) {
