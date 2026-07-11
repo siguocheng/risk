@@ -68,8 +68,8 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
 
         List<PositionAllocateHistory> historyList = new ArrayList<>();
 
-        BigDecimal avgRealizedPln = BigDecimal.ZERO; // 每一股的已实现盈亏
-        BigDecimal avgUnRealizedPln = BigDecimal.ZERO; // 每一股的未实现盈亏
+        BigDecimal avgRealizedPln = BigDecimal.ZERO; // 每一股的已实现盈亏，依赖出库交易
+        BigDecimal avgUnRealizedPln = BigDecimal.ZERO; // 每一股的未实现盈亏，依赖历史持仓
         BigDecimal avgCommissionAnFees = BigDecimal.ZERO;
         if (operateType == 2) {
             PositionExecution positionExecution = positionExecutionService.getById(request.getId()); // 交易信息
@@ -90,9 +90,17 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
                 throw new BusinessException("交易的总数量大于分配的合计数量");
             }
 
-            avgRealizedPln = positionExecution.getCalExecutionRealizedPnl().divide(positionExecution.getShares(), 2, RoundingMode.DOWN);
-            avgUnRealizedPln = positionExecution.getCalExecutionUnrealizedPnl().divide(positionExecution.getShares(), 2, RoundingMode.DOWN);
-            avgCommissionAnFees = positionExecution.getCommissionAndFees().divide(positionExecution.getShares(), 2, RoundingMode.DOWN);
+            if (positionExecution.getCalExecutionRealizedPnl() != null) {
+                avgRealizedPln = positionExecution.getCalExecutionRealizedPnl().divide(positionExecution.getShares(), 2, RoundingMode.DOWN);
+            }
+
+            if (positionExecution.getCalExecutionUnrealizedPnl() != null) {
+                avgUnRealizedPln = positionHistory.getCalUnrealizedPnl().divide(positionHistory.getCalPositionQty(), 2, RoundingMode.DOWN);
+            }
+
+            if (positionExecution.getCommissionAndFees() != null) {
+                avgCommissionAnFees = positionExecution.getCommissionAndFees().divide(positionExecution.getShares(), 2, RoundingMode.DOWN);
+            }
 
             // 删除分配记录重新添加
             positionAllocateHistoryService.delPositionAllocateHistoryByKey(null, request.getId());
@@ -146,7 +154,7 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
 
                     // 交易分配
                     positionRelationHistory.setPositionQty(positionRelationHistory.getPositionQty().add(allocateQty));
-                    positionRelationHistory.setUnrealizedPnl(positionRelationHistory.getUnrealizedPnl().add(accUnRealizedPln));
+                    positionRelationHistory.setUnrealizedPnl(accUnRealizedPln);
                     positionRelationHistory.setRealizedPnl(positionRelationHistory.getRealizedPnl().add(accRealizedPln));
                     positionRelationHistory.setCommissionAndFees(positionRelationHistory.getCommissionAndFees().add(accCommissionAnFees));
 
