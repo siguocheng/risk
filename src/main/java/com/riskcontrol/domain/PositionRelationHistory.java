@@ -24,10 +24,6 @@ public class PositionRelationHistory extends BaseEntity implements Serializable 
 
     private static final long serialVersionUID = 1L;
 
-    @Schema(description = "主键ID")
-    @TableId(value = "id", type = IdType.AUTO)
-    private Long id;
-
     @Schema(description = "yyyyMMdd格式日期")
     @TableField(value = "daily_date")
     private String dailyDate;

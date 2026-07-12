@@ -23,6 +23,10 @@ public class PositionRelation extends BaseEntity implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
+    @Schema(description = "yyyyMMdd格式日期")
+    @TableField(value = "daily_date")
+    private String dailyDate;
+
     @Schema(description = "账号id")
     @TableField(value = "account_code")
     private String accountCode;
@@ -54,4 +58,20 @@ public class PositionRelation extends BaseEntity implements Serializable {
     @Schema(description = "佣金及各项费用")
     @TableField(value = "commission_and_fees")
     private BigDecimal commissionAndFees;
+
+    @Schema(description = "市场价")
+    @TableField(value = "market_price")
+    private BigDecimal marketPrice;
+
+    @Schema(description = "日未实现盈亏")
+    @TableField(value = "daily_unrealized_pnl")
+    private BigDecimal dailyUnrealizedPnl;
+
+    @Schema(description = "日已实现盈亏")
+    @TableField(value = "daily_realized_pnl")
+    private BigDecimal dailyRealizedPnl;
+
+    @Schema(description = "成本价")
+    @TableField(value = "avg_cost")
+    private BigDecimal avgCost;
 }
