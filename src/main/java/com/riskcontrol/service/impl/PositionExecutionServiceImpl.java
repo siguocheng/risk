@@ -91,5 +91,13 @@ public class PositionExecutionServiceImpl extends ServiceImpl<PositionExecutionM
         return pageList;
     }
 
+    @Override
+    public List<PositionExecution> listPositionExecutionByKey(String accountCode, int conid, String executionDate) {
+        LambdaQueryWrapper<PositionExecution> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(PositionExecution::getAccountCode, accountCode)
+                .eq(PositionExecution::getConid, conid)
+                .eq(PositionExecution::getExecutionDate, executionDate);
 
+        return this.list(wrapper);
+    }
 }

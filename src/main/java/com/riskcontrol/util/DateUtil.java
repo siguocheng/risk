@@ -15,6 +15,11 @@ public class DateUtil {
         return LocalDate.parse(date, fmt);
     }
 
+    public static LocalDate stringToLocalDate(String date){
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        return LocalDate.parse(date, fmt);
+    }
+
     public static String localDateToString(LocalDate date){
         return localDateToString(date, "yyyy-MM-dd");
     }

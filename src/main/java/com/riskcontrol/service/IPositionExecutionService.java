@@ -6,6 +6,8 @@ import com.riskcontrol.domain.PositionExecution;
 import com.riskcontrol.domain.vo.positionexecution.PositionExecutionPage;
 import com.riskcontrol.domain.vo.positionexecution.PositionExecutionQuery;
 
+import java.util.List;
+
 /**
  * 成交明细Service接口
  *
@@ -23,4 +25,6 @@ public interface IPositionExecutionService extends IService<PositionExecution> {
      * @return 分页结果
      */
     IPage<PositionExecutionPage> queryPage(PositionExecutionQuery query);
+
+    List<PositionExecution> listPositionExecutionByKey(String accountCode, int conid, String executionDate);
 }

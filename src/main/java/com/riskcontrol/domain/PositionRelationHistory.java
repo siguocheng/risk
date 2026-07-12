@@ -7,6 +7,7 @@ import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.springframework.beans.BeanUtils;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -75,4 +76,12 @@ public class PositionRelationHistory extends BaseEntity implements Serializable 
     @Schema(description = "成本价")
     @TableField(value = "avg_cost")
     private BigDecimal avgCost;
+
+    public PositionRelationHistory(){
+
+    }
+
+    public PositionRelationHistory(PositionRelation positionRelation){
+        BeanUtils.copyProperties(positionRelation, this);
+    }
 }
