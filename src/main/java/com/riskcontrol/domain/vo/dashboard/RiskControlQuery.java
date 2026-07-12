@@ -25,4 +25,7 @@ public class RiskControlQuery {
     @Schema(description = "结束时间，默认是当天")
     @JsonFormat(pattern = "yyyy-MM-dd")
     private String endDate;
+
+
+    private String dailyDate;
 }

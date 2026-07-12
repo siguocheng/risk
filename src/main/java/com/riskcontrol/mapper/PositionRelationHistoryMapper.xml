@@ -48,7 +48,10 @@
             prh.unrealized_pnl,
             prh.realized_pnl,
             prh.commission_and_fees,
+            prh.daily_unrealized_pnl,
+            prh.daily_realized_pnl,
             prh.market_price,
+            prh.avg_cost,
             prh.modified_time,
             c.sec_type,
             c.multiplier,
@@ -79,9 +82,9 @@
                     #{item}
                 </foreach>
             </if>
-            <if test="query.traderNames != null and query.traderNames.size() > 0">
+            <if test="query.tradeNames != null and query.tradeNames.size() > 0">
                 AND prh.trader_name IN
-                <foreach collection="query.traderNames" item="item" open="(" separator="," close=")">
+                <foreach collection="query.tradeNames" item="item" open="(" separator="," close=")">
                     #{item}
                 </foreach>
             </if>
@@ -89,5 +92,77 @@
                 AND c.sec_type = #{query.secType}
             </if>
         ORDER BY prh.daily_date DESC
+    </select>
+
+    <select id="getTop10Profit" resultType="com.riskcontrol.domain.vo.dashboard.DailyProfitTop10">
+        SELECT
+            prh.conid,
+            c.symbol,
+            SUM(prh.realized_pnl) AS realizedPnl,
+            SUM(prh.unrealized_pnl) AS unrealizedPnl,
+            SUM(prh.realized_pnl) + SUM(prh.unrealized_pnl) AS totalPnl
+        FROM
+            position_relation_history prh
+        LEFT JOIN contract c ON prh.conid = c.conid
+        WHERE
+            1=1
+            <if test="query.dailyDate != null and query.dailyDate != ''">
+                AND prh.daily_date = #{query.dailyDate}
+            </if>
+            <if test="query.accountCodes != null and query.accountCodes.size() > 0">
+                AND prh.account_code IN
+                <foreach collection="query.accountCodes" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="query.tradeNames != null and query.tradeNames.size() > 0">
+                AND prh.trader_name IN
+                <foreach collection="query.tradeNames" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="query.strategyNames != null and query.strategyNames.size() > 0">
+                AND prh.strategy_name IN
+                <foreach collection="query.strategyNames" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+        GROUP BY prh.conid, c.symbol
+        ORDER BY totalPnl DESC
+        LIMIT 10
+    </select>
+
+    <select id="getAssetSecTypeRatio" resultType="com.riskcontrol.domain.vo.dashboard.AssetSecTypeRatio">
+        SELECT
+            c.sec_type AS secType,
+            COUNT(DISTINCT prh.conid) AS count
+        FROM
+            position_relation_history prh
+        LEFT JOIN contract c ON prh.conid = c.conid
+        WHERE
+            1=1
+            <if test="query.dailyDate != null and query.dailyDate != ''">
+                AND prh.daily_date = #{query.dailyDate}
+            </if>
+            <if test="query.accountCodes != null and query.accountCodes.size() > 0">
+                AND prh.account_code IN
+                <foreach collection="query.accountCodes" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="query.tradeNames != null and query.tradeNames.size() > 0">
+                AND prh.trader_name IN
+                <foreach collection="query.tradeNames" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="query.strategyNames != null and query.strategyNames.size() > 0">
+                AND prh.strategy_name IN
+                <foreach collection="query.strategyNames" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+        GROUP BY c.sec_type
+        ORDER BY count DESC
     </select>
 </mapper>

@@ -138,6 +138,7 @@ public class CalPositionExecutionTask {
         } else {
             position.setAccCommissionAndFees(position.getAccCommissionAndFees().add(commissionAndFeesSum));
         }
+        position.setCalMarketPrice(marketPrice);
         positionService.updateById(position);
 
         PositionHistory positionHistory = new PositionHistory(position, date);
@@ -168,7 +169,6 @@ public class CalPositionExecutionTask {
                 calDailyRealizedPnl = calDailyRealizedPnl.add(pnl);
             }
             trade.setStatus(1);
-            trade.setCalMarketPrice(marketPrice);
             positionExecutionService.updateById(trade);
 
             if (trade.getCommissionAndFees() != null) {

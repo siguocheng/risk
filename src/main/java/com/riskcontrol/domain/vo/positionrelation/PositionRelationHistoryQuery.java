@@ -28,7 +28,7 @@ public class PositionRelationHistoryQuery extends BasePageQuery {
     private List<String> strategyNames;
 
     @Schema(description = "交易员")
-    private List<String> traderNames;
+    private List<String> tradeNames;
 
     @Schema(description = "资产类型")
     private String secType;

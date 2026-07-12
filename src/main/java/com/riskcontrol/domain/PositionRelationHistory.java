@@ -75,4 +75,8 @@ public class PositionRelationHistory extends BaseEntity implements Serializable 
     @Schema(description = "日已实现盈亏")
     @TableField(value = "daily_realized_pnl")
     private BigDecimal dailyRealizedPnl;
+
+    @Schema(description = "成本价")
+    @TableField(value = "avg_cost")
+    private BigDecimal avgCost;
 }

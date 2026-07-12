@@ -9,6 +9,9 @@ import java.math.BigDecimal;
 @Data
 public class PositionAllocateItem {
 
+    @Schema(description = "分配记录id")
+    private Long id;
+
     @Schema(description = "账号代码")
     @TableField(value = "account_code")
     private String accountCode;

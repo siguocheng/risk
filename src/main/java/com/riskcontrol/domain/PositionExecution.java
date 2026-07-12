@@ -162,10 +162,6 @@ public class PositionExecution extends BaseEntity {
     @TableField(value = "allocate_remain_qty")
     private BigDecimal allocateRemainQty;
 
-    @Schema(description = "市场价格")
-    @TableField(value = "cal_market_price")
-    private BigDecimal calMarketPrice;
-
     public PositionExecution(){
 
     }

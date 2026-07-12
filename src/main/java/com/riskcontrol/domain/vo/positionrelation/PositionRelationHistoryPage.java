@@ -47,6 +47,9 @@ public class PositionRelationHistoryPage {
     @Schema(description = "市场价")
     private BigDecimal marketPrice;
 
+    @Schema(description = "市值")
+    private BigDecimal marketValue;
+
     @Schema(description = "修改时间")
     private String modifiedTime;
 
@@ -58,4 +61,20 @@ public class PositionRelationHistoryPage {
 
     @Schema(description = "合约简称")
     private String symbol;
+
+    @Schema(description = "未实现盈亏")
+    private BigDecimal dailyUnrealizedPnl;
+
+    @Schema(description = "实现盈亏")
+    private BigDecimal dailyRealizedPnl;
+
+    @Schema(description = "成本")
+    private BigDecimal avgCost;
+
+    public BigDecimal getMarketValue(){
+        if (marketPrice != null && positionQty != null) {
+            return marketPrice.multiply(positionQty);
+        }
+        return BigDecimal.ZERO;
+    }
 }

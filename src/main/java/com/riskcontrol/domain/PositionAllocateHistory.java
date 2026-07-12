@@ -50,15 +50,23 @@ public class PositionAllocateHistory extends BaseEntity implements Serializable 
     @TableField(value = "allocate_qty")
     private BigDecimal allocateQty;
 
-    @Schema(description = "未实现盈亏")
+    @Schema(description = "本次分配未实现盈亏")
     @TableField(value = "unrealized_pnl")
     private BigDecimal unrealizedPnl;
 
-    @Schema(description = "已实现盈亏")
+    @Schema(description = "本次分配已实现盈亏")
     @TableField(value = "realized_pnl")
     private BigDecimal realizedPnl;
 
     @Schema(description = "佣金及各项费用")
     @TableField(value = "commission_and_fees")
     private BigDecimal commissionAndFees;
+
+    @Schema(description = "市场价")
+    @TableField(value = "market_price")
+    private BigDecimal marketPrice;
+
+    @Schema(description = "成本价")
+    @TableField(value = "avg_cost")
+    private BigDecimal avgCost;
 }

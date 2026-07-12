@@ -69,7 +69,7 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
         List<PositionAllocateHistory> historyList = new ArrayList<>();
 
         BigDecimal avgRealizedPln = BigDecimal.ZERO; // 每一股的已实现盈亏，依赖出库交易
-        BigDecimal avgUnRealizedPln = BigDecimal.ZERO; // 每一股的未实现盈亏，依赖历史持仓
+        BigDecimal avgUnRealizedPln = BigDecimal.ZERO; // 每一股的未实现盈亏，依赖入库
         BigDecimal avgCommissionAnFees = BigDecimal.ZERO;
         if (operateType == 2) {
             PositionExecution positionExecution = positionExecutionService.getById(request.getId()); // 交易信息
@@ -95,15 +95,15 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
             }
 
             if (positionExecution.getCalExecutionUnrealizedPnl() != null) {
-                avgUnRealizedPln = positionHistory.getCalUnrealizedPnl().divide(positionHistory.getCalPositionQty(), 2, RoundingMode.DOWN);
+                avgUnRealizedPln = positionExecution.getCalExecutionUnrealizedPnl().divide(positionExecution.getShares(), 2, RoundingMode.DOWN);
             }
 
             if (positionExecution.getCommissionAndFees() != null) {
                 avgCommissionAnFees = positionExecution.getCommissionAndFees().divide(positionExecution.getShares(), 2, RoundingMode.DOWN);
             }
 
-            // 删除分配记录重新添加
-            positionAllocateHistoryService.delPositionAllocateHistoryByKey(null, request.getId());
+            // 重置本次交易非陪
+            this.resetPositionRelationHistory(positionExecution);
 
             for (PositionAllocateItem detail : positionAllocateList) {
 
@@ -124,7 +124,7 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
                 allocateHistory.setRealizedPnl(accRealizedPln);
                 allocateHistory.setUnrealizedPnl(accUnRealizedPln);
                 allocateHistory.setCommissionAndFees(accCommissionAnFees);
-                positionAllocateHistoryService.saveOrUpdate(allocateHistory);
+                positionAllocateHistoryService.save(allocateHistory);
 
                 PositionRelationHistory positionRelationHistory = positionRelationHistoryService.getPositionRelationHistoryByKey(executionDate, accountCode, conid, strategyName, traderName);
 
@@ -147,26 +147,61 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
                     positionRelationHistory.setDailyUnrealizedPnl(accUnRealizedPln);
                     positionRelationHistory.setDailyRealizedPnl(accRealizedPln);
                     positionRelationHistory.setCommissionAndFees(accCommissionAnFees);
-                    positionRelationHistory.setMarketPrice(positionExecution.getMarketPrice());
+                    positionRelationHistory.setMarketPrice(positionHistory.getCalMarketPrice());
+                    positionRelationHistory.setAvgCost(positionHistory.getCalAvgCost());
 
                     positionRelationHistoryService.save(positionRelationHistory);
                 } else {
 
                     // 交易分配
                     positionRelationHistory.setPositionQty(positionRelationHistory.getPositionQty().add(allocateQty));
-                    positionRelationHistory.setUnrealizedPnl(accUnRealizedPln);
-                    positionRelationHistory.setRealizedPnl(positionRelationHistory.getRealizedPnl().add(accRealizedPln));
+                    positionRelationHistory.setDailyUnrealizedPnl(accUnRealizedPln);
+                    positionRelationHistory.setDailyRealizedPnl(positionRelationHistory.getRealizedPnl().add(accRealizedPln));
                     positionRelationHistory.setCommissionAndFees(positionRelationHistory.getCommissionAndFees().add(accCommissionAnFees));
+                    positionRelationHistory.setMarketPrice(positionHistory.getCalMarketPrice());
+                    positionRelationHistory.setAvgCost(positionHistory.getCalAvgCost());
 
                     positionRelationHistoryService.updateById(positionRelationHistory);
                 }
-                positionExecution.setAllocateRemainQty(positionExecution.getAllocateRemainQty().subtract(detail.getAllocateQty()));
+                positionExecution.setAllocateRemainQty(positionExecution.getShares().subtract(detail.getAllocateQty()));
             }
 
             positionExecutionService.updateById(positionExecution);
         }
 
         return true;
+    }
+
+    private void resetPositionRelationHistory(PositionExecution positionExecution){
+        List<PositionAllocateHistory> positionAllocateHistories = positionAllocateHistoryService.listPositionAllocateHistoryByKey(null, positionExecution.getId());
+        if (positionAllocateHistories.size() > 0) {
+
+            for (PositionAllocateHistory positionAllocateHistory : positionAllocateHistories) {
+                String accountCode = positionAllocateHistory.getAccountCode();
+                int conid = positionAllocateHistory.getConid();
+                String strategyName = positionAllocateHistory.getStrategyName();
+                String traderName = positionAllocateHistory.getTraderName();
+                PositionRelationHistory positionRelationHistory = positionRelationHistoryService.getPositionRelationHistoryByKey(positionExecution.getExecutionDate(), accountCode, conid, strategyName, traderName);
+
+                BigDecimal allocateQty = positionAllocateHistory.getAllocateQty(); // 分配数量
+
+                if (positionExecution.getSide().equals(TradeSideEnum.BOT.name())) {
+
+                } else if (positionExecution.getSide().equals(TradeSideEnum.SLD.name())) {
+                    allocateQty = allocateQty.negate();
+                }
+
+                positionRelationHistory.setPositionQty(positionRelationHistory.getPositionQty().subtract(allocateQty));
+                positionRelationHistory.setDailyUnrealizedPnl(positionRelationHistory.getDailyUnrealizedPnl().subtract(positionAllocateHistory.getUnrealizedPnl()));
+                positionRelationHistory.setDailyRealizedPnl(positionRelationHistory.getDailyRealizedPnl().subtract(positionAllocateHistory.getRealizedPnl()));
+                positionRelationHistory.setCommissionAndFees(positionRelationHistory.getCommissionAndFees().subtract(positionAllocateHistory.getCommissionAndFees()));
+
+                positionRelationHistoryService.updateById(positionRelationHistory);
+            }
+        }
+
+        // 删除分配记录重新添加
+        positionAllocateHistoryService.delPositionAllocateHistoryByKey(null, positionExecution.getId());
     }
 
     @Override

@@ -3,6 +3,10 @@ package com.riskcontrol.dao;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.riskcontrol.domain.PositionRelationHistory;
+import com.riskcontrol.domain.vo.dashboard.AssetSecTypeRatio;
+import com.riskcontrol.domain.vo.dashboard.DailyProfitQuery;
+import com.riskcontrol.domain.vo.dashboard.DailyProfitTop10;
+import com.riskcontrol.domain.vo.dashboard.RiskControlQuery;
 import com.riskcontrol.domain.vo.positionrelation.PositionRelationHistoryPage;
 import com.riskcontrol.domain.vo.positionrelation.PositionRelationHistoryQuery;
 import org.apache.ibatis.annotations.Param;
@@ -20,4 +24,8 @@ public interface PositionRelationHistoryMapper extends BaseMapper<PositionRelati
     List<PositionRelationHistory> sumPnlByDate(@Param("startDate") String startDate, @Param("endDate") String endDate);
 
     IPage<PositionRelationHistoryPage> queryPage(IPage<PositionRelationHistoryPage> page, @Param("query") PositionRelationHistoryQuery query);
+
+    List<DailyProfitTop10> getTop10Profit(@Param("query") RiskControlQuery query);
+
+    List<AssetSecTypeRatio> getAssetSecTypeRatio(@Param("query") RiskControlQuery query);
 }

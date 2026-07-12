@@ -108,4 +108,8 @@ public class Position extends BaseEntity implements Serializable {
     @Schema(description = "持仓日期")
     @TableField(value = "position_date")
     private String positionDate;
+
+    @Schema(description = "市场价")
+    @TableField(value = "cal_market_price")
+    private BigDecimal calMarketPrice;
 }

@@ -4,6 +4,10 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.riskcontrol.domain.PositionRelationHistory;
 import com.riskcontrol.domain.bo.PortfolioOverviewBo;
+import com.riskcontrol.domain.vo.dashboard.AssetSecTypeRatio;
+import com.riskcontrol.domain.vo.dashboard.DailyProfitQuery;
+import com.riskcontrol.domain.vo.dashboard.DailyProfitTop10;
+import com.riskcontrol.domain.vo.dashboard.RiskControlQuery;
 import com.riskcontrol.domain.vo.positionrelation.PositionRelationHistoryPage;
 import com.riskcontrol.domain.vo.positionrelation.PositionRelationHistoryQuery;
 
@@ -27,4 +31,8 @@ public interface IPositionRelationHistoryService extends IService<PositionRelati
     List<PositionRelationHistory> listByDateRange(PortfolioOverviewBo portfolioOverviewBo);
 
     IPage<PositionRelationHistoryPage> queryPage(PositionRelationHistoryQuery query);
+
+    List<DailyProfitTop10> getTop10Profit(RiskControlQuery query);
+
+    List<AssetSecTypeRatio> getAssetSecTypeRatio(RiskControlQuery query);
 }

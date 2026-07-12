@@ -6,6 +6,10 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.riskcontrol.dao.PositionRelationHistoryMapper;
 import com.riskcontrol.domain.PositionRelationHistory;
 import com.riskcontrol.domain.bo.PortfolioOverviewBo;
+import com.riskcontrol.domain.vo.dashboard.AssetSecTypeRatio;
+import com.riskcontrol.domain.vo.dashboard.DailyProfitQuery;
+import com.riskcontrol.domain.vo.dashboard.DailyProfitTop10;
+import com.riskcontrol.domain.vo.dashboard.RiskControlQuery;
 import com.riskcontrol.domain.vo.positionrelation.PositionRelationHistoryPage;
 import com.riskcontrol.domain.vo.positionrelation.PositionRelationHistoryQuery;
 import com.riskcontrol.service.IPositionRelationHistoryService;
@@ -16,6 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.StringUtils;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.List;
 
 /**
@@ -103,5 +109,29 @@ public class PositionRelationHistoryServiceImpl extends ServiceImpl<PositionRela
     @Override
     public IPage<PositionRelationHistoryPage> queryPage(PositionRelationHistoryQuery query) {
         return this.baseMapper.queryPage(query.build(), query);
+    }
+
+    @Override
+    public List<DailyProfitTop10> getTop10Profit(RiskControlQuery query) {
+        return this.baseMapper.getTop10Profit(query);
+    }
+
+    @Override
+    public List<AssetSecTypeRatio> getAssetSecTypeRatio(RiskControlQuery query) {
+
+        query.setDailyDate(query.getEndDate());
+        List<AssetSecTypeRatio> list = this.baseMapper.getAssetSecTypeRatio(query);
+
+        Long sumCount = list.stream()
+                // count为空则替换0，防止空指针
+                .map(item -> item.getCount() == null ? 0L : item.getCount())
+                .reduce(0L, Long::sum);
+
+        for (AssetSecTypeRatio assetSecTypeRatio : list) {
+            BigDecimal ratio = new BigDecimal(assetSecTypeRatio.getCount()).divide(new BigDecimal(sumCount), 2, RoundingMode.HALF_UP);
+            assetSecTypeRatio.setRatio(ratio);
+        }
+
+        return list;
     }
 }
