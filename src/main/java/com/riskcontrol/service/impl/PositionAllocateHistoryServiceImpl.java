@@ -29,7 +29,7 @@ public class PositionAllocateHistoryServiceImpl extends ServiceImpl<PositionAllo
         LambdaQueryWrapper<PositionAllocateHistory> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(positionId != null, PositionAllocateHistory::getPositionId, positionId)
                 .eq(positionExecutionId != null, PositionAllocateHistory::getPositionExecutionId, positionExecutionId)
-                .orderByDesc(PositionAllocateHistory::getCreateTime);
+                .orderByAsc(PositionAllocateHistory::getId);
 
         return this.list(queryWrapper);
     }

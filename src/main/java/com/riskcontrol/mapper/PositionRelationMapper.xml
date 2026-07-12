@@ -24,19 +24,18 @@
         SELECT
             t.trader_name,
             t.capital,
-            pr.position_qty,
-            p.avg_cost,
-            p.market_price,
             c.delta,
             c.multiplier,
             c.sec_type,
+            pr.position_qty,
+            pr.avg_cost,
+            pr.market_price,
             pr.unrealized_pnl,
             pr.realized_pnl,
             pr.commission_and_fees
         FROM
             trader t
         LEFT JOIN position_relation pr ON t.trader_name = pr.trader_name
-        left join position p on pr.account_code=p.account_code and pr.conid=p.conid
         LEFT JOIN contract c ON pr.conid = c.conid
         where 1=1
         <if test="accountCodes != null and accountCodes.size() > 0">
@@ -46,7 +45,7 @@
             </foreach>
         </if>
         <if test="tradeNames != null and tradeNames.size() > 0">
-            and pr.trade_name IN
+            and pr.trader_name IN
             <foreach collection="tradeNames" item="name" open="(" separator="," close=")">
                 #{name}
             </foreach>
