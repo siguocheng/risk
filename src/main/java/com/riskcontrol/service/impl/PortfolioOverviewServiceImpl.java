@@ -11,6 +11,7 @@ import com.riskcontrol.domain.vo.*;
 import com.riskcontrol.domain.vo.dashboard.PressureTestVo;
 import com.riskcontrol.domain.vo.dashboard.RiskControlQuery;
 import com.riskcontrol.domain.vo.dashboard.RiskControlVarModule;
+import com.riskcontrol.domain.vo.dashboard.TraderRiskMetricsVo;
 import com.riskcontrol.domain.vo.dashboard.VarVo;
 import com.riskcontrol.enums.SetTypeEnum;
 import com.riskcontrol.service.*;
@@ -20,6 +21,8 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -80,6 +83,26 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
     }
 
     private List<ChartVo> getChartList(PortfolioOverviewBo portfolioOverviewBo){
+
+        if (portfolioOverviewBo.getDateType() != null) {
+            if (portfolioOverviewBo.getDateType() == 1 || portfolioOverviewBo.getDateType() == 7) {
+                portfolioOverviewBo.setEndDate(DateUtil.localDateToString(LocalDate.now()));
+                portfolioOverviewBo.setStartDate(DateUtil.localDateToString(LocalDate.now().minusDays(30)));
+            } else if (portfolioOverviewBo.getDateType() == 11) {
+                portfolioOverviewBo.setEndDate(DateUtil.localDateToString(LocalDate.now()));
+                portfolioOverviewBo.setStartDate(DateUtil.localDateToString(LocalDate.now().with(TemporalAdjusters.firstDayOfYear())));
+            } else if (portfolioOverviewBo.getDateType() == 365) {
+                portfolioOverviewBo.setEndDate(DateUtil.localDateToString(LocalDate.now()));
+                portfolioOverviewBo.setStartDate(DateUtil.localDateToString(LocalDate.now().minusDays(365)));
+            } else if (portfolioOverviewBo.getDateType() == 30) {
+                portfolioOverviewBo.setEndDate(DateUtil.localDateToString(LocalDate.now()));
+                portfolioOverviewBo.setStartDate(DateUtil.localDateToString(LocalDate.now().minusDays(180)));
+            } else if (portfolioOverviewBo.getDateType() == 365) {
+                portfolioOverviewBo.setEndDate(DateUtil.localDateToString(LocalDate.now()));
+                portfolioOverviewBo.setStartDate(DateUtil.localDateToString(LocalDate.now().minusDays(365)));
+            }
+        }
+
         // 取得账号的历史收益
         List<DailyProfitVo> dailyProfitList = this.getDailyProfitList(portfolioOverviewBo);
 
@@ -122,6 +145,10 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
     }
 
     private List<PortfolioOverviewVo> getPortfolioOverviewList(PortfolioOverviewBo portfolioOverviewBo){
+
+        if (portfolioOverviewBo.getDateType() != null) {
+            portfolioOverviewBo.setDailyDate(DateUtil.localDateToString(LocalDate.now()));
+        }
 
         List<PortfolioOverviewVo> portfolioOverviewList = new ArrayList<>();
 
@@ -327,6 +354,27 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
         result.setMaxDrawdown(new BigDecimal("0.187"));
         result.setIv(new BigDecimal("0.243"));
         result.setMarginRatio(new BigDecimal("0.78"));
+
+        return result;
+    }
+
+    @Override
+    public List<TraderRiskMetricsVo> getTraderRiskMetrics(RiskControlQuery query) {
+        List<TraderRiskMetricsVo> result = new ArrayList<>();
+
+        if (query.getTradeNames() != null && !query.getTradeNames().isEmpty()) {
+            for (String traderName : query.getTradeNames()) {
+                TraderRiskMetricsVo metrics = new TraderRiskMetricsVo();
+                metrics.setTraderName(traderName);
+                metrics.setSharpeRatio(null);
+                metrics.setSortinoRatio(null);
+                metrics.setCalmarRatio(null);
+                metrics.setWinLossRatio(null);
+                metrics.setRiskRatio(null);
+                metrics.setVolatilityPremium(null);
+                result.add(metrics);
+            }
+        }
 
         return result;
     }

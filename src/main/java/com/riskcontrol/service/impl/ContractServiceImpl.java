@@ -33,7 +33,8 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
         queryWrapper.eq(Contract::getConid, contract.getConid());
         long count = this.count(queryWrapper);
         if (count > 0) {
-            return this.update(contract, queryWrapper);
+            return true;
+//            return this.update(contract, queryWrapper);
         } else {
             return this.save(contract);
         }

@@ -57,6 +57,26 @@ public class ContractMarketHistory extends BaseEntity{
     @Schema(description = "成交量")
     private Long dealVolume;
 
+    @Schema(description = "隐含波动率 IV")
+    @TableField(value = "implied_vol")
+    private BigDecimal impliedVol;
+
+    @Schema(description = "delta")
+    @TableField(value = "delta")
+    private BigDecimal delta;
+
+    @Schema(description = "gamma")
+    @TableField(value = "gamma")
+    private BigDecimal gamma;
+
+    @Schema(description = "vega")
+    @TableField(value = "vega")
+    private BigDecimal vega;
+
+    @Schema(description = "theta")
+    @TableField(value = "theta")
+    private BigDecimal theta;
+
 
     public void setDailyDate(String dailyDate){
         if (dailyDate.contains("-")){

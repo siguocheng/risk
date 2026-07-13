@@ -5,6 +5,7 @@ import com.riskcontrol.domain.vo.PortfolioOverviewData;
 import com.riskcontrol.domain.vo.PortfolioOverviewVo;
 import com.riskcontrol.domain.vo.dashboard.RiskControlQuery;
 import com.riskcontrol.domain.vo.dashboard.RiskControlVarModule;
+import com.riskcontrol.domain.vo.dashboard.TraderRiskMetricsVo;
 
 import java.util.List;
 
@@ -13,4 +14,6 @@ public interface IPortfolioOverviewService {
     PortfolioOverviewData queryPortfolioOverview(PortfolioOverviewBo portfolioOverviewBo);
 
     RiskControlVarModule queryVar(RiskControlQuery query);
+
+    List<TraderRiskMetricsVo> getTraderRiskMetrics(RiskControlQuery query);
 }

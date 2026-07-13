@@ -22,20 +22,22 @@ public class PortfolioOverviewBo {
     @Schema(description = "策略集合")
     private List<String> strategyNames;
 
-//    @Schema(description = "开始时间，默认当年第一天")
-//    private LocalDate startDate = LocalDate.now().with(TemporalAdjusters.firstDayOfYear());
-
     @Schema(description = "开始时间，默认当年第一天")
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private String startDate = DateUtil.localDateToString(LocalDate.now().with(TemporalAdjusters.firstDayOfMonth()));
+    private String startDate;
 
     @Schema(description = "结束时间，默认是当天")
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private String endDate = DateUtil.localDateToString(LocalDate.now());
+    private String endDate;
 
     @Schema(description = "对标指数conid集合")
     private List<Integer> referenceIndexConids;
 
     @Schema(description = "指数收益率")
     private BigDecimal referenceIndexRate = BigDecimal.ZERO;
+
+    @Schema(description = "日期类型")
+    private Integer dateType;
+
+    private String dailyDate;
 }

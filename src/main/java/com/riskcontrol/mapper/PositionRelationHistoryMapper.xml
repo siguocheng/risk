@@ -26,8 +26,8 @@
     <select id="sumPnlByDate" resultType="com.riskcontrol.domain.PositionRelationHistory">
         SELECT
             daily_date,
-            sum(realized_pnl) realized_pnl,
-            sum(unrealized_pnl) unrealized_pnl
+            realized_pnl,
+            unrealized_pnl
         FROM
             position_relation_history
         WHERE daily_date between #{startDate} and #{endDate}

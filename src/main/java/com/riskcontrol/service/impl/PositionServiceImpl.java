@@ -27,16 +27,12 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * 持仓列表Service业务层处理
- *
- * @author zpc
- * @date 2026-06-10
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> implements IPositionService {
+
+    private static final int MAX_HISTORY_CHECK_DAYS = 365;
 
     private final IPositionRelationService positionRelationService;
     private final IPositionRelationHistoryService positionRelationHistoryService;
@@ -54,43 +50,161 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
 
         long count = this.count(queryWrapper);
         if (count > 0) {
-            // 存在则更新
             return this.update(position, queryWrapper);
         } else {
-            // 不存在则新增
             return this.save(position);
         }
     }
 
-    private void checkBeforeExecutionDate(PositionExecution positionExecution){
+    private void checkBeforeExecutionDate(PositionExecution positionExecution) {
         String accountCode = positionExecution.getAccountCode();
         Integer conid = positionExecution.getConid();
-        String executionDate = DateUtil.localDateToString(DateUtil.stringToLocalDate(positionExecution.getExecutionDate()).minusDays(1));
-//        String executionDate = positionExecution.getExecutionDate();
-
-        List<PositionExecution> positionExecutions = positionExecutionService.listPositionExecutionByKey(accountCode, conid, executionDate);
-        if (positionExecutions.size() > 0) {
-            for (PositionExecution execution : positionExecutions) {
-                if (execution.getAllocateRemainQty().compareTo(BigDecimal.ZERO) == 1) {
-                    throw new BusinessException("当前交易日之前存在未分配完的数量，请先完成历史交易日的分配");
+        LocalDate currentDate = DateUtil.stringToLocalDate(positionExecution.getExecutionDate());
+        
+        for (int i = 1; i <= MAX_HISTORY_CHECK_DAYS; i++) {
+            LocalDate checkDate = currentDate.minusDays(i);
+            String executionDate = DateUtil.localDateToString(checkDate);
+            
+            List<PositionExecution> positionExecutions = positionExecutionService.listPositionExecutionByKey(accountCode, conid, executionDate);
+            if (positionExecutions.size() > 0) {
+                for (PositionExecution execution : positionExecutions) {
+                    BigDecimal allocateRemainQty = execution.getAllocateRemainQty();
+                    if (allocateRemainQty != null && allocateRemainQty.compareTo(BigDecimal.ZERO) == 1) {
+                        throw new BusinessException("当前交易日之前存在未分配完的数量，请先完成历史交易日的分配");
+                    }
                 }
+                return;
             }
-            return;
-        } else {
-            positionExecution.setExecutionDate(executionDate);
-            this.checkBeforeExecutionDate(positionExecution);
         }
+    }
+
+    private BigDecimal safeDivide(BigDecimal dividend, BigDecimal divisor, int scale, RoundingMode roundingMode) {
+        if (dividend == null || divisor == null || divisor.compareTo(BigDecimal.ZERO) == 0) {
+            return BigDecimal.ZERO;
+        }
+        return dividend.divide(divisor, scale, roundingMode);
+    }
+
+    private BigDecimal getOrDefault(BigDecimal value, BigDecimal defaultValue) {
+        return value != null ? value : defaultValue;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public Boolean allocatePosition(PositionAllocateRequest request) {
 
-        Integer operateType = request.getOperateType(); // 操作类型 1持仓分配 2交易分配
+        Integer operateType = request.getOperateType();
 
-        List<PositionAllocateHistory> historyList = new ArrayList<>();
+        if (operateType == 1) {
+            return this.allocatePositionByPosition(request);
+        } else if (operateType == 2) {
+            return this.allocatePositionByExecution(request);
+        } else {
+            throw new BusinessException("不支持的操作类型");
+        }
+    }
 
+    private Boolean allocatePositionByPosition(PositionAllocateRequest request) {
+        Position position = this.getById(request.getId());
+        if (position == null) {
+            throw new BusinessException("持仓记录不存在");
+        }
+
+        List<PositionAllocateItem> positionAllocateList = request.getDetails();
+        if (CollectionUtils.isEmpty(positionAllocateList)) {
+            throw new BusinessException("分配明细不能为空");
+        }
+
+        BigDecimal accAllocateQty = positionAllocateList.stream()
+                .map(item -> item.getAllocateQty() == null ? BigDecimal.ZERO : item.getAllocateQty())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal positionQty = getOrDefault(position.getPositionQty(), BigDecimal.ZERO);
+        if (accAllocateQty.compareTo(positionQty) > 0) {
+            throw new BusinessException("分配数量超过持仓数量");
+        }
+
+        List<PositionRelation> positionRelationList = new ArrayList<>();
+
+        List<PositionAllocateHistory> positionAllocateHistories = positionAllocateHistoryService.listPositionAllocateHistoryByKey(request.getId(), null);
+        if (!CollectionUtils.isEmpty(positionAllocateHistories)) {
+            for (PositionAllocateHistory positionAllocateHistory : positionAllocateHistories) {
+                String accountCode = positionAllocateHistory.getAccountCode();
+                int conid = positionAllocateHistory.getConid();
+                String strategyName = positionAllocateHistory.getStrategyName();
+                String traderName = positionAllocateHistory.getTraderName();
+                PositionRelation positionRelation = positionRelationService.getPositionRelationByKey(accountCode, conid, strategyName, traderName);
+
+                if (positionRelation != null) {
+                    BigDecimal allocateQty = getOrDefault(positionAllocateHistory.getAllocateQty(), BigDecimal.ZERO);
+                    positionRelation.setPositionQty(getOrDefault(positionRelation.getPositionQty(), BigDecimal.ZERO).subtract(allocateQty));
+                    positionRelationService.updateById(positionRelation);
+                    positionRelationList.add(positionRelation);
+                }
+            }
+            positionAllocateHistoryService.delPositionAllocateHistoryByKey(request.getId(), null);
+        }
+
+        String dailyDate = DateUtil.localDateToString(LocalDate.now());
+
+        for (PositionAllocateItem detail : positionAllocateList) {
+            PositionAllocateHistory allocateHistory = new PositionAllocateHistory();
+            BeanUtils.copyProperties(detail, allocateHistory);
+            String strategyName = detail.getStrategyName();
+            String traderName = detail.getTraderName();
+            String accountCode = detail.getAccountCode();
+            Integer conid = detail.getConid();
+            BigDecimal allocateQty = getOrDefault(detail.getAllocateQty(), BigDecimal.ZERO);
+
+            if (allocateQty.compareTo(BigDecimal.ZERO) <= 0) {
+                continue;
+            }
+
+            allocateHistory.setPositionId(request.getId());
+            positionAllocateHistoryService.save(allocateHistory);
+
+            PositionRelation positionRelation = positionRelationService.getPositionRelationByKey(accountCode, conid, strategyName, traderName);
+            if (positionRelation == null) {
+                positionRelation = new PositionRelation();
+                positionRelation.setDailyDate(dailyDate);
+                positionRelation.setAccountCode(accountCode);
+                positionRelation.setConid(conid);
+                positionRelation.setStrategyName(strategyName);
+                positionRelation.setTraderName(traderName);
+                positionRelation.setPositionQty(allocateQty);
+                positionRelation.setUnrealizedPnl(BigDecimal.ZERO);
+                positionRelation.setRealizedPnl(BigDecimal.ZERO);
+                positionRelation.setDailyUnrealizedPnl(BigDecimal.ZERO);
+                positionRelation.setDailyRealizedPnl(BigDecimal.ZERO);
+                positionRelation.setCommissionAndFees(BigDecimal.ZERO);
+                positionRelation.setMarketPrice(position.getMarketPrice());
+                positionRelation.setAvgCost(position.getAvgCost());
+
+                positionRelationService.save(positionRelation);
+            } else {
+                positionRelation.setDailyDate(dailyDate);
+                positionRelation.setPositionQty(positionRelation.getPositionQty().add(allocateQty));
+                positionRelation.setMarketPrice(position.getMarketPrice());
+                positionRelation.setAvgCost(position.getAvgCost());
+
+                positionRelationService.updateById(positionRelation);
+            }
+
+            positionRelationList.add(positionRelation);
+        }
+
+        for (PositionRelation positionRelation : positionRelationList) {
+            this.handlePositionRelationHistory(positionRelation);
+        }
+
+        return true;
+    }
+
+    private Boolean allocatePositionByExecution(PositionAllocateRequest request) {
         PositionExecution positionExecution = positionExecutionService.getById(request.getId());
+        if (positionExecution == null) {
+            throw new BusinessException("交易记录不存在");
+        }
 
         LambdaQueryWrapper<PositionExecution> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(PositionExecution::getAccountCode, positionExecution.getAccountCode())
@@ -104,148 +218,139 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
             this.checkBeforeExecutionDate(positionExecution);
         }
 
-        BigDecimal avgRealizedPln = BigDecimal.ZERO; // 每一股的已实现盈亏，依赖出库交易
-        BigDecimal avgUnRealizedPln = BigDecimal.ZERO; // 每一股的未实现盈亏，依赖入库
+        BigDecimal avgRealizedPln = BigDecimal.ZERO;
+        BigDecimal avgUnRealizedPln = BigDecimal.ZERO;
         BigDecimal avgCommissionAnFees = BigDecimal.ZERO;
-        if (operateType == 2) {
-            String executionDate = positionExecution.getExecutionDate(); // 交易日期
 
-            List<PositionAllocateItem> positionAllocateList = request.getDetails();
+        String executionDate = positionExecution.getExecutionDate();
 
-            BigDecimal qty = BigDecimal.ZERO;
+        List<PositionAllocateItem> positionAllocateList = request.getDetails();
+        if (CollectionUtils.isEmpty(positionAllocateList)) {
+            throw new BusinessException("分配明细不能为空");
+        }
 
-            BigDecimal accAllocateQty = positionAllocateList.stream()
-                    .map(item -> item.getAllocateQty() == null ? BigDecimal.ZERO : item.getAllocateQty())
-                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal accAllocateQty = positionAllocateList.stream()
+                .map(item -> item.getAllocateQty() == null ? BigDecimal.ZERO : item.getAllocateQty())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            if (qty.compareTo(accAllocateQty) == 1) {
-                throw new BusinessException("交易的总数量大于分配的合计数量");
-            }
+        BigDecimal shares = getOrDefault(positionExecution.getShares(), BigDecimal.ZERO);
+        if (accAllocateQty.compareTo(shares) > 0) {
+            throw new BusinessException("分配数量超过交易数量");
+        }
 
-            if (positionExecution.getCalExecutionRealizedPnl() != null) {
-                avgRealizedPln = positionExecution.getCalExecutionRealizedPnl().divide(positionExecution.getShares(), 2, RoundingMode.DOWN);
-            }
+        avgRealizedPln = safeDivide(positionExecution.getCalExecutionRealizedPnl(), shares, 2, RoundingMode.DOWN);
+        avgUnRealizedPln = safeDivide(positionExecution.getCalExecutionUnrealizedPnl(), shares, 2, RoundingMode.DOWN);
+        avgCommissionAnFees = safeDivide(positionExecution.getCommissionAndFees(), shares, 2, RoundingMode.DOWN);
 
-            if (positionExecution.getCalExecutionUnrealizedPnl() != null) {
-                avgUnRealizedPln = positionExecution.getCalExecutionUnrealizedPnl().divide(positionExecution.getShares(), 2, RoundingMode.DOWN);
-            }
+        List<PositionRelation> positionRelationList = new ArrayList<>();
 
-            if (positionExecution.getCommissionAndFees() != null) {
-                avgCommissionAnFees = positionExecution.getCommissionAndFees().divide(positionExecution.getShares(), 2, RoundingMode.DOWN);
-            }
+        this.resetPositionRelation(positionExecution, positionRelationList);
 
-            List<PositionRelation> positionRelationList = new ArrayList<>();
+        PositionHistory positionHistory = positionHistoryService.getPositionHistoryByKey(executionDate, positionExecution.getConid(), positionExecution.getAccountCode());
+        if (positionHistory == null) {
+            throw new BusinessException("持仓历史记录不存在");
+        }
 
-            // 重置本次交易非陪
-            this.resetPositionRelation(positionExecution, positionRelationList);
+        BigDecimal avgCalUnrealizedPnlPosition = safeDivide(positionHistory.getCalUnrealizedPnl(), positionHistory.getCalPositionQty(), 2, RoundingMode.DOWN);
+        BigDecimal avgCalDailyUnrealizedPnlPosition = safeDivide(positionHistory.getCalDailyUnrealizedPnl(), positionHistory.getCalPositionQty(), 2, RoundingMode.DOWN);
 
-            PositionHistory positionHistory = positionHistoryService.getPositionHistoryByKey(executionDate, positionExecution.getConid(), positionExecution.getAccountCode());
+        LambdaQueryWrapper<PositionRelation> wrapper1 = new LambdaQueryWrapper<>();
+        wrapper1.eq(PositionRelation::getAccountCode, positionExecution.getAccountCode())
+                .eq(PositionRelation::getConid, positionExecution.getConid())
+                .last("limit 1");
+        PositionRelation one = positionRelationService.getOne(wrapper1);
 
-            BigDecimal avgCalUnrealizedPnlPosition = positionHistory.getCalUnrealizedPnl().divide(positionHistory.getCalPositionQty(), 2, RoundingMode.DOWN);
-            BigDecimal avgCalDailyUnrealizedPnlPosition = positionHistory.getCalDailyUnrealizedPnl().divide(positionHistory.getCalPositionQty(), 2, RoundingMode.DOWN);
-
-
-            LambdaQueryWrapper<PositionRelation> wrapper1 = new LambdaQueryWrapper<>();
-            wrapper1.last("limit 1");
-            PositionRelation one = positionRelationService.getOne(wrapper1);
-
-            if (one != null) {
-                if (!one.getDailyDate().equals(executionDate)) {
-                    List<PositionRelation> list = positionRelationService.list();
-                    for (PositionRelation positionRelation : list) {
-                        positionRelation.setDailyDate(executionDate);
-                        this.handlePositionRelationHistory(positionRelation);
-                    }
-
-                }
-            }
-
-            for (PositionAllocateItem detail : positionAllocateList) {
-
-                // 维护分配记录
-                PositionAllocateHistory allocateHistory = new PositionAllocateHistory();
-                BeanUtils.copyProperties(detail, allocateHistory);
-                String strategyName = detail.getStrategyName();
-                String traderName = detail.getTraderName();
-                String accountCode = detail.getAccountCode();
-                int conid = detail.getConid();
-                BigDecimal allocateQty = detail.getAllocateQty(); // 分配数量
-
-                BigDecimal accRealizedPln = avgRealizedPln.multiply(allocateQty);
-                BigDecimal accUnRealizedPln = avgUnRealizedPln.multiply(allocateQty);
-                BigDecimal accCommissionAnFees = avgCommissionAnFees.multiply(allocateQty);
-
-                allocateHistory.setPositionExecutionId(request.getId());
-                allocateHistory.setRealizedPnl(accRealizedPln);
-                allocateHistory.setUnrealizedPnl(accUnRealizedPln);
-                allocateHistory.setCommissionAndFees(accCommissionAnFees);
-                positionAllocateHistoryService.save(allocateHistory);
-
-                if (positionExecution.getSide().equals(TradeSideEnum.BOT.name())) {
-
-                } else if (positionExecution.getSide().equals(TradeSideEnum.SLD.name())) {
-                    allocateQty = allocateQty.negate();
-                }
-
-                PositionRelation positionRelation = positionRelationService.getPositionRelationByKey(accountCode, conid, strategyName, traderName);
-                if (positionRelation == null) {
-                    positionRelation = new PositionRelation();
+        if (one != null) {
+            if (!one.getDailyDate().equals(executionDate)) {
+                LambdaQueryWrapper<PositionRelation> updateWrapper = new LambdaQueryWrapper<>();
+                updateWrapper.eq(PositionRelation::getAccountCode, positionExecution.getAccountCode())
+                        .eq(PositionRelation::getConid, positionExecution.getConid());
+                List<PositionRelation> list = positionRelationService.list(updateWrapper);
+                for (PositionRelation positionRelation : list) {
                     positionRelation.setDailyDate(executionDate);
-                    positionRelation.setAccountCode(detail.getAccountCode());
-                    positionRelation.setConid(detail.getConid());
-                    positionRelation.setStrategyName(strategyName);
-                    positionRelation.setTraderName(traderName);
-
-                    positionRelation.setUnrealizedPnl(avgCalUnrealizedPnlPosition.multiply(allocateQty));
-                    positionRelation.setRealizedPnl(accRealizedPln);
-                    // 交易分配
-                    positionRelation.setPositionQty(allocateQty);
-                    positionRelation.setDailyUnrealizedPnl(accUnRealizedPln);
-                    positionRelation.setDailyRealizedPnl(accRealizedPln);
-                    positionRelation.setCommissionAndFees(accCommissionAnFees);
-                    positionRelation.setMarketPrice(positionHistory.getCalMarketPrice());
-                    positionRelation.setAvgCost(positionHistory.getCalAvgCost());
-
-                    positionRelationService.save(positionRelation);
-                } else {
-
-                    positionRelation.setDailyDate(executionDate);
-                    positionRelation.setRealizedPnl(positionRelation.getRealizedPnl().add(accRealizedPln));
-                    // 交易分配
-                    positionRelation.setPositionQty(positionRelation.getPositionQty().add(allocateQty));
-                    positionRelation.setUnrealizedPnl(avgCalUnrealizedPnlPosition.multiply(positionRelation.getPositionQty()));
-                    positionRelation.setDailyUnrealizedPnl(avgCalDailyUnrealizedPnlPosition.multiply(positionRelation.getPositionQty()));
-                    positionRelation.setDailyRealizedPnl(positionRelation.getDailyRealizedPnl().add(accRealizedPln));
-                    positionRelation.setCommissionAndFees(positionRelation.getCommissionAndFees().add(accCommissionAnFees));
-                    positionRelation.setMarketPrice(positionHistory.getCalMarketPrice());
-                    positionRelation.setAvgCost(positionHistory.getCalAvgCost());
-
-                    positionRelationService.updateById(positionRelation);
+                    this.handlePositionRelationHistory(positionRelation);
                 }
-
-                positionRelationList.add(positionRelation);
-
             }
-            positionExecution.setAllocateRemainQty(positionExecution.getShares().subtract(accAllocateQty));
-            positionExecutionService.updateById(positionExecution);
+        }
 
-            for (PositionRelation positionRelation : positionRelationList) {
-                this.handlePositionRelationHistory(positionRelation);
+        for (PositionAllocateItem detail : positionAllocateList) {
+            PositionAllocateHistory allocateHistory = new PositionAllocateHistory();
+            BeanUtils.copyProperties(detail, allocateHistory);
+            String strategyName = detail.getStrategyName();
+            String traderName = detail.getTraderName();
+            String accountCode = detail.getAccountCode();
+            Integer conid = detail.getConid();
+            BigDecimal allocateQty = getOrDefault(detail.getAllocateQty(), BigDecimal.ZERO);
+
+            BigDecimal accRealizedPln = avgRealizedPln.multiply(allocateQty);
+            BigDecimal accUnRealizedPln = avgUnRealizedPln.multiply(allocateQty);
+            BigDecimal accCommissionAnFees = avgCommissionAnFees.multiply(allocateQty);
+
+            allocateHistory.setPositionExecutionId(request.getId());
+            allocateHistory.setRealizedPnl(accRealizedPln);
+            allocateHistory.setUnrealizedPnl(accUnRealizedPln);
+            allocateHistory.setCommissionAndFees(accCommissionAnFees);
+            positionAllocateHistoryService.save(allocateHistory);
+
+            if (positionExecution.getSide().equals(TradeSideEnum.SLD.name())) {
+                allocateQty = allocateQty.negate();
             }
+
+            PositionRelation positionRelation = positionRelationService.getPositionRelationByKey(accountCode, conid, strategyName, traderName);
+            if (positionRelation == null) {
+                positionRelation = new PositionRelation();
+                positionRelation.setDailyDate(executionDate);
+                positionRelation.setAccountCode(accountCode);
+                positionRelation.setConid(conid);
+                positionRelation.setStrategyName(strategyName);
+                positionRelation.setTraderName(traderName);
+
+                positionRelation.setUnrealizedPnl(avgCalUnrealizedPnlPosition.multiply(allocateQty));
+                positionRelation.setRealizedPnl(accRealizedPln);
+                positionRelation.setPositionQty(allocateQty);
+                positionRelation.setDailyUnrealizedPnl(accUnRealizedPln);
+                positionRelation.setDailyRealizedPnl(accRealizedPln);
+                positionRelation.setCommissionAndFees(accCommissionAnFees);
+                positionRelation.setMarketPrice(positionHistory.getCalMarketPrice());
+                positionRelation.setAvgCost(positionHistory.getCalAvgCost());
+
+                positionRelationService.save(positionRelation);
+            } else {
+                positionRelation.setDailyDate(executionDate);
+                positionRelation.setRealizedPnl(getOrDefault(positionRelation.getRealizedPnl(), BigDecimal.ZERO).add(accRealizedPln));
+                positionRelation.setPositionQty(getOrDefault(positionRelation.getPositionQty(), BigDecimal.ZERO).add(allocateQty));
+                positionRelation.setUnrealizedPnl(avgCalUnrealizedPnlPosition.multiply(positionRelation.getPositionQty()));
+                positionRelation.setDailyUnrealizedPnl(avgCalDailyUnrealizedPnlPosition.multiply(positionRelation.getPositionQty()));
+                positionRelation.setDailyRealizedPnl(getOrDefault(positionRelation.getDailyRealizedPnl(), BigDecimal.ZERO).add(accRealizedPln));
+                positionRelation.setCommissionAndFees(getOrDefault(positionRelation.getCommissionAndFees(), BigDecimal.ZERO).add(accCommissionAnFees));
+                positionRelation.setMarketPrice(positionHistory.getCalMarketPrice());
+                positionRelation.setAvgCost(positionHistory.getCalAvgCost());
+
+                positionRelationService.updateById(positionRelation);
+            }
+
+            positionRelationList.add(positionRelation);
+        }
+
+        positionExecution.setAllocateRemainQty(shares.subtract(accAllocateQty));
+        positionExecutionService.updateById(positionExecution);
+
+        for (PositionRelation positionRelation : positionRelationList) {
+            this.handlePositionRelationHistory(positionRelation);
         }
 
         return true;
     }
 
     private void handlePositionRelationHistory(PositionRelation positionRelation){
-        PositionRelationHistory PositionRelationHistory = new PositionRelationHistory(positionRelation);
-        PositionRelationHistory.setId(null);
-        positionRelationHistoryService.saveOrUpdateByKey(PositionRelationHistory);
+        PositionRelationHistory positionRelationHistory = new PositionRelationHistory(positionRelation);
+        positionRelationHistory.setId(null);
+        positionRelationHistoryService.saveOrUpdateByKey(positionRelationHistory);
     }
 
     private void resetPositionRelation(PositionExecution positionExecution, List<PositionRelation> positionRelationList){
         List<PositionAllocateHistory> positionAllocateHistories = positionAllocateHistoryService.listPositionAllocateHistoryByKey(null, positionExecution.getId());
-        if (positionAllocateHistories.size() > 0) {
+        if (!CollectionUtils.isEmpty(positionAllocateHistories)) {
 
             for (PositionAllocateHistory positionAllocateHistory : positionAllocateHistories) {
                 String accountCode = positionAllocateHistory.getAccountCode();
@@ -254,19 +359,26 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
                 String traderName = positionAllocateHistory.getTraderName();
                 PositionRelation positionRelation = positionRelationService.getPositionRelationByKey(accountCode, conid, strategyName, traderName);
 
-                BigDecimal allocateQty = positionAllocateHistory.getAllocateQty(); // 分配数量
+                if (positionRelation == null) {
+                    continue;
+                }
 
-                if (positionExecution.getSide().equals(TradeSideEnum.BOT.name())) {
+                BigDecimal allocateQty = getOrDefault(positionAllocateHistory.getAllocateQty(), BigDecimal.ZERO);
 
-                } else if (positionExecution.getSide().equals(TradeSideEnum.SLD.name())) {
+                if (positionExecution.getSide().equals(TradeSideEnum.SLD.name())) {
                     allocateQty = allocateQty.negate();
                 }
 
-                positionRelation.setRealizedPnl(positionRelation.getRealizedPnl().subtract(positionAllocateHistory.getRealizedPnl()));
-                positionRelation.setPositionQty(positionRelation.getPositionQty().subtract(allocateQty));
-                positionRelation.setDailyUnrealizedPnl(positionRelation.getDailyUnrealizedPnl().subtract(positionAllocateHistory.getUnrealizedPnl()));
-                positionRelation.setDailyRealizedPnl(positionRelation.getDailyRealizedPnl().subtract(positionAllocateHistory.getRealizedPnl()));
-                positionRelation.setCommissionAndFees(positionRelation.getCommissionAndFees().subtract(positionAllocateHistory.getCommissionAndFees()));
+                positionRelation.setRealizedPnl(getOrDefault(positionRelation.getRealizedPnl(), BigDecimal.ZERO)
+                        .subtract(getOrDefault(positionAllocateHistory.getRealizedPnl(), BigDecimal.ZERO)));
+                positionRelation.setPositionQty(getOrDefault(positionRelation.getPositionQty(), BigDecimal.ZERO)
+                        .subtract(allocateQty));
+                positionRelation.setDailyUnrealizedPnl(getOrDefault(positionRelation.getDailyUnrealizedPnl(), BigDecimal.ZERO)
+                        .subtract(getOrDefault(positionAllocateHistory.getUnrealizedPnl(), BigDecimal.ZERO)));
+                positionRelation.setDailyRealizedPnl(getOrDefault(positionRelation.getDailyRealizedPnl(), BigDecimal.ZERO)
+                        .subtract(getOrDefault(positionAllocateHistory.getRealizedPnl(), BigDecimal.ZERO)));
+                positionRelation.setCommissionAndFees(getOrDefault(positionRelation.getCommissionAndFees(), BigDecimal.ZERO)
+                        .subtract(getOrDefault(positionAllocateHistory.getCommissionAndFees(), BigDecimal.ZERO)));
 
                 positionRelationService.updateById(positionRelation);
 
@@ -274,7 +386,6 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
             }
         }
 
-        // 删除分配记录重新添加
         positionAllocateHistoryService.delPositionAllocateHistoryByKey(null, positionExecution.getId());
     }
 
@@ -294,11 +405,10 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
             BeanUtils.copyProperties(entity, vo);
 
             List<PositionAllocateHistory> positionAllocateHistories = positionAllocateHistoryService.listPositionAllocateHistoryByKey(vo.getId(), null);
-            // 求和，空字段当作0处理
             BigDecimal sum = positionAllocateHistories.stream()
                     .map(item -> item.getAllocateQty() == null ? BigDecimal.ZERO : item.getAllocateQty())
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
-            vo.setRemainQty(vo.getPositionQty().subtract(sum));
+            vo.setRemainQty(getOrDefault(vo.getPositionQty(), BigDecimal.ZERO).subtract(sum));
 
             AccountContract contract = contractService.getContractByConid(vo.getAccountCode(), vo.getConid());
 

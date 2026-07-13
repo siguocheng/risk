@@ -22,22 +22,24 @@
 
     <select id="listPortfolioOverviewDetail" resultType="com.riskcontrol.domain.vo.PortfolioOverviewDetail">
         SELECT
-            t.trader_name,
-            t.capital,
-            c.delta,
-            c.multiplier,
-            c.sec_type,
-            pr.position_qty,
-            pr.avg_cost,
-            pr.market_price,
-            pr.unrealized_pnl,
-            pr.realized_pnl,
-            pr.commission_and_fees
+        t.trader_name,
+        t.capital,
+        cmh.delta,
+        c.multiplier,
+        c.sec_type,
+        pr.position_qty,
+        pr.avg_cost,
+        pr.market_price,
+        pr.unrealized_pnl,
+        pr.realized_pnl,
+        pr.commission_and_fees
         FROM
-            trader t
-        LEFT JOIN position_relation pr ON t.trader_name = pr.trader_name
+        trader t
+        LEFT JOIN position_relation_history pr ON t.trader_name = pr.trader_name
+        LEFT JOIN contract_market_history cmh ON pr.conid = cmh.conid and pr.daily_date=cmh.daily_date
         LEFT JOIN contract c ON pr.conid = c.conid
-        where 1=1
+        WHERE
+        1 = 1
         <if test="accountCodes != null and accountCodes.size() > 0">
             and pr.account_code IN
             <foreach collection="accountCodes" item="code" open="(" separator="," close=")">
@@ -55,6 +57,9 @@
             <foreach collection="strategyNames" item="name" open="(" separator="," close=")">
                 #{name}
             </foreach>
+        </if>
+        <if test="dailyDate != null and dailyDate != ''">
+            and pr.daily_date = #{dailyDate}
         </if>
     </select>
 
