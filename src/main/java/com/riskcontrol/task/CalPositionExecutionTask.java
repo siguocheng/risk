@@ -617,7 +617,6 @@ public class CalPositionExecutionTask {
         if (date.equals(position.getPositionDate())) {
             position.setCalDailyRealizedPnl(nvl(position.getCalDailyRealizedPnl()).add(calDailyRealizedPnl));
         } else {
-
             position.setCalDailyRealizedPnl(calDailyRealizedPnl);
             position.setPositionDate(date);
         }
