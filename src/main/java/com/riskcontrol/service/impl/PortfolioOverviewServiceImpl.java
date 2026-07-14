@@ -1,6 +1,7 @@
 package com.riskcontrol.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.riskcontrol.constant.Constant;
 import com.riskcontrol.dao.PositionRelationHistoryMapper;
 import com.riskcontrol.dao.PositionRelationMapper;
 import com.riskcontrol.domain.Contract;
@@ -46,6 +47,8 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
 
     private final ITraderService traderService;
 
+    private final ISystemConfigService systemConfigService;
+
 
     @Override
     public PortfolioOverviewData queryPortfolioOverview(PortfolioOverviewBo portfolioOverviewBo) {
@@ -85,8 +88,7 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
         return viewData;
     }
 
-    private List<ChartVo> getChartList(PortfolioOverviewBo portfolioOverviewBo){
-
+    private void handleStartEndDate(PortfolioOverviewBo portfolioOverviewBo){
         if (portfolioOverviewBo.getDateType() != null) {
             if (portfolioOverviewBo.getDateType() == 1 || portfolioOverviewBo.getDateType() == 7) {
                 portfolioOverviewBo.setEndDate(DateUtil.localDateToString(LocalDate.now()));
@@ -105,6 +107,11 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
                 portfolioOverviewBo.setStartDate(DateUtil.localDateToString(LocalDate.now().minusDays(365)));
             }
         }
+    }
+
+    private List<ChartVo> getChartList(PortfolioOverviewBo portfolioOverviewBo){
+
+        this.handleStartEndDate(portfolioOverviewBo);
 
         // 取得账号的历史收益
         List<DailyProfitVo> dailyProfitList = this.getDailyProfitList(portfolioOverviewBo);
@@ -149,9 +156,11 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
 
     private List<PortfolioOverviewVo> getPortfolioOverviewList(PortfolioOverviewBo portfolioOverviewBo){
 
-        if (portfolioOverviewBo.getDateType() != null) {
-            portfolioOverviewBo.setDailyDate(DateUtil.localDateToString(LocalDate.now()));
-        }
+//        if (portfolioOverviewBo.getDateType() != null) {
+//            portfolioOverviewBo.setDailyDate(DateUtil.localDateToString(LocalDate.now()));
+//        }
+
+        this.handleStartEndDate(portfolioOverviewBo);
 
         List<PortfolioOverviewVo> portfolioOverviewList = new ArrayList<>();
 
@@ -365,42 +374,276 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
     public List<TraderRiskMetricsVo> getTraderRiskMetrics(RiskControlQuery query) {
         List<TraderRiskMetricsVo> result = new ArrayList<>();
 
-        if (query.getTradeNames() != null && !query.getTradeNames().isEmpty()) {
-            for (String traderName : query.getTradeNames()) {
-                TraderRiskMetricsVo metrics = new TraderRiskMetricsVo();
-                metrics.setTraderName(traderName);
-                Trader trader = traderService.getDetailByTrader(traderName);
-                BigDecimal capital = trader.getCapital();// 交易员对应的本金
-
-                LambdaQueryWrapper<PositionRelationHistory> queryWrapper = new LambdaQueryWrapper<>();
-                queryWrapper.eq(PositionRelationHistory::getTraderName, traderName);
-                queryWrapper.orderByAsc(PositionRelationHistory::getDailyDate);
-                List<PositionRelationHistory> list = positionRelationHistoryService.list(queryWrapper);
-                for (PositionRelationHistory positionRelationHistory : list) {
-                    BigDecimal costValue = positionRelationHistory.getAvgCost().multiply(positionRelationHistory.getPositionQty());// 成本=持仓成本*持仓数量
-                    BigDecimal marketValue = positionRelationHistory.getMarketPrice().multiply(positionRelationHistory.getPositionQty());// 市值=收盘价*持仓数量
-
-                    BigDecimal add = capital.subtract(costValue).add(marketValue);
-                }
-                
-
-                metrics.setSharpeRatio(null); // 夏普比率
-
-                metrics.setSortinoRatio(null); // 索提诺比率
-                metrics.setCalmarRatio(null); // 卡玛比率
-                metrics.setWinLossRatio(null); // 盈亏比
-                metrics.setRiskRatio(null); // 风险占比(95% VaR / 总资产)
-                metrics.setVolatilityPremium(null); // 波动率溢价(组合IV-市场VIX)
-                result.add(metrics);
+        String riskFreeRateStr = systemConfigService.getValueByKey(Constant.risk_free_rate);
+        BigDecimal riskFreeRateAnnual = BigDecimal.ZERO;
+        if (riskFreeRateStr != null && !riskFreeRateStr.isEmpty()) {
+            try {
+                riskFreeRateAnnual = new BigDecimal(riskFreeRateStr);
+            } catch (NumberFormatException e) {
+                riskFreeRateAnnual = BigDecimal.ZERO;
             }
+        }
+        BigDecimal riskFreeRateDaily = riskFreeRateAnnual.divide(new BigDecimal(Constant.trade_day), 10, RoundingMode.HALF_UP);
+
+        List<Trader> traders = traderService.listByTraders(query.getTradeNames());
+
+        for (Trader trader : traders) {
+
+            String traderName = trader.getTraderName();
+
+            TraderRiskMetricsVo metrics = new TraderRiskMetricsVo();
+            metrics.setTraderName(traderName);
+
+            BigDecimal capital = trader.getCapital();
+
+            LambdaQueryWrapper<PositionRelationHistory> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(PositionRelationHistory::getTraderName, traderName);
+            List<PositionRelationHistory> list = positionRelationHistoryService.list(queryWrapper);
+
+            Map<String, List<PositionRelationHistory>> historyByDateMap = list.stream()
+                    .collect(Collectors.groupingBy(PositionRelationHistory::getDailyDate));
+
+            List<Map.Entry<String, List<PositionRelationHistory>>> sortedEntries = new ArrayList<>(historyByDateMap.entrySet());
+            sortedEntries.sort(Map.Entry.comparingByKey());
+
+            List<BigDecimal> dailyValues = new ArrayList<>();
+            for (Map.Entry<String, List<PositionRelationHistory>> entry : sortedEntries) {
+                List<PositionRelationHistory> dayHistories = entry.getValue();
+                BigDecimal totalCostValue = BigDecimal.ZERO;
+                BigDecimal totalMarketValue = BigDecimal.ZERO;
+                for (PositionRelationHistory history : dayHistories) {
+                    if (history.getAvgCost() != null && history.getPositionQty() != null) {
+                        BigDecimal costValue = history.getAvgCost().multiply(history.getPositionQty());
+                        totalCostValue = totalCostValue.add(costValue);
+                    }
+                    if (history.getMarketPrice() != null && history.getPositionQty() != null) {
+                        BigDecimal marketValue = history.getMarketPrice().multiply(history.getPositionQty());
+                        totalMarketValue = totalMarketValue.add(marketValue);
+                    }
+                }
+                BigDecimal dailyValue = capital.subtract(totalCostValue).add(totalMarketValue);
+                dailyValues.add(dailyValue);
+            }
+
+            List<BigDecimal> dailyReturns = calculateDailyReturns(dailyValues);
+
+            BigDecimal sharpeRatio = calculateSharpeRatio(dailyReturns, riskFreeRateDaily);
+            metrics.setSharpeRatio(sharpeRatio);
+
+            BigDecimal sortinoRatio = calculateSortinoRatio(dailyReturns, riskFreeRateDaily);
+            metrics.setSortinoRatio(sortinoRatio);
+
+            BigDecimal calmarRatio = calculateCalmarRatio(dailyValues);
+            metrics.setCalmarRatio(calmarRatio);
+
+            BigDecimal winLossRatio = calculateWinLossRatio(dailyReturns);
+            metrics.setWinLossRatio(winLossRatio);
+
+            metrics.setRiskRatio(null);
+            metrics.setVolatilityPremium(null);
+            result.add(metrics);
         }
 
         return result;
     }
 
+    private List<BigDecimal> calculateDailyReturns(List<BigDecimal> dailyValues) {
+        List<BigDecimal> dailyReturns = new ArrayList<>();
+        for (int i = 1; i < dailyValues.size(); i++) {
+            BigDecimal prevValue = dailyValues.get(i - 1);
+            BigDecimal currValue = dailyValues.get(i);
+            if (prevValue != null && currValue != null && prevValue.compareTo(BigDecimal.ZERO) != 0) {
+                BigDecimal dailyReturn = currValue.subtract(prevValue).divide(prevValue, 10, RoundingMode.HALF_UP);
+                dailyReturns.add(dailyReturn);
+            }
+        }
+        return dailyReturns;
+    }
+
+    private BigDecimal calculateSharpeRatio(List<BigDecimal> dailyReturns, BigDecimal riskFreeRateDaily) {
+        if (dailyReturns == null || dailyReturns.size() < 2) {
+            return null;
+        }
+
+        BigDecimal meanReturn = BigDecimal.ZERO;
+        for (BigDecimal returnValue : dailyReturns) {
+            meanReturn = meanReturn.add(returnValue);
+        }
+        meanReturn = meanReturn.divide(new BigDecimal(dailyReturns.size()), 10, RoundingMode.HALF_UP);
+
+        BigDecimal variance = BigDecimal.ZERO;
+        for (BigDecimal returnValue : dailyReturns) {
+            BigDecimal diff = returnValue.subtract(meanReturn);
+            variance = variance.add(diff.multiply(diff));
+        }
+        variance = variance.divide(new BigDecimal(dailyReturns.size() - 1), 10, RoundingMode.HALF_UP);
+
+        if (variance.compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+
+        double stdDev = Math.sqrt(variance.doubleValue());
+        BigDecimal stdDevBigDecimal = new BigDecimal(stdDev);
+
+        if (stdDevBigDecimal.compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+
+        BigDecimal excessReturn = meanReturn.subtract(riskFreeRateDaily);
+        BigDecimal sharpeRatioDaily = excessReturn.divide(stdDevBigDecimal, 10, RoundingMode.HALF_UP);
+
+        double sqrt252 = Math.sqrt(Constant.trade_day);
+        BigDecimal annualizedSharpe = sharpeRatioDaily.multiply(new BigDecimal(sqrt252));
+
+        return annualizedSharpe.setScale(4, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal calculateSortinoRatio(List<BigDecimal> dailyReturns, BigDecimal riskFreeRateDaily) {
+        if (dailyReturns == null || dailyReturns.size() < 2) {
+            return null;
+        }
+
+        BigDecimal meanReturn = BigDecimal.ZERO;
+        for (BigDecimal returnValue : dailyReturns) {
+            meanReturn = meanReturn.add(returnValue);
+        }
+        meanReturn = meanReturn.divide(new BigDecimal(dailyReturns.size()), 10, RoundingMode.HALF_UP);
+
+        BigDecimal downsideSum = BigDecimal.ZERO;
+        int downsideCount = 0;
+        for (BigDecimal returnValue : dailyReturns) {
+            BigDecimal excess = returnValue.subtract(riskFreeRateDaily);
+            if (excess.compareTo(BigDecimal.ZERO) < 0) {
+                downsideSum = downsideSum.add(excess.multiply(excess));
+                downsideCount++;
+            }
+        }
+
+        if (downsideCount == 0) {
+            return null;
+        }
+
+        BigDecimal downsideVariance = downsideSum.divide(new BigDecimal(downsideCount), 10, RoundingMode.HALF_UP);
+
+        if (downsideVariance.compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+
+        double downsideDeviation = Math.sqrt(downsideVariance.doubleValue());
+        BigDecimal downsideDeviationBigDecimal = new BigDecimal(downsideDeviation);
+
+        if (downsideDeviationBigDecimal.compareTo(BigDecimal.ZERO) <= 0) {
+            return null;
+        }
+
+        BigDecimal excessReturn = meanReturn.subtract(riskFreeRateDaily);
+        BigDecimal sortinoRatioDaily = excessReturn.divide(downsideDeviationBigDecimal, 10, RoundingMode.HALF_UP);
+
+        double sqrt252 = Math.sqrt(Constant.trade_day);
+        BigDecimal annualizedSortino = sortinoRatioDaily.multiply(new BigDecimal(sqrt252));
+
+        return annualizedSortino.setScale(4, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal calculateCalmarRatio(List<BigDecimal> dailyValues) {
+        if (dailyValues == null || dailyValues.size() < 2) {
+            return null;
+        }
+
+        BigDecimal maxDrawdown = calculateMaxDrawdown(dailyValues);
+        if (maxDrawdown == null || maxDrawdown.compareTo(BigDecimal.ZERO) == 0) {
+            return null;
+        }
+
+        BigDecimal firstValue = dailyValues.get(0);
+        BigDecimal lastValue = dailyValues.get(dailyValues.size() - 1);
+
+        if (firstValue == null || lastValue == null || firstValue.compareTo(BigDecimal.ZERO) == 0) {
+            return null;
+        }
+
+        int tradingDays = dailyValues.size();
+        BigDecimal totalReturn = lastValue.subtract(firstValue).divide(firstValue, 10, RoundingMode.HALF_UP);
+
+        BigDecimal annualizedReturn;
+        if (tradingDays == 0) {
+            return null;
+        }
+
+        double growthFactor = lastValue.divide(firstValue, 10, RoundingMode.HALF_UP).doubleValue();
+        double annualizedGrowth = Math.pow(growthFactor, Constant.trade_day / tradingDays);
+        annualizedReturn = new BigDecimal(annualizedGrowth - 1);
+
+        BigDecimal calmarRatio = annualizedReturn.divide(maxDrawdown, 10, RoundingMode.HALF_UP);
+
+        return calmarRatio.setScale(4, RoundingMode.HALF_UP);
+    }
+
+    private BigDecimal calculateMaxDrawdown(List<BigDecimal> dailyValues) {
+        if (dailyValues == null || dailyValues.size() < 2) {
+            return null;
+        }
+
+        BigDecimal peak = dailyValues.get(0);
+        BigDecimal maxDrawdown = BigDecimal.ZERO;
+
+        for (int i = 1; i < dailyValues.size(); i++) {
+            BigDecimal currentValue = dailyValues.get(i);
+            if (currentValue == null) {
+                continue;
+            }
+
+            if (currentValue.compareTo(peak) > 0) {
+                peak = currentValue;
+            }
+
+            if (peak != null && peak.compareTo(BigDecimal.ZERO) != 0) {
+                BigDecimal drawdown = peak.subtract(currentValue).divide(peak, 10, RoundingMode.HALF_UP);
+                if (drawdown.compareTo(maxDrawdown) > 0) {
+                    maxDrawdown = drawdown;
+                }
+            }
+        }
+
+        return maxDrawdown.compareTo(BigDecimal.ZERO) > 0 ? maxDrawdown : null;
+    }
+
+    private BigDecimal calculateWinLossRatio(List<BigDecimal> dailyReturns) {
+        if (dailyReturns == null || dailyReturns.size() < 1) {
+            return null;
+        }
+
+        int winningDays = 0;
+        int losingDays = 0;
+
+        for (BigDecimal returnValue : dailyReturns) {
+            if (returnValue == null) {
+                continue;
+            }
+            int compareResult = returnValue.compareTo(BigDecimal.ZERO);
+            if (compareResult > 0) {
+                winningDays++;
+            } else if (compareResult < 0) {
+                losingDays++;
+            }
+        }
+
+        if (losingDays == 0) {
+            if (winningDays == 0) {
+                return null;
+            }
+            return new BigDecimal("999.99");
+        }
+
+        BigDecimal winLossRatio = new BigDecimal(winningDays).divide(new BigDecimal(losingDays), 4, RoundingMode.HALF_UP);
+
+        return winLossRatio;
+    }
+
     private BigDecimal getLastVix(){
         LambdaQueryWrapper<ContractMarketHistory> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(ContractMarketHistory::getConid, 34426421);
+        String vixConid = systemConfigService.getValueByKey(Constant.vix_conid);
+        queryWrapper.eq(ContractMarketHistory::getConid, vixConid);
         queryWrapper.orderByDesc(ContractMarketHistory::getDailyDate);
         queryWrapper.last("LIMIT 1");
 

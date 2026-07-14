@@ -61,6 +61,13 @@
         <if test="dailyDate != null and dailyDate != ''">
             and pr.daily_date = #{dailyDate}
         </if>
+
+        <if test="startDate != null and startDate != ''">
+            and pr.daily_date >= #{startDate}
+        </if>
+        <if test="endDate != null and endDate != ''">
+            and pr.daily_date &lt;= #{endDate}
+        </if>
     </select>
 
 </mapper>

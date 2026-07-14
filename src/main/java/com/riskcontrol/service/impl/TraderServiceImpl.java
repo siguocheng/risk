@@ -137,4 +137,14 @@ public class TraderServiceImpl extends ServiceImpl<TraderMapper, Trader> impleme
         queryWrapper.eq(Trader::getTraderName, traderName);
         return this.getOne(queryWrapper);
     }
+
+    @Override
+    public List<Trader> listByTraders(List<String> traderNames) {
+        LambdaQueryWrapper<Trader> queryWrapper = new LambdaQueryWrapper<>();
+        if (traderNames != null && traderNames.size() > 0) {
+            queryWrapper.in(Trader::getTraderName, traderNames);
+        }
+
+        return this.list(queryWrapper);
+    }
 }

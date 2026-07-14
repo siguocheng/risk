@@ -475,7 +475,7 @@ public class IbReconnectTask {
 
     public void synContractMarket() throws ExecutionException, InterruptedException, TimeoutException {
         LambdaQueryWrapper<ContractMarket> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.ne(ContractMarket::getSecType, "OPT"); // 排除期权
+        queryWrapper.notIn(ContractMarket::getSecType, "OPT","FUT"); // 排除期权,期货
         queryWrapper.orderByAsc(ContractMarket::getId);
         List<ContractMarket> list = contractMarketService.list(queryWrapper);
 
@@ -492,8 +492,9 @@ public class IbReconnectTask {
 
         for (ContractMarket contractMarket : list) {
             com.ib.client.Contract ibContract = new com.ib.client.Contract();
-            int conid = contractMarket.getConid();
+            Integer conid = contractMarket.getConid();
 //            ibContract.conid(conid);
+            System.out.println(contractMarket.getSymbol());
             ibContract.symbol(contractMarket.getSymbol());
             ibContract.exchange(contractMarket.getExchange());
             ibContract.secType(contractMarket.getSecType());
@@ -502,15 +503,15 @@ public class IbReconnectTask {
 
             List<TagValue> tagList = null;
 
-//            LocalDate contractMarketLastDate = contractMarket.getContractMarketLastDate();
-//            if (contractMarketLastDate != null) {
-//                LocalDate now = LocalDate.now().minusDays(1);
-//                long days = ChronoUnit.DAYS.between(contractMarketLastDate, now);
-//                if (days == 0){
-//                    continue;
-//                }
-//                durationStr = days + " D";
-//            }
+            LocalDate contractMarketLastDate = contractMarket.getContractMarketLastDate();
+            if (contractMarketLastDate != null) {
+                LocalDate now = LocalDate.now().minusDays(1);
+                long days = ChronoUnit.DAYS.between(contractMarketLastDate, now);
+                if (days == 0){
+                    continue;
+                }
+                durationStr = days + " D";
+            }
 
             CompletableFuture<Object> future = new CompletableFuture<>();
             ibkrSynConfig.FUTURE_MAP.put(ReqIdConstant.HistoricalDataReqId, future);
@@ -524,20 +525,9 @@ public class IbReconnectTask {
 
             List<ContractMarketHistory> historyList = new ArrayList<>();
 
-            Map<Integer, String> conMap = new HashMap<>();
-
             for (BarData barData : result) {
                 ContractMarketHistory history = new ContractMarketHistory();
-                if (conMap.get(conid) != null) {
-                    history.setSymbol(conMap.get(conid));
-                } else {
-                    Contract con = contractService.getByConid(conid);
-
-                    if (con != null) {
-                        history.setSymbol(con.getSymbol());
-                    }
-                }
-
+                history.setSymbol(contractMarket.getSymbol());
                 history.setConid(conid);
                 history.setDailyDate(barData.getTime());
                 history.setPriceOpen(BigDecimalUtil.doubleToDecimal(barData.getOpen()));
@@ -941,25 +931,32 @@ public class IbReconnectTask {
 
                 ContractDetailsCallbackVo detail = (ContractDetailsCallbackVo)obj;
 
-                ContractSector contractSector1 = new ContractSector();
-                contractSector1.setConid(detail.getConid());
-                contractSector1.setType(1);
-                contractSector1.setSector(detail.getIndustry());
-                contractSector1.setSectorValue(ContractSector.sectorMap.get(detail.getIndustry()));
+                if (StringUtils.isNotEmpty(detail.getIndustry())) {
+                    ContractSector contractSector1 = new ContractSector();
+                    contractSector1.setConid(detail.getConid());
+                    contractSector1.setType(1);
+                    contractSector1.setSector(detail.getIndustry());
+                    contractSector1.setSectorValue(ContractSector.sectorMap.get(detail.getIndustry()));
 
-                ContractSector contractSector2 = new ContractSector();
-                contractSector2.setConid(detail.getConid());
-                contractSector2.setType(2);
-                contractSector2.setSector(detail.getCategory());
+                    contractSectorService.saveOrUpdateByConid(contractSector1);
+                }
+                if (StringUtils.isNotEmpty(detail.getCategory())) {
+                    ContractSector contractSector2 = new ContractSector();
+                    contractSector2.setConid(detail.getConid());
+                    contractSector2.setType(2);
+                    contractSector2.setSector(detail.getCategory());
 
-                ContractSector contractSector3 = new ContractSector();
-                contractSector3.setConid(detail.getConid());
-                contractSector3.setType(3);
-                contractSector3.setSector(detail.getSubcategory());
+                    contractSectorService.saveOrUpdateByConid(contractSector2);
+                }
 
-                contractSectorService.saveOrUpdateByConid(contractSector1);
-                contractSectorService.saveOrUpdateByConid(contractSector2);
-                contractSectorService.saveOrUpdateByConid(contractSector3);
+                if (StringUtils.isNotEmpty(detail.getSubcategory())) {
+                    ContractSector contractSector3 = new ContractSector();
+                    contractSector3.setConid(detail.getConid());
+                    contractSector3.setType(3);
+                    contractSector3.setSector(detail.getSubcategory());
+
+                    contractSectorService.saveOrUpdateByConid(contractSector3);
+                }
             } catch (Exception e) {
                 log.error("合约：{}", JSONObject.toJSONString(contractMarket), e);
             }

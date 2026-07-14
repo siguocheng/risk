@@ -8,6 +8,8 @@ import com.riskcontrol.domain.vo.trader.TraderModify;
 import com.riskcontrol.domain.vo.trader.TraderPage;
 import com.riskcontrol.domain.vo.trader.TraderQuery;
 
+import java.util.List;
+
 /**
  * 交易员Service接口
  *
@@ -26,4 +28,6 @@ public interface ITraderService extends IService<Trader> {
     TraderDetail getDetail(Long id);
 
     Trader getDetailByTrader(String traderName);
+
+    List<Trader> listByTraders(List<String> traderNames);
 }

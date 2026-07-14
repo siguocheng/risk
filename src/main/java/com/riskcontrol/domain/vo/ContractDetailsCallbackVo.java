@@ -14,12 +14,18 @@ public class ContractDetailsCallbackVo {
 
     private String subcategory;
 
+    private String symbol;
+
+    private String secType;
+
     public ContractDetailsCallbackVo(){
 
     }
 
     public ContractDetailsCallbackVo(ContractDetails contractDetails) {
         this.conid = contractDetails.conid();
+        this.symbol = contractDetails.contract().symbol();
+        this.secType = contractDetails.contract().secType().getApiString();
         this.industry = contractDetails.industry();
         this.category = contractDetails.category();
         this.subcategory = contractDetails.subcategory();
