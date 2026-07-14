@@ -97,7 +97,10 @@ public class CalPositionExecutionTask {
                         if (StringUtils.isEmpty(contract.getMultiplier())) {
                             contract.setMultiplier("1");
                         }
-                        this.handleDayTrades(positionExecutionsDateConid, accountCode, date, contract);
+                        Boolean ret = this.handleDayTrades(positionExecutionsDateConid, accountCode, date, contract);
+                        if (!ret) {
+                            break;
+                        }
                     } else {
                         log.info("cal conid :{} SecType:{}", conid, contract.getSecType());
                         Boolean ret;
@@ -522,99 +525,107 @@ public class CalPositionExecutionTask {
         return value == null ? BigDecimal.ZERO : value;
     }
 
-    private void handleDayTrades(List<PositionExecution> intradayTrades, String accountCode, String date, Contract contract) {
+    private Boolean handleDayTrades(List<PositionExecution> intradayTrades, String accountCode, String date, Contract contract) {
+        Boolean ret = true;
         intradayTrades.sort(Comparator.comparing(PositionExecution::getTime));
 
         int conid = contract.getConid();
         Position position = positionService.getPositionByConid(accountCode, conid);
+        initPositionCalFields(position);
 
-        String multiplier = contract.getMultiplier(); // 一张期权对应多少股票
+        BigDecimal marketPrice = resolveMarketClosePrice(conid, date);
+        if (marketPrice != null) {
+            position.setCalMarketPrice(marketPrice);
+        } else {
+            ret = false;
+            return ret;
+        }
 
-        Map<Long, PositionExecution> buyQueue = new LinkedHashMap<>();
-        Map<Long, PositionExecution> sellQueue = new LinkedHashMap<>();
+        BigDecimal multiplier = getMultiplier(contract);
 
+        List<PositionExecution> buyQueue = new ArrayList<>();
+        List<PositionExecution> sellQueue = new ArrayList<>();
         for (PositionExecution trade : intradayTrades) {
-            // 买
+            if (trade.getRemainQty() == null || trade.getRemainQty().compareTo(BigDecimal.ZERO) == 0) {
+                trade.setRemainQty(trade.getShares());
+            }
             if (TradeSideEnum.BOT.name().equals(trade.getSide())) {
-                buyQueue.put(trade.getId(), trade);
+                buyQueue.add(trade);
             } else {
-                sellQueue.put(trade.getId(), trade);
+                sellQueue.add(trade);
             }
         }
 
         BigDecimal calDailyRealizedPnl = BigDecimal.ZERO;
-        for (Long sldId : sellQueue.keySet()) {
-            PositionExecution positionExecutionSld = sellQueue.get(sldId);
+        for (PositionExecution sellTrade : sellQueue) {
+            BigDecimal remainSldQty = nvl(sellTrade.getRemainQty());
+            BigDecimal sldPrice = sellTrade.getPrice();
+            BigDecimal sellRealizedPnl = BigDecimal.ZERO;
 
-            BigDecimal sldRemainQty = positionExecutionSld.getRemainQty();
-            BigDecimal sldPrice = positionExecutionSld.getPrice();
-            BigDecimal calExecutionUnrealizedPnl = positionExecutionSld.getCalExecutionUnrealizedPnl() == null ? BigDecimal.ZERO : positionExecutionSld.getCalExecutionUnrealizedPnl();
-
-            for (Long botId : buyQueue.keySet()) {
-                PositionExecution positionExecutionBot = buyQueue.get(botId);
-
-                BigDecimal botRemainQty = positionExecutionBot.getRemainQty();
-                BigDecimal botPrice = positionExecutionBot.getPrice();
-
-                BigDecimal hesun = sldRemainQty.subtract(botRemainQty);
-
-                BigDecimal pnl;
-                // 买入数量比卖出数量多
-                if (hesun.compareTo(BigDecimal.ZERO) == 1) {
-                    pnl = sldPrice.subtract(botPrice).multiply(new BigDecimal(multiplier)).multiply(botRemainQty.negate());
-
-                    positionExecutionSld.setRemainQty(hesun);
-                    positionExecutionSld.setCalExecutionRealizedPnl(calExecutionUnrealizedPnl.add(pnl));
-
-                    positionExecutionBot.setRemainQty(BigDecimal.ZERO);
-                    positionExecutionBot.setOptType(PositionExecutionOptTypeEnum.IN.name());
-                    buyQueue.remove(botId);
-
-                    positionExecutionService.updateById(positionExecutionBot);
-                } else if (hesun.compareTo(BigDecimal.ZERO) == -1) {
-                    pnl = sldPrice.subtract(botPrice).multiply(new BigDecimal(multiplier)).multiply(sldRemainQty.negate());
-
-                    positionExecutionSld.setRemainQty(BigDecimal.ZERO);
-                    positionExecutionSld.setCalExecutionRealizedPnl(calExecutionUnrealizedPnl.add(pnl));
-
-                    positionExecutionBot.setRemainQty(hesun);
-                    positionExecutionBot.setOptType(PositionExecutionOptTypeEnum.IN.name());
-                    break;
-                } else {
-                    pnl = sldPrice.subtract(botPrice).multiply(new BigDecimal(multiplier)).multiply(sldRemainQty.negate());
-
-                    positionExecutionSld.setCalExecutionRealizedPnl(calExecutionUnrealizedPnl.add(pnl));
-                    positionExecutionSld.setRemainQty(BigDecimal.ZERO);
-
-                    positionExecutionBot.setRemainQty(BigDecimal.ZERO);
-                    positionExecutionBot.setOptType(PositionExecutionOptTypeEnum.IN.name());
-                    buyQueue.remove(botId);
-
-                    positionExecutionService.updateById(positionExecutionBot);
-                    break;
+            Iterator<PositionExecution> buyIterator = buyQueue.iterator();
+            while (buyIterator.hasNext() && remainSldQty.compareTo(BigDecimal.ZERO) > 0) {
+                PositionExecution buyTrade = buyIterator.next();
+                BigDecimal remainBotQty = nvl(buyTrade.getRemainQty());
+                if (remainBotQty.compareTo(BigDecimal.ZERO) <= 0) {
+                    continue;
                 }
 
+                BigDecimal matchQty = remainSldQty.min(remainBotQty);
+                BigDecimal pnl = sldPrice.subtract(buyTrade.getPrice()).multiply(multiplier).multiply(matchQty);
+                sellRealizedPnl = sellRealizedPnl.add(pnl);
                 calDailyRealizedPnl = calDailyRealizedPnl.add(pnl);
+
+                buyTrade.setRemainQty(remainBotQty.subtract(matchQty));
+                buyTrade.setOptType(PositionExecutionOptTypeEnum.IN.name());
+                if (buyTrade.getRemainQty().compareTo(BigDecimal.ZERO) == 0) {
+                    buyIterator.remove();
+                }
+
+                remainSldQty = remainSldQty.subtract(matchQty);
             }
 
-            positionExecutionSld.setOptType(PositionExecutionOptTypeEnum.OUT.name());
-            positionExecutionService.updateById(positionExecutionSld);
+            sellTrade.setRemainQty(remainSldQty);
+            sellTrade.setCalExecutionRealizedPnl(sellRealizedPnl);
+            sellTrade.setOptType(PositionExecutionOptTypeEnum.OUT.name());
         }
 
-        position.setCalDailyRealizedPnl(calDailyRealizedPnl);
-        position.setCalRealizedPnl(position.getCalRealizedPnl().add(calDailyRealizedPnl));
+        BigDecimal commissionAndFeesSum = BigDecimal.ZERO;
+        for (PositionExecution trade : intradayTrades) {
+            trade.setStatus(1);
+            positionExecutionService.updateById(trade);
+            if (trade.getCommissionAndFees() != null) {
+                commissionAndFeesSum = commissionAndFeesSum.add(trade.getCommissionAndFees());
+            }
+        }
+//        position.setCalPositionQty(BigDecimal.ZERO);
+//        position.setCalAvgCost(BigDecimal.ZERO);
 
-        BigDecimal marketPrice = contractMarketHistoryService.getMarketPriceByConidAndDate(conid, date);
+        if (date.equals(position.getPositionDate())) {
+            position.setCalDailyRealizedPnl(nvl(position.getCalDailyRealizedPnl()).add(calDailyRealizedPnl));
+        } else {
+            position.setCalDailyRealizedPnl(calDailyRealizedPnl);
+            position.setPositionDate(date);
+        }
+        position.setCalRealizedPnl(nvl(position.getCalRealizedPnl()).add(calDailyRealizedPnl));
+//        position.setCalDailyUnrealizedPnl(BigDecimal.ZERO);
+//        position.setCalUnrealizedPnl(BigDecimal.ZERO);
 
-        BigDecimal calUnrealizedPnl = marketPrice.subtract(position.getCalAvgCost()).multiply(position.getPositionQty());
-        position.setCalDailyUnrealizedPnl(calUnrealizedPnl.subtract(position.getCalUnrealizedPnl()));
-        position.setCalUnrealizedPnl(calUnrealizedPnl);
+
+
+        position.setCalUnrealizedPnl(position.getCalMarketPrice().subtract(position.getCalAvgCost()).multiply(position.getCalPositionQty()).multiply(multiplier));
+
+        if (position.getAccCommissionAndFees() == null) {
+            position.setAccCommissionAndFees(commissionAndFeesSum);
+        } else {
+            position.setAccCommissionAndFees(position.getAccCommissionAndFees().add(commissionAndFeesSum));
+        }
 
         positionService.updateById(position);
 
-        position.setPositionDate(date);
         PositionHistory positionHistory = new PositionHistory(position, date);
         positionHistoryService.saveOrUpdatePositionHistory(positionHistory);
+
+        return ret;
     }
 
     private void updatePosition(String accountCode, Integer conid, String date, BigDecimal realizedPnl) {
