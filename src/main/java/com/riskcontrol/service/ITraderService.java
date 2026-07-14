@@ -24,4 +24,6 @@ public interface ITraderService extends IService<Trader> {
     Long delete(Long id);
 
     TraderDetail getDetail(Long id);
+
+    Trader getDetailByTrader(String traderName);
 }

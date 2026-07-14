@@ -6,6 +6,7 @@ import com.riskcontrol.dao.PositionRelationMapper;
 import com.riskcontrol.domain.Contract;
 import com.riskcontrol.domain.ContractMarketHistory;
 import com.riskcontrol.domain.PositionRelationHistory;
+import com.riskcontrol.domain.Trader;
 import com.riskcontrol.domain.bo.PortfolioOverviewBo;
 import com.riskcontrol.domain.vo.*;
 import com.riskcontrol.domain.vo.dashboard.PressureTestVo;
@@ -42,6 +43,8 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
     private final IContractMarketHistoryService contractMarketHistoryService;
 
     private final IContractService contractService;
+
+    private final ITraderService traderService;
 
 
     @Override
@@ -366,12 +369,28 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
             for (String traderName : query.getTradeNames()) {
                 TraderRiskMetricsVo metrics = new TraderRiskMetricsVo();
                 metrics.setTraderName(traderName);
-                metrics.setSharpeRatio(null);
-                metrics.setSortinoRatio(null);
-                metrics.setCalmarRatio(null);
-                metrics.setWinLossRatio(null);
-                metrics.setRiskRatio(null);
-                metrics.setVolatilityPremium(null);
+                Trader trader = traderService.getDetailByTrader(traderName);
+                BigDecimal capital = trader.getCapital();// 交易员对应的本金
+
+                LambdaQueryWrapper<PositionRelationHistory> queryWrapper = new LambdaQueryWrapper<>();
+                queryWrapper.eq(PositionRelationHistory::getTraderName, traderName);
+                queryWrapper.orderByAsc(PositionRelationHistory::getDailyDate);
+                List<PositionRelationHistory> list = positionRelationHistoryService.list(queryWrapper);
+                for (PositionRelationHistory positionRelationHistory : list) {
+                    BigDecimal costValue = positionRelationHistory.getAvgCost().multiply(positionRelationHistory.getPositionQty());// 成本=持仓成本*持仓数量
+                    BigDecimal marketValue = positionRelationHistory.getMarketPrice().multiply(positionRelationHistory.getPositionQty());// 市值=收盘价*持仓数量
+
+                    BigDecimal add = capital.subtract(costValue).add(marketValue);
+                }
+                
+
+                metrics.setSharpeRatio(null); // 夏普比率
+
+                metrics.setSortinoRatio(null); // 索提诺比率
+                metrics.setCalmarRatio(null); // 卡玛比率
+                metrics.setWinLossRatio(null); // 盈亏比
+                metrics.setRiskRatio(null); // 风险占比(95% VaR / 总资产)
+                metrics.setVolatilityPremium(null); // 波动率溢价(组合IV-市场VIX)
                 result.add(metrics);
             }
         }

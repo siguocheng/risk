@@ -130,4 +130,11 @@ public class TraderServiceImpl extends ServiceImpl<TraderMapper, Trader> impleme
         detail.setModifiedHistoryList(modifiedHistoryList);
         return detail;
     }
+
+    @Override
+    public Trader getDetailByTrader(String traderName) {
+        LambdaQueryWrapper<Trader> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Trader::getTraderName, traderName);
+        return this.getOne(queryWrapper);
+    }
 }
