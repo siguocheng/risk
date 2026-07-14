@@ -11,4 +11,5 @@ import com.riskcontrol.domain.PositionExecutionInOut;
  */
 public interface IPositionExecutionInOutService extends IService<PositionExecutionInOut> {
 
+    Boolean saveOrUpdatePositionExecutionInOut(PositionExecutionInOut positionExecutionInOut);
 }

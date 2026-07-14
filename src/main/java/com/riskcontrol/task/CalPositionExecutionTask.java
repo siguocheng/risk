@@ -41,6 +41,9 @@ public class CalPositionExecutionTask {
     @Resource
     IContractMarketHistoryService contractMarketHistoryService;
 
+    @Resource
+    IPositionExecutionInOutService positionExecutionInOutService;
+
 
     @Transactional(rollbackFor = Exception.class)
     public void cal(){
@@ -264,9 +267,9 @@ public class CalPositionExecutionTask {
         boolean closingLong = TradeSideEnum.SLD.name().equals(trade.getSide());
         String matchInSide = closingLong ? TradeSideEnum.BOT.name() : TradeSideEnum.SLD.name();
 
-        BigDecimal remainOutQty = outQty;
+        BigDecimal remainOutQty = outQty; // 出库数量
         BigDecimal totalPnl = BigDecimal.ZERO;
-        List<PositionExecution> inLots = listInLots(position.getAccountCode(), position.getConid(), matchInSide);
+        List<PositionExecution> inLots = listInLots(position.getAccountCode(), position.getConid(), matchInSide); // 取得入库的记录
         for (PositionExecution inLot : inLots) {
             if (remainOutQty.compareTo(BigDecimal.ZERO) <= 0) {
                 break;
@@ -284,6 +287,12 @@ public class CalPositionExecutionTask {
             inLot.setRemainQty(lotRemainQty.subtract(matchQty));
             positionExecutionService.updateById(inLot);
             remainOutQty = remainOutQty.subtract(matchQty);
+
+            PositionExecutionInOut positionExecutionInOut = new PositionExecutionInOut();
+            positionExecutionInOut.setPositionExecutionInId(inLot.getId());
+            positionExecutionInOut.setPositionExecutionOutId(position.getId());
+            positionExecutionInOut.setQty(matchQty);
+            positionExecutionInOutService.saveOrUpdatePositionExecutionInOut(positionExecutionInOut);
         }
 
         trade.setCalExecutionRealizedPnl(nvl(trade.getCalExecutionRealizedPnl()).add(totalPnl));
@@ -534,6 +543,7 @@ public class CalPositionExecutionTask {
         initPositionCalFields(position);
 
         BigDecimal marketPrice = resolveMarketClosePrice(conid, date);
+        BigDecimal preMarketPrice = position.getCalMarketPrice();
         if (marketPrice != null) {
             position.setCalMarketPrice(marketPrice);
         } else {
@@ -582,6 +592,12 @@ public class CalPositionExecutionTask {
                 }
 
                 remainSldQty = remainSldQty.subtract(matchQty);
+
+                PositionExecutionInOut positionExecutionInOut = new PositionExecutionInOut();
+                positionExecutionInOut.setPositionExecutionInId(buyTrade.getId());
+                positionExecutionInOut.setPositionExecutionOutId(sellTrade.getId());
+                positionExecutionInOut.setQty(matchQty);
+                positionExecutionInOutService.saveOrUpdatePositionExecutionInOut(positionExecutionInOut);
             }
 
             sellTrade.setRemainQty(remainSldQty);
@@ -597,21 +613,16 @@ public class CalPositionExecutionTask {
                 commissionAndFeesSum = commissionAndFeesSum.add(trade.getCommissionAndFees());
             }
         }
-//        position.setCalPositionQty(BigDecimal.ZERO);
-//        position.setCalAvgCost(BigDecimal.ZERO);
 
         if (date.equals(position.getPositionDate())) {
             position.setCalDailyRealizedPnl(nvl(position.getCalDailyRealizedPnl()).add(calDailyRealizedPnl));
         } else {
+
             position.setCalDailyRealizedPnl(calDailyRealizedPnl);
             position.setPositionDate(date);
         }
         position.setCalRealizedPnl(nvl(position.getCalRealizedPnl()).add(calDailyRealizedPnl));
-//        position.setCalDailyUnrealizedPnl(BigDecimal.ZERO);
-//        position.setCalUnrealizedPnl(BigDecimal.ZERO);
-
-
-
+        position.setCalDailyUnrealizedPnl(marketPrice.subtract(preMarketPrice).multiply(position.getCalPositionQty()).multiply(multiplier));
         position.setCalUnrealizedPnl(position.getCalMarketPrice().subtract(position.getCalAvgCost()).multiply(position.getCalPositionQty()).multiply(multiplier));
 
         if (position.getAccCommissionAndFees() == null) {
