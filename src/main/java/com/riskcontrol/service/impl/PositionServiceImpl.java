@@ -215,6 +215,10 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
         PositionExecution execution = positionExecutionService.getOne(wrapper);
 
         if (execution != null) {
+
+            if (execution.getStatus() == 0) {
+                throw new BusinessException("交易还未核算，无法分配");
+            }
             this.checkBeforeExecutionDate(positionExecution);
         }
 

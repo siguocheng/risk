@@ -50,23 +50,28 @@ public class CalPositionExecutionTask {
 
             String accountCode = accountCurrency.getAccountCode();
 
+            // 取得账号下的交易信息
             List<PositionExecution> positionExecutionsAccountCode = this.listPositionExecution(accountCode);
             if (positionExecutionsAccountCode.isEmpty()) {
                 continue;
             }
 
+            // 根据时间进行分组
             Map<String, List<PositionExecution>> positionExecutionDateGroup = positionExecutionsAccountCode.stream()
                     .collect(Collectors.groupingBy(PositionExecution::getExecutionDate, TreeMap::new,Collectors.toList()));
 
             for (String date : positionExecutionDateGroup.keySet()) {
+                // 当前账号下，同一天的交易信息
                 List<PositionExecution> positionExecutionsDate = positionExecutionDateGroup.get(date);
 
+                // 以合约进行分组
                 Map<Integer, List<PositionExecution>> positionExecutionDateConidGroup = positionExecutionsDate.stream()
                         .collect(Collectors.groupingBy(pe -> pe.getConid()));
 
                 for (Integer conid : positionExecutionDateConidGroup.keySet()) {
                     log.info("cal conid :{}", conid);
                     List<PositionExecution> positionExecutionsDateConid = positionExecutionDateConidGroup.get(conid);
+                    positionExecutionsDateConid.sort(Comparator.comparing(PositionExecution::getTime));
 
                     BigDecimal buyQty = positionExecutionsDateConid.stream()
                             .filter(t -> TradeSideEnum.BOT.name().equals(t.getSide()))
@@ -95,10 +100,14 @@ public class CalPositionExecutionTask {
                         this.handleDayTrades(positionExecutionsDateConid, accountCode, date, contract);
                     } else {
                         log.info("cal conid :{} SecType:{}", conid, contract.getSecType());
+                        Boolean ret;
                         if (contract.getSecType().equals(SetTypeEnum.OPT.getCode())) {
-                            this.handleNoDayTradesOpt(positionExecutionsDateConid, accountCode, date, contract);
+                            ret = this.handleNoDayTradesOpt(positionExecutionsDateConid, accountCode, date, contract);
                         } else {
-                            this.handleNoDayTrades(positionExecutionsDateConid, accountCode, date, conid);
+                            ret = this.handleNoDayTrades(positionExecutionsDateConid, accountCode, date, conid);
+                        }
+                        if (!ret) {
+                            break;
                         }
                     }
                 }
@@ -106,7 +115,10 @@ public class CalPositionExecutionTask {
         }
     }
 
-    private void handleNoDayTrades(List<PositionExecution> trades, String accountCode, String date, int conid) {
+    private Boolean handleNoDayTrades(List<PositionExecution> trades, String accountCode, String date, int conid) {
+
+        Boolean ret = true;
+
         trades.sort(Comparator.comparing(PositionExecution::getTime));
 
         Position position = positionService.getPositionByConid(accountCode, conid);
@@ -115,6 +127,10 @@ public class CalPositionExecutionTask {
         BigDecimal multiplier = BigDecimal.ONE;
         BigDecimal calDailyRealizedPnl = BigDecimal.ZERO;
         BigDecimal marketPrice = resolveMarketClosePrice(conid, date);
+        if (marketPrice == null) {
+            ret = false;
+            return ret;
+        }
 
         BigDecimal commissionAndFeesSum = BigDecimal.ZERO;
         for (PositionExecution trade : trades) {
@@ -143,9 +159,14 @@ public class CalPositionExecutionTask {
 
         PositionHistory positionHistory = new PositionHistory(position, date);
         positionHistoryService.saveOrUpdatePositionHistory(positionHistory);
+
+        return ret;
     }
 
-    private void handleNoDayTradesOpt(List<PositionExecution> trades, String accountCode, String date, Contract contract) {
+    private Boolean handleNoDayTradesOpt(List<PositionExecution> trades, String accountCode, String date, Contract contract) {
+
+        Boolean ret = true;
+
         trades.sort(Comparator.comparing(PositionExecution::getTime));
 
         int conid = contract.getConid();
@@ -154,7 +175,12 @@ public class CalPositionExecutionTask {
         initPositionCalFields(position);
 
         BigDecimal calDailyRealizedPnl = BigDecimal.ZERO;
-        BigDecimal marketPrice = resolveMarketClosePrice(conid, date);
+        BigDecimal marketPrice = this.resolveMarketClosePrice(conid, date);
+
+        if (marketPrice == null) {
+            ret = false;
+            return ret;
+        }
 
         log.info("cal conid :{} date:{} marketPrice:{}", conid, date, marketPrice);
 
@@ -186,6 +212,8 @@ public class CalPositionExecutionTask {
 
         PositionHistory positionHistory = new PositionHistory(position, date);
         positionHistoryService.saveOrUpdatePositionHistory(positionHistory);
+
+        return ret;
     }
 
     private String resolveOptType(Position position, PositionExecution trade) {
@@ -584,11 +612,9 @@ public class CalPositionExecutionTask {
 
         positionService.updateById(position);
 
-        if (position.getPositionDate().equals(date)) {
-            position.setPositionDate(date);
-            PositionHistory positionHistory = new PositionHistory(position, date);
-            positionHistoryService.saveOrUpdatePositionHistory(positionHistory);
-        }
+        position.setPositionDate(date);
+        PositionHistory positionHistory = new PositionHistory(position, date);
+        positionHistoryService.saveOrUpdatePositionHistory(positionHistory);
     }
 
     private void updatePosition(String accountCode, Integer conid, String date, BigDecimal realizedPnl) {
