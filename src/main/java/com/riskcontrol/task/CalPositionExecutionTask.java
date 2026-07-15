@@ -44,6 +44,9 @@ public class CalPositionExecutionTask {
     @Resource
     IPositionExecutionInOutService positionExecutionInOutService;
 
+    @Resource
+    ITradeCalendarService tradeCalendarService;
+
 
     @Transactional(rollbackFor = Exception.class)
     public void cal(){
@@ -121,7 +124,8 @@ public class CalPositionExecutionTask {
         }
     }
 
-    private Boolean handleNoDayTrades(List<PositionExecution> trades, String accountCode, String date, int conid) {
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean handleNoDayTrades(List<PositionExecution> trades, String accountCode, String date, int conid) {
 
         Boolean ret = true;
 
@@ -160,7 +164,6 @@ public class CalPositionExecutionTask {
         } else {
             position.setAccCommissionAndFees(position.getAccCommissionAndFees().add(commissionAndFeesSum));
         }
-        position.setCalMarketPrice(marketPrice);
         positionService.updateById(position);
 
         PositionHistory positionHistory = new PositionHistory(position, date);
@@ -169,7 +172,8 @@ public class CalPositionExecutionTask {
         return ret;
     }
 
-    private Boolean handleNoDayTradesOpt(List<PositionExecution> trades, String accountCode, String date, Contract contract) {
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean handleNoDayTradesOpt(List<PositionExecution> trades, String accountCode, String date, Contract contract) {
 
         Boolean ret = true;
 
@@ -409,14 +413,8 @@ public class CalPositionExecutionTask {
                 ? DateUtil.localDateToString(tradeDate, "yyyyMMdd")
                 : date;
 
-        BigDecimal yesterdayClose = null;
-        if (tradeDate != null) {
-            LocalDate prevDate = tradeDate.minusDays(1); // TODO 上一个交易日的时间
-            yesterdayClose = resolveMarketClosePrice(conid, DateUtil.localDateToString(prevDate, "yyyyMMdd"));
-            if (yesterdayClose == null) {
-                yesterdayClose = resolveMarketClosePrice(conid, DateUtil.localDateToString(prevDate));
-            }
-        }
+        String prevDate = tradeCalendarService.getPreTradeDate(date); // 上一个交易日的时间
+        BigDecimal yesterdayClose = resolveMarketClosePrice(conid, prevDate);
 
         List<PositionExecution> inLots = listRemainInLots(accountCode, conid);
         BigDecimal total = BigDecimal.ZERO;
@@ -465,18 +463,7 @@ public class CalPositionExecutionTask {
 
     private BigDecimal resolveMarketClosePrice(int conid, String date) {
         BigDecimal price = contractMarketHistoryService.getMarketPriceByConidAndDate(conid, date);
-        if (price != null) {
-            return price;
-        }
-        LocalDate localDate = parseTradeDate(date);
-        if (localDate == null) {
-            return null;
-        }
-        price = contractMarketHistoryService.getMarketPriceByConidAndDate(conid, DateUtil.localDateToString(localDate));
-        if (price != null) {
-            return price;
-        }
-        return contractMarketHistoryService.getMarketPriceByConidAndDate(conid, DateUtil.localDateToString(localDate, "yyyyMMdd"));
+        return price;
     }
 
     private LocalDate parseTradeDate(String date) {
@@ -534,7 +521,9 @@ public class CalPositionExecutionTask {
         return value == null ? BigDecimal.ZERO : value;
     }
 
-    private Boolean handleDayTrades(List<PositionExecution> intradayTrades, String accountCode, String date, Contract contract) {
+
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean handleDayTrades(List<PositionExecution> intradayTrades, String accountCode, String date, Contract contract) {
         Boolean ret = true;
         intradayTrades.sort(Comparator.comparing(PositionExecution::getTime));
 
@@ -543,9 +532,11 @@ public class CalPositionExecutionTask {
         initPositionCalFields(position);
 
         BigDecimal marketPrice = resolveMarketClosePrice(conid, date);
-        BigDecimal preMarketPrice = position.getCalMarketPrice();
+        String preTradeDate = tradeCalendarService.getPreTradeDate(date);
+        BigDecimal preMarketPrice = resolveMarketClosePrice(conid, preTradeDate);
+
         if (marketPrice != null) {
-            position.setCalMarketPrice(marketPrice);
+
         } else {
             ret = false;
             return ret;
@@ -622,7 +613,7 @@ public class CalPositionExecutionTask {
         }
         position.setCalRealizedPnl(nvl(position.getCalRealizedPnl()).add(calDailyRealizedPnl));
         position.setCalDailyUnrealizedPnl(marketPrice.subtract(preMarketPrice).multiply(position.getCalPositionQty()).multiply(multiplier));
-        position.setCalUnrealizedPnl(position.getCalMarketPrice().subtract(position.getCalAvgCost()).multiply(position.getCalPositionQty()).multiply(multiplier));
+        position.setCalUnrealizedPnl(marketPrice.subtract(position.getCalAvgCost()).multiply(position.getCalPositionQty()).multiply(multiplier));
 
         if (position.getAccCommissionAndFees() == null) {
             position.setAccCommissionAndFees(commissionAndFeesSum);

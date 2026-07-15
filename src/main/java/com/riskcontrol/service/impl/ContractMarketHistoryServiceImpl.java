@@ -82,7 +82,12 @@ public class ContractMarketHistoryServiceImpl extends ServiceImpl<ContractMarket
         ContractMarketHistory contractMarketHistory = this.getOne(queryWrapperMarket);
 
         if (contractMarketHistory != null) {
-            return contractMarketHistory.getPriceClose();
+            if (contractMarketHistory.getPriceClose() != null) {
+                return contractMarketHistory.getPriceClose();
+            } else {
+                return contractMarketHistory.getPositionMarketPrice();
+            }
+
         }
 
         return null;
