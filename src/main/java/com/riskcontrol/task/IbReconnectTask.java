@@ -12,6 +12,7 @@ import com.riskcontrol.domain.*;
 import com.riskcontrol.domain.vo.CommissionAndFeesReportCallbackVo;
 import com.riskcontrol.domain.vo.ContractDetailsCallbackVo;
 import com.riskcontrol.domain.vo.ExecutionCallbackVo;
+import com.riskcontrol.domain.vo.PositionMarketPriceVo;
 import com.riskcontrol.domain.vo.ibkr.*;
 import com.riskcontrol.enums.PositionExecutionOptTypeEnum;
 import com.riskcontrol.enums.SetTypeEnum;
@@ -144,7 +145,9 @@ public class IbReconnectTask {
      * @throws InterruptedException
      * @throws TimeoutException
      */
-    public void synAccount() throws ExecutionException, InterruptedException, TimeoutException {
+    public List<PositionMarketPriceVo> synAccount() throws ExecutionException, InterruptedException, TimeoutException {
+
+        List<PositionMarketPriceVo> marketPriceList = new ArrayList<>();
 
         LocalDate now = LocalDate.now();
         log.info("synAccount synAccount");
@@ -186,6 +189,7 @@ public class IbReconnectTask {
                 position.setMarketValue(BigDecimal.valueOf(positionCallbackVo.getMarketValue()));
                 position.setRealizedPnl(BigDecimal.valueOf(positionCallbackVo.getRealizedPnl()));
                 position.setConid(positionCallbackVo.getConid());
+
                 // 只有第一次通过需要维护这几个字段，后面都是根据交易信息来计算得到的
                 if (count == 0) {
                     position.setCalPositionQty(positionCallbackVo.getPosition());
@@ -209,6 +213,13 @@ public class IbReconnectTask {
                 positionHistoryService.saveOrUpdatePositionHistory(positionHistory);
 
                 com.ib.client.Contract ibContract = positionCallbackVo.getContract();
+
+                PositionMarketPriceVo positionMarketPriceVo = new PositionMarketPriceVo();
+                positionMarketPriceVo.setMarketPrice(BigDecimal.valueOf(positionCallbackVo.getMarketPrice()));
+                positionMarketPriceVo.setConid(ibContract.conid());
+                positionMarketPriceVo.setSymbol(ibContract.symbol());
+                positionMarketPriceVo.setSecType(ibContract.secType().getApiString());
+                marketPriceList.add(positionMarketPriceVo);
 
                 // 维护账号下的合约信息
                 AccountContract accountContract = new AccountContract(ibContract);
@@ -312,8 +323,10 @@ public class IbReconnectTask {
         }
 
         // 同步交易信息TODO
-        this.synExecutions();
+//        this.synExecutions();
         log.info("synAccount end");
+
+        return marketPriceList;
     }
 
     public void handleAccountSummaryCurrency(String accountCode, Map<String,Object> currencyMap, Map<String,Object> multiKeyMap){
@@ -972,6 +985,75 @@ public class IbReconnectTask {
 
         }
 
+
+    }
+
+    @Resource
+    ITradeCalendarService tradeCalendarService;
+
+    public void synTradeDate() throws ExecutionException, InterruptedException, TimeoutException {
+
+        LocalDate yesterday = LocalDate.now();
+
+        String endDateTime = DateUtil.toIbkrUtcEndTime(yesterday);          // 空 = 取最新数据 20260608 23:59:59
+        String durationStr = "1 Y";       // 回溯 1 个月 1 D(1 天)、1 W(1 周)、1 M(1 月)、1 Y(1 年)
+        String barSize = "1 day";         // 日K线 1 secs / 1 min / 5 mins / 1 hour / 1 day
+        String whatToShow = "TRADES";     // 取成交价格 MIDPOINT(中间价)、BID、ASK、TRADES(成交)
+        int useRTH = 1;                   // 1仅常规交易时段 0包含盘前盘后交易时段
+
+        int formatDate = 1;
+        boolean keepUpToDate = false;// 不持续更新
+
+        com.ib.client.Contract ibContract = new com.ib.client.Contract();
+
+        int conid = 2655981;
+
+        ibContract.symbol("AAPL");
+        ibContract.exchange("NASDAQ");
+        ibContract.secType("STK");
+        ibContract.currency("USD");
+        ibContract.localSymbol("AAPL");
+
+        List<TagValue> tagList = null;
+
+        CompletableFuture<Object> future = new CompletableFuture<>();
+        ibkrSynConfig.FUTURE_MAP.put(ReqIdConstant.HistoricalDataReqId, future);
+
+        m_client.reqHistoricalData(ReqIdConstant.HistoricalDataReqId, ibContract, endDateTime, durationStr, barSize, whatToShow, useRTH, formatDate, keepUpToDate, tagList);
+        Object obj = future.get(60 * 1000, TimeUnit.MILLISECONDS);
+
+        m_client.cancelHistogramData(conid);
+
+        List<BarData> result = (List<BarData>) obj;
+
+        List<ContractMarketHistory> historyList = new ArrayList<>();
+        result.sort(Comparator.comparing(BarData::getTime));
+
+        for (BarData barData : result) {
+
+            String time = DateUtil.localDateToString(DateUtil.stringToLocalDate(barData.getTime(), "yyyyMMdd"));;
+
+            TradeCalendar tradeCalendar = new TradeCalendar();
+            tradeCalendar.setType(1);
+            tradeCalendar.setTradeDate(time);
+
+            tradeCalendarService.save(tradeCalendar);
+        }
+
+        LambdaQueryWrapper<TradeCalendar> lambdaQueryWrapper = new LambdaQueryWrapper<>();
+        lambdaQueryWrapper.orderByAsc(TradeCalendar::getTradeDate);
+        List<TradeCalendar> list = tradeCalendarService.list(lambdaQueryWrapper);
+
+        Long preId = null;
+        for (TradeCalendar tradeCalendar : list) {
+            if (preId == null) {
+                preId= tradeCalendar.getId();
+            } else {
+                tradeCalendar.setPreId(preId);
+                preId= tradeCalendar.getId();
+            }
+            tradeCalendarService.updateById(tradeCalendar);
+        }
 
     }
 }

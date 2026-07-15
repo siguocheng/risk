@@ -65,4 +65,9 @@ public class IbReconnectTaskTest {
         ibReconnectTask.synContractDetails();
     }
 
+    @Test
+    public void synTradeDate() throws ExecutionException, InterruptedException, TimeoutException {
+        ibReconnectTask.synTradeDate();
+    }
+
 }

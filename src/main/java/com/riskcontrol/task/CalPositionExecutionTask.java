@@ -411,7 +411,7 @@ public class CalPositionExecutionTask {
 
         BigDecimal yesterdayClose = null;
         if (tradeDate != null) {
-            LocalDate prevDate = tradeDate.minusDays(1);
+            LocalDate prevDate = tradeDate.minusDays(1); // TODO 上一个交易日的时间
             yesterdayClose = resolveMarketClosePrice(conid, DateUtil.localDateToString(prevDate, "yyyyMMdd"));
             if (yesterdayClose == null) {
                 yesterdayClose = resolveMarketClosePrice(conid, DateUtil.localDateToString(prevDate));

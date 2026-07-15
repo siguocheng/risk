@@ -77,4 +77,8 @@ public class ContractMarketHistory extends BaseEntity{
     @TableField(value = "theta")
     private BigDecimal theta;
 
+    @Schema(description = "持仓的市场价格")
+    @TableField(value = "position_market_price")
+    private BigDecimal positionMarketPrice;
+
 }
