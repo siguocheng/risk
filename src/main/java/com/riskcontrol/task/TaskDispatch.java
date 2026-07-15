@@ -11,6 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeoutException;
 
 @Slf4j
 public class TaskDispatch {
@@ -115,9 +117,17 @@ public class TaskDispatch {
     }
 
 
-    public void firstSyn(){
-
+    public void synTradeDate() {
+        try {
+            log.info("同步交易日start");
+            ibReconnectTask.synTradeDate();
+            log.info("同步交易日end");
+        } catch (Exception e) {
+            log.error("同步交易日异常", e);
+        }
     }
+
+
 
     private void saveTaskLog(String jobName, String result, String uuid){
         TaskJobLog taskJobLog = new TaskJobLog();

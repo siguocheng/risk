@@ -1,5 +1,6 @@
 package com.riskcontrol.service.impl;
 
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.riskcontrol.dao.TradeCalendarMapper;
 import com.riskcontrol.domain.TradeCalendar;
@@ -17,4 +18,18 @@ import org.springframework.stereotype.Service;
 @Service
 public class TradeCalendarServiceImpl extends ServiceImpl<TradeCalendarMapper, TradeCalendar> implements ITradeCalendarService {
 
+    @Override
+    public String getPreTradeDate(String tradeDate) {
+        TradeCalendar current = this.getOne(new LambdaQueryWrapper<TradeCalendar>()
+                .eq(TradeCalendar::getTradeDate, tradeDate));
+        if (current == null) {
+            return null;
+        }
+        Long preId = current.getPreId();
+        if (preId == null) {
+            return null;
+        }
+        TradeCalendar pre = this.getById(preId);
+        return pre != null ? pre.getTradeDate() : null;
+    }
 }

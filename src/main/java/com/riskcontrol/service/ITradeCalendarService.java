@@ -11,4 +11,6 @@ import com.riskcontrol.domain.TradeCalendar;
  */
 public interface ITradeCalendarService extends IService<TradeCalendar> {
 
+    String getPreTradeDate(String tradeDate);
+
 }
