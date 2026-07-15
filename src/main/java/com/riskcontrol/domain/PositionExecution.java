@@ -142,10 +142,6 @@ public class PositionExecution extends BaseEntity {
     @TableField(value = "opt_type")
     private String optType;
 
-    @Schema(description = "市场价格")
-    @TableField(value = "market_price")
-    private BigDecimal marketPrice;
-
     @Schema(description = "本次交易的未实现收益")
     @TableField(value = "cal_execution_unrealized_pnl")
     private BigDecimal calExecutionUnrealizedPnl;
@@ -161,6 +157,10 @@ public class PositionExecution extends BaseEntity {
     @Schema(description = "交易分配的剩余数量")
     @TableField(value = "allocate_remain_qty")
     private BigDecimal allocateRemainQty;
+
+    @Schema(description = "当天收盘价")
+    @TableField(value = "cal_market_price")
+    private BigDecimal calMarketPrice;
 
     public PositionExecution(){
 
@@ -193,9 +193,6 @@ public class PositionExecution extends BaseEntity {
         this.executionDate = DateUtil.localDateToString(DateUtil.stringToLocalDate(execution.getTime().substring(0,8), "yyyyMMdd"));
         this.remainQty = shares;
         this.allocateRemainQty = shares;
-        if (position != null) {
-            this.marketPrice = position.getMarketPrice();
-        }
 
         this.status = 0;
 

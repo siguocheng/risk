@@ -34,7 +34,7 @@ public class TaskJobLog extends BaseEntity {
     private String executeResult;
 
     @Schema(description = "执行结果：0-失败，1-成功")
-    @TableField(value = "execute_result")
+    @TableField(value = "execute_id")
     private String executeId;
 
 }

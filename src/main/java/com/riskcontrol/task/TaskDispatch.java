@@ -5,16 +5,18 @@ import com.riskcontrol.domain.TaskJobLog;
 import com.riskcontrol.domain.vo.PositionMarketPriceVo;
 import com.riskcontrol.service.IContractMarketHistoryService;
 import com.riskcontrol.service.ITaskJobLogService;
+import com.riskcontrol.util.DateUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.stereotype.Component;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeoutException;
 
 @Slf4j
+@Component
 public class TaskDispatch {
 
     @Resource
@@ -74,6 +76,7 @@ public class TaskDispatch {
 
             for (PositionMarketPriceVo positionMarketPriceVo : marketPriceList) {
                 ContractMarketHistory contractMarketHistory = new ContractMarketHistory();
+                contractMarketHistory.setDailyDate(DateUtil.localDateToString(LocalDate.now()));
                 contractMarketHistory.setConid(positionMarketPriceVo.getConid());
                 contractMarketHistory.setSymbol(positionMarketPriceVo.getSymbol());
                 contractMarketHistory.setPositionMarketPrice(positionMarketPriceVo.getMarketPrice());
@@ -109,6 +112,7 @@ public class TaskDispatch {
             log.info("{} 核算start", uuid);
             // 开启核算任务
             calPositionExecutionTask.cal();
+            saveTaskLog("核算", "成功", uuid);
             log.info("{} 核算end", uuid);
         } catch (Exception e) {
             log.error("{}  核算异常", e);

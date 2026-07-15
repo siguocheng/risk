@@ -62,10 +62,10 @@ public class PositionRelationHistoryPage {
     @Schema(description = "合约简称")
     private String symbol;
 
-    @Schema(description = "未实现盈亏")
+    @Schema(description = "当日未实现盈亏")
     private BigDecimal dailyUnrealizedPnl;
 
-    @Schema(description = "实现盈亏")
+    @Schema(description = "当日实现盈亏")
     private BigDecimal dailyRealizedPnl;
 
     @Schema(description = "成本")

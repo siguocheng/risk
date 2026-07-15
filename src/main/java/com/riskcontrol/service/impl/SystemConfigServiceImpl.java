@@ -27,13 +27,17 @@ public class SystemConfigServiceImpl extends ServiceImpl<SystemConfigMapper, Sys
     }
 
     @Override
-    @Transactional
-    public void updateByKey(String itemKey, String itemValue) {
+    public void saveOrUpdateByKey(String itemKey, String itemValue) {
         SystemConfig config = this.getOne(new LambdaQueryWrapper<SystemConfig>()
                 .eq(SystemConfig::getItemKey, itemKey));
         if (config != null) {
             config.setItemValue(itemValue);
             this.updateById(config);
+        } else {
+            config = new SystemConfig();
+            config.setItemKey(itemKey);
+            config.setItemValue(itemValue);
+            this.save(config);
         }
     }
 }

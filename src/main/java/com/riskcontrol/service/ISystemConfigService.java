@@ -13,5 +13,5 @@ public interface ISystemConfigService extends IService<SystemConfig> {
 
     String getValueByKey(String itemKey);
 
-    void updateByKey(String itemKey, String itemValue);
+    void saveOrUpdateByKey(String itemKey, String itemValue);
 }

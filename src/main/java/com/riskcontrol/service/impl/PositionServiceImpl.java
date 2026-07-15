@@ -204,23 +204,13 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
         PositionExecution positionExecution = positionExecutionService.getById(request.getId());
         if (positionExecution == null) {
             throw new BusinessException("交易记录不存在");
-        }
-
-        LambdaQueryWrapper<PositionExecution> wrapper = new LambdaQueryWrapper<>();
-        wrapper.eq(PositionExecution::getAccountCode, positionExecution.getAccountCode())
-                .eq(PositionExecution::getConid, positionExecution.getConid())
-                .lt(PositionExecution::getExecutionDate, positionExecution.getExecutionDate())
-                .last("limit 1");
-
-        PositionExecution execution = positionExecutionService.getOne(wrapper);
-
-        if (execution != null) {
-
-            if (execution.getStatus() == 0) {
+        } else {
+            if (positionExecution.getStatus() == 0) {
                 throw new BusinessException("交易还未核算，无法分配");
             }
-            this.checkBeforeExecutionDate(positionExecution);
         }
+
+        this.checkBeforeExecutionDate(positionExecution);
 
         BigDecimal avgRealizedPln = BigDecimal.ZERO;
         BigDecimal avgUnRealizedPln = BigDecimal.ZERO;
@@ -315,7 +305,7 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
                 positionRelation.setDailyUnrealizedPnl(accUnRealizedPln);
                 positionRelation.setDailyRealizedPnl(accRealizedPln);
                 positionRelation.setCommissionAndFees(accCommissionAnFees);
-                positionRelation.setMarketPrice(positionHistory.getCalMarketPrice());
+                positionRelation.setMarketPrice(positionExecution.getCalMarketPrice());
                 positionRelation.setAvgCost(positionHistory.getCalAvgCost());
 
                 positionRelationService.save(positionRelation);
@@ -327,7 +317,7 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
                 positionRelation.setDailyUnrealizedPnl(avgCalDailyUnrealizedPnlPosition.multiply(positionRelation.getPositionQty()));
                 positionRelation.setDailyRealizedPnl(getOrDefault(positionRelation.getDailyRealizedPnl(), BigDecimal.ZERO).add(accRealizedPln));
                 positionRelation.setCommissionAndFees(getOrDefault(positionRelation.getCommissionAndFees(), BigDecimal.ZERO).add(accCommissionAnFees));
-                positionRelation.setMarketPrice(positionHistory.getCalMarketPrice());
+                positionRelation.setMarketPrice(positionExecution.getCalMarketPrice());
                 positionRelation.setAvgCost(positionHistory.getCalAvgCost());
 
                 positionRelationService.updateById(positionRelation);

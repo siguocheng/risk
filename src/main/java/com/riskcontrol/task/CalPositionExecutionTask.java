@@ -151,6 +151,7 @@ public class CalPositionExecutionTask {
                 BigDecimal pnl = handleNoDayTradesOptOut(position, trade, multiplier, marketPrice);
                 calDailyRealizedPnl = calDailyRealizedPnl.add(pnl);
             }
+            trade.setCalMarketPrice(marketPrice);
             trade.setStatus(1);
             positionExecutionService.updateById(trade);
             if (trade.getCommissionAndFees() != null) {
@@ -205,6 +206,7 @@ public class CalPositionExecutionTask {
                 calDailyRealizedPnl = calDailyRealizedPnl.add(pnl);
             }
             trade.setStatus(1);
+            trade.setCalMarketPrice(marketPrice);
             positionExecutionService.updateById(trade);
 
             if (trade.getCommissionAndFees() != null) {
@@ -598,6 +600,7 @@ public class CalPositionExecutionTask {
 
         BigDecimal commissionAndFeesSum = BigDecimal.ZERO;
         for (PositionExecution trade : intradayTrades) {
+            trade.setCalMarketPrice(marketPrice);
             trade.setStatus(1);
             positionExecutionService.updateById(trade);
             if (trade.getCommissionAndFees() != null) {

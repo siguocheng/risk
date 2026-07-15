@@ -1,0 +1,58 @@
+server:
+  port: 9666
+
+spring:
+  datasource:
+    url: jdbc:mysql://127.0.0.1:3306/risk_uat?useUnicode=true&characterEncoding=utf-8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Shanghai
+    username: root
+    password: 123456
+  data:
+    redis:
+      host: 127.0.0.1
+      port: 6379
+      password: 123456
+      database: 0
+      # jedis连接池配置
+      jedis:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 5
+          max-wait: 3000ms
+
+logging:
+  level:
+    com.riskcontrol.mapper: DEBUG
+
+init:
+  permission: false
+  permissionResource: false
+
+ibkr:
+  host: 127.0.0.1
+  port: 4002
+  clientid: 1
+  timeout: 5000
+
+mybatis-plus:
+  mapper-locations: classpath:/com/riskcontrol/mapper/**.xml
+  global-config:
+    # 关闭MP3.0自带的banner
+    banner: false
+    db-config:
+      #主键类型  0:"数据库ID自增",1:"该类型为未设置主键类型", 2:"用户输入ID",3:"全局唯一ID (数字类型唯一ID)", 4:"全局唯一ID UUID",5:"字符串全局唯一ID (idWorker 的字符串表示)";
+      id-type: auto
+      # 默认数据库表下划线命名
+      table-underline: true
+    configuration:
+      #配置返回数据库(column下划线命名&&返回java实体是驼峰命名)，自动匹配无需as（没开启这个，SQL需要写as： select user_id as userId）
+      map-underscore-to-camel-case: true
+      cache-enabled: false
+      # 返回类型为Map,显示null对应的字段
+      call-setters-on-nulls: true
+
+polygon:
+  api-key: tR5r8pVQWwVKnBImTA0Q67jpW85CuaYE
+  base-url: https://api.polygon.io
+  connect-timeout: 10
+  read-timeout: 30

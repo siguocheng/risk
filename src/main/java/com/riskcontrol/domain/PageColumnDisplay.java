@@ -38,4 +38,8 @@ public class PageColumnDisplay extends BaseEntity {
     @Schema(description = "是否展示")
     @TableField(value = "is_display")
     private Boolean isDisplay;
+
+    @Schema(description = "是否展示")
+    @TableField(value = "column_key")
+    private String columnKey;
 }

@@ -7,6 +7,7 @@ import com.ib.client.TagValue;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.riskcontrol.config.IbkrSynConfig;
 import com.riskcontrol.constant.AccountKey;
+import com.riskcontrol.constant.Constant;
 import com.riskcontrol.constant.ReqIdConstant;
 import com.riskcontrol.domain.*;
 import com.riskcontrol.domain.vo.CommissionAndFeesReportCallbackVo;
@@ -104,6 +105,9 @@ public class IbReconnectTask {
     @Resource
     IContractSectorService contractSectorService;
 
+    @Resource
+    ISystemConfigService systemConfigService;
+
     // 30秒检测一次连接状态
     @Scheduled(fixedDelay = 30000)
     public void checkConnect(){
@@ -150,6 +154,8 @@ public class IbReconnectTask {
         List<PositionMarketPriceVo> marketPriceList = new ArrayList<>();
 
         LocalDate now = LocalDate.now();
+        Boolean init = false;
+
         log.info("synAccount synAccount");
         LambdaQueryWrapper<AccountCurrency> queryWrapper = new LambdaQueryWrapper<>();
         List<AccountCurrency> accountList = accountCurrencyService.list(queryWrapper);
@@ -192,6 +198,8 @@ public class IbReconnectTask {
 
                 // 只有第一次通过需要维护这几个字段，后面都是根据交易信息来计算得到的
                 if (count == 0) {
+                    init = true;
+                    position.setPositionDate(DateUtil.localDateToString(LocalDate.now()));
                     position.setCalPositionQty(positionCallbackVo.getPosition());
                     position.setCalAvgCost(BigDecimal.valueOf(positionCallbackVo.getAvgCost()));
                     position.setCalUnrealizedPnl(BigDecimal.valueOf(positionCallbackVo.getUnrealizedPnl()));
@@ -268,7 +276,7 @@ public class IbReconnectTask {
                     positionExecution.setRemainQty(shares);
                     positionExecution.setAllocateRemainQty(shares);
                     positionExecution.setOptType(PositionExecutionOptTypeEnum.IN.name());
-                    positionExecution.setMarketPrice(position.getMarketPrice()); // 市场价格
+                    positionExecution.setCalMarketPrice(position.getMarketPrice()); // 市场价格
                     // 买入价格
                     if (SetTypeEnum.OPT.getCode().equals(contract.getSecType()) || SetTypeEnum.FOP.getCode().equals(contract.getSecType())) {
                         positionExecution.setPrice(position.getAvgCost().divide(new BigDecimal(contract.getMultiplier()), 4, RoundingMode.HALF_UP));
@@ -320,8 +328,12 @@ public class IbReconnectTask {
                 this.synPnl(accountCode, "");
             }
 
+
         }
 
+        if (init) {
+            systemConfigService.saveOrUpdateByKey(Constant.sys_init_time, DateUtil.localDateTimeToString(LocalDateTime.now()));
+        }
         // 同步交易信息TODO
 //        this.synExecutions();
         log.info("synAccount end");

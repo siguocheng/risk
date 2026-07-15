@@ -12,6 +12,8 @@ public class PortfolioOverviewVo {
     @Schema(description = "交易员")
     private String traderName;
 
+    // initialPrincipal 投入本金
+
     @Schema(description = "本年本金")
     private BigDecimal yearCapital;
 
