@@ -2,6 +2,7 @@ package com.riskcontrol.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.riskcontrol.domain.PageColumnDisplay;
+import com.riskcontrol.domain.vo.PageColumnDisplayModify;
 
 import java.util.List;
 
@@ -13,7 +14,7 @@ import java.util.List;
  */
 public interface IPageColumnDisplayService extends IService<PageColumnDisplay> {
 
-    List<PageColumnDisplay> getByPageName(String pageName);
+    List<PageColumnDisplay> getByPageName(PageColumnDisplayModify modify);
 
     void updateDisplay(String pageName, String type, String columnName, Boolean isDisplay);
 }

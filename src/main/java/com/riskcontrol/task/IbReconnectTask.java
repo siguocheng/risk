@@ -479,9 +479,9 @@ public class IbReconnectTask {
         queryWrapper.orderByAsc(ContractMarket::getId);
         List<ContractMarket> list = contractMarketService.list(queryWrapper);
 
-        LocalDate yesterday = LocalDate.now().minusDays(1);
+        LocalDate yesterday = LocalDate.now();
 
-        String endDateTime = DateUtil.toIbkrUtcEndTime(yesterday.minusYears(2));          // 空 = 取最新数据 20260608 23:59:59
+        String endDateTime = DateUtil.toIbkrUtcEndTime(yesterday);          // 空 = 取最新数据 20260608 23:59:59
         String durationStr = "1 Y";       // 回溯 1 个月 1 D(1 天)、1 W(1 周)、1 M(1 月)、1 Y(1 年)
         String barSize = "1 day";         // 日K线 1 secs / 1 min / 5 mins / 1 hour / 1 day
         String whatToShow = "TRADES";     // 取成交价格 MIDPOINT(中间价)、BID、ASK、TRADES(成交)
@@ -525,11 +525,15 @@ public class IbReconnectTask {
 
             List<ContractMarketHistory> historyList = new ArrayList<>();
 
+            String dailyDate = "";
             for (BarData barData : result) {
                 ContractMarketHistory history = new ContractMarketHistory();
                 history.setSymbol(contractMarket.getSymbol());
                 history.setConid(conid);
-                history.setDailyDate(barData.getTime());
+
+                String time = DateUtil.localDateToString(DateUtil.stringToLocalDate(barData.getTime(), "yyyyMMdd"));;
+
+                history.setDailyDate(time);
                 history.setPriceOpen(BigDecimalUtil.doubleToDecimal(barData.getOpen()));
                 history.setPriceHigh(BigDecimalUtil.doubleToDecimal(barData.getHigh()));
                 history.setPriceLow(BigDecimalUtil.doubleToDecimal(barData.getLow()));
@@ -541,9 +545,14 @@ public class IbReconnectTask {
                 historyList.add(history);
 
                 contractMarketHistoryService.saveOrUpdateContractMarket(history);
+                if (StringUtils.isEmpty(dailyDate)) {
+                    dailyDate = time;
+                } else if (time.compareTo(dailyDate) == 1){
+                    dailyDate = time;
+                }
             }
 
-            contractMarket.setContractMarketLastDate(yesterday);
+            contractMarket.setContractMarketLastDate(DateUtil.stringToLocalDate(dailyDate));
 
             contractMarketService.updateById(contractMarket);
         }

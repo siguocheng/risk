@@ -31,7 +31,7 @@ public class PageColumnDisplayController extends BaseController {
     @Operation(summary = "根据页面名称获取列展示配置")
     @PostMapping("/pc/get-by-page")
     public ResultBean<List<PageColumnDisplay>> getByPageName(@RequestBody PageColumnDisplayModify modify) {
-        return new ResultBean<>(pageColumnDisplayService.getByPageName(modify.getPageName()));
+        return new ResultBean<>(pageColumnDisplayService.getByPageName(modify));
     }
 
     @Operation(summary = "更新列展示状态")

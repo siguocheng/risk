@@ -77,12 +77,4 @@ public class ContractMarketHistory extends BaseEntity{
     @TableField(value = "theta")
     private BigDecimal theta;
 
-
-    public void setDailyDate(String dailyDate){
-        if (dailyDate.contains("-")){
-            this.dailyDate = dailyDate;
-        } else {
-            this.dailyDate = DateUtil.localDateToString(DateUtil.stringToLocalDate(dailyDate, "yyyyMMdd"));
-        }
-    }
 }
