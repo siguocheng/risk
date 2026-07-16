@@ -1,6 +1,7 @@
 package com.riskcontrol.domain.vo;
 
 import com.ib.client.*;
+import com.riskcontrol.util.TradeTimeConvertUtil;
 import lombok.Data;
 
 @Data
@@ -12,6 +13,7 @@ public class ExecutionCallbackVo {
     private int clientId;
     private String execId;
     private String time;
+    private String executionTime;
     private String acctNumber;
     private String exchange;
     private String side;
@@ -41,7 +43,8 @@ public class ExecutionCallbackVo {
         this.orderId = execution.orderId();
         this.clientId = execution.clientId();
         this.execId = execution.execId();
-        this.time = execution.time();
+        this.time = TradeTimeConvertUtil.convertToUsEasternStr(execution.time());
+        this.executionTime = execution.time();
         this.acctNumber = execution.acctNumber();
         this.exchange = execution.exchange();
         this.side = execution.side();

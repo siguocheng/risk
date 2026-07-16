@@ -8,6 +8,8 @@ import com.riskcontrol.service.ITradeCalendarService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 /**
  * 美股交易日历Service业务层处理
  *
@@ -31,5 +33,17 @@ public class TradeCalendarServiceImpl extends ServiceImpl<TradeCalendarMapper, T
         }
         TradeCalendar pre = this.getById(preId);
         return pre != null ? pre.getTradeDate() : null;
+    }
+
+    @Override
+    public void saveOrUpdateTradeCalendar(TradeCalendar tradeCalendar) {
+        LambdaQueryWrapper<TradeCalendar> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TradeCalendar::getType, tradeCalendar.getType());
+        queryWrapper.eq(TradeCalendar::getTradeDate, tradeCalendar.getTradeDate());
+        List<TradeCalendar> list = this.list(queryWrapper);
+        if (list.size() == 0) {
+            this.save(tradeCalendar);
+        }
+
     }
 }

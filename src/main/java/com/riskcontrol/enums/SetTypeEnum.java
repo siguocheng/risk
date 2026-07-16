@@ -77,4 +77,15 @@ public enum SetTypeEnum {
         }
         return null;
     }
+
+    public static Boolean haveMultiplier(String code){
+        if (code.equals(SetTypeEnum.OPT.getCode())
+                || code.equals(SetTypeEnum.FUT.getCode())
+        || code.equals(SetTypeEnum.FOP.getCode())
+        ) {
+            return true;
+        } else {
+            return false;
+        }
+    }
 }

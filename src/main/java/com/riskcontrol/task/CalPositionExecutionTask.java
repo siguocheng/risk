@@ -120,6 +120,14 @@ public class CalPositionExecutionTask {
                         }
                     }
                 }
+
+                LambdaQueryWrapper<Position> queryWrapper = new LambdaQueryWrapper<>();
+                queryWrapper.ne(Position::getPositionDate, date);
+
+                List<Position> positionHistoryNoTrade = positionService.list(queryWrapper);
+
+                // 计算未实现收益和当日已实现收益
+
             }
         }
     }

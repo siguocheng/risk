@@ -32,6 +32,7 @@ public class TaskDispatch {
     @Resource
     ITaskJobLogService taskJobLogService;
 
+    public static final String EXCEPTION_MSG = "异常";
 
     @Scheduled(cron="0 0 8 * * ?")
     public void execute(){
@@ -47,9 +48,27 @@ public class TaskDispatch {
             saveTaskLog("同步账号", "成功", uuid);
             log.info("{} 同步账号end", uuid);
         } catch (Exception e) {
-            log.error("{} 同步账号异常", e);
+            log.error("{} 同步账号异常", uuid, e);
             flag = false;
-            saveTaskLog("同步账号", e.getMessage(), uuid);
+            saveTaskLog("同步账号", EXCEPTION_MSG, uuid);
+        }
+
+        if (!flag) {
+            return;
+        }
+
+
+
+        // 同步持仓数据
+        try {
+            log.info("{} 同步持仓start", uuid);
+            ibReconnectTask.synAccount();
+            saveTaskLog("同步持仓", "成功", uuid);
+            log.info("{} 同步持仓end", uuid);
+        } catch (Exception e) {
+            flag = false;
+            saveTaskLog("同步持仓", EXCEPTION_MSG, uuid);
+            log.error("{} 同步持仓异常", uuid, e);
         }
 
         if (!flag) {
@@ -63,34 +82,9 @@ public class TaskDispatch {
             saveTaskLog("同步市场", "成功", uuid);
             log.info("{} 同步市场end", uuid);
         } catch (Exception e) {
-            log.error("{} 同步市场异常", e);
+            log.error("{} 同步市场异常", uuid, e);
             flag = false;
-            saveTaskLog("同步市场", e.getMessage(), uuid);
-        }
-
-        if (!flag) {
-            return;
-        }
-
-        // 同步持仓数据
-        try {
-            log.info("{} 同步持仓start", uuid);
-            List<PositionMarketPriceVo>  marketPriceList = ibReconnectTask.synAccount();
-
-            for (PositionMarketPriceVo positionMarketPriceVo : marketPriceList) {
-                ContractMarketHistory contractMarketHistory = new ContractMarketHistory();
-                contractMarketHistory.setDailyDate(DateUtil.localDateToString(LocalDate.now()));
-                contractMarketHistory.setConid(positionMarketPriceVo.getConid());
-                contractMarketHistory.setSymbol(positionMarketPriceVo.getSymbol());
-                contractMarketHistory.setPositionMarketPrice(positionMarketPriceVo.getMarketPrice());
-                contractMarketHistoryService.saveOrUpdateContractMarket(contractMarketHistory);
-            }
-            saveTaskLog("同步持仓", "成功", uuid);
-            log.info("{} 同步持仓end", uuid);
-        } catch (Exception e) {
-            flag = false;
-            saveTaskLog("同步持仓", e.getMessage(), uuid);
-            log.error("{} 同步持仓异常", e);
+            saveTaskLog("同步市场", EXCEPTION_MSG, uuid);
         }
 
         if (!flag) {
@@ -102,12 +96,14 @@ public class TaskDispatch {
             log.info("{} 同步交易start", uuid);
             // TODO
             ibReconnectTask.synExecutions();
+
+            ibReconnectTask.synContractDetails();
             saveTaskLog("同步交易", "成功", uuid);
             log.info("{} 同步交易end", uuid);
         } catch (Exception e) {
             flag = false;
-            log.error("{} 同步交易异常", e);
-            saveTaskLog("同步交易", e.getMessage(), uuid);
+            log.error("{} 同步交易异常", uuid, e);
+            saveTaskLog("同步交易", EXCEPTION_MSG, uuid);
         }
         if (!flag) {
             return;
@@ -120,8 +116,8 @@ public class TaskDispatch {
             saveTaskLog("核算", "成功", uuid);
             log.info("{} 核算end", uuid);
         } catch (Exception e) {
-            log.error("{}  核算异常", e);
-            saveTaskLog("核算", e.getMessage(), uuid);
+            log.error("{}  核算异常", uuid, e);
+            saveTaskLog("核算", EXCEPTION_MSG, uuid);
         }
     }
 

@@ -40,4 +40,10 @@ public class PositionCallbackVo {
 
     @Schema(description = "股票简称")
     private String symbol;
+
+    @Schema(description = "类型 STK=股票、OPT=期权、FUT=期货、FX=外汇")
+    private String secType;
+
+    @Schema(description = "合约乘数")
+    private String multiplier;
 }

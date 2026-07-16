@@ -185,6 +185,8 @@ public class IbkrWrapper implements EWrapper {
         item.setRealizedPnl(realizedPNL);
         item.setConid(contract.conid());
         item.setSymbol(contract.symbol());
+        item.setSecType(contract.getSecType());
+        item.setMultiplier(contract.multiplier());
 
         item.setContract(contract);
 

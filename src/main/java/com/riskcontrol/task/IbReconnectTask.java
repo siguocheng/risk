@@ -22,13 +22,16 @@ import com.riskcontrol.service.*;
 import com.riskcontrol.util.BigDecimalUtil;
 import com.riskcontrol.util.DateUtil;
 import com.riskcontrol.util.RiskMetricsUtil;
+import com.riskcontrol.util.TradeTimeConvertUtil;
 import jakarta.annotation.Resource;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -149,12 +152,11 @@ public class IbReconnectTask {
      * @throws InterruptedException
      * @throws TimeoutException
      */
-    public List<PositionMarketPriceVo> synAccount() throws ExecutionException, InterruptedException, TimeoutException {
 
-        List<PositionMarketPriceVo> marketPriceList = new ArrayList<>();
+    public void synAccount() throws ExecutionException, InterruptedException, TimeoutException {
 
         LocalDate now = LocalDate.now();
-        Boolean init = false;
+        long count = positionService.count();
 
         log.info("synAccount synAccount");
         LambdaQueryWrapper<AccountCurrency> queryWrapper = new LambdaQueryWrapper<>();
@@ -162,183 +164,216 @@ public class IbReconnectTask {
         for (AccountCurrency accountCurrency : accountList) {
 
             String accountCode = accountCurrency.getAccountCode();
-            log.info("synAccount start:{}", accountCode);
 
-            String currency = accountCurrency.getCurrency();
-            CompletableFuture<Object> future = new CompletableFuture<>();
-            ibkrSynConfig.FUTURE_MAP.put(accountCode, future);
+            if (count > 0) {
+                LambdaQueryWrapper<Position> queryWrapper1 = new LambdaQueryWrapper<>();
+                queryWrapper1.eq(Position::getAccountCode, accountCode);
+                queryWrapper1.orderByDesc(Position::getPositionDate);
+                queryWrapper1.last("limit 1");
 
-            // updateAccountValue
-            // updatePortfolio
-            // updateAccountTime
-            // accountDownloadEnd
-            log.info("synAccount reqAccountUpdates true:{}", accountCode);
-            m_client.reqAccountUpdates(true, accountCode);
-//            Map<String,Object> result  = (Map<String,Object>)future.get(ibkrSynConfig.timeout, TimeUnit.MILLISECONDS);
-            Map<String,Object> result  = (Map<String,Object>)future.get();
-
-            log.info("synAccount reqAccountUpdates false:{}", accountCode);
-            m_client.reqAccountUpdates(false, accountCode);
-            // 持仓信息
-            List<PositionCallbackVo> positions = (List<PositionCallbackVo>)result.remove("position");
-
-            long count = positionService.count();
-
-            for (PositionCallbackVo positionCallbackVo : positions) {
-                // 维护最新持仓
-                Position position = new Position();
-                BeanUtils.copyProperties(positionCallbackVo, position);
-                position.setPositionQty(positionCallbackVo.getPosition());
-                position.setAvgCost(BigDecimal.valueOf(positionCallbackVo.getAvgCost()));
-                position.setUnrealizedPnl(BigDecimal.valueOf(positionCallbackVo.getUnrealizedPnl()));
-                position.setMarketPrice(BigDecimal.valueOf(positionCallbackVo.getMarketPrice()));
-                position.setMarketValue(BigDecimal.valueOf(positionCallbackVo.getMarketValue()));
-                position.setRealizedPnl(BigDecimal.valueOf(positionCallbackVo.getRealizedPnl()));
-                position.setConid(positionCallbackVo.getConid());
-
-                // 只有第一次通过需要维护这几个字段，后面都是根据交易信息来计算得到的
-                if (count == 0) {
-                    init = true;
-                    position.setPositionDate(DateUtil.localDateToString(LocalDate.now()));
-                    position.setCalPositionQty(positionCallbackVo.getPosition());
-                    position.setCalAvgCost(BigDecimal.valueOf(positionCallbackVo.getAvgCost()));
-                    position.setCalUnrealizedPnl(BigDecimal.valueOf(positionCallbackVo.getUnrealizedPnl()));
-                    position.setCalRealizedPnl(BigDecimal.valueOf(positionCallbackVo.getRealizedPnl()));
-                    position.setAccCommissionAndFees(BigDecimal.ZERO);
-                } else {
-                    position.setCalPositionQty(BigDecimal.ZERO);
-                    position.setCalAvgCost(BigDecimal.ZERO);
-                    position.setCalUnrealizedPnl(BigDecimal.ZERO);
-                    position.setCalRealizedPnl(BigDecimal.ZERO);
-                    position.setAccCommissionAndFees(BigDecimal.ZERO);
+                Position one = positionService.getOne(queryWrapper1);
+                if (one.getPositionDate().equals(DateUtil.localDateToString(LocalDate.now().minusDays(1)))) {
+                    log.info("{}:已同步过昨天的持仓数据", accountCode);
+                    continue;
                 }
+            }
 
-                positionService.saveOrUpdatePosition(position);
+            this.handlePosition(accountCode, count);
+        }
+
+        if (count == 0) {
+            systemConfigService.saveOrUpdateByKey(Constant.sys_init_time, DateUtil.localDateTimeToString(LocalDateTime.now(), "yyyyMMdd HH:mm:ss"));
+        }
+        // 同步交易信息TODO
+//        this.synExecutions();
+        log.info("synAccount end");
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void handlePosition(String accountCode, long count) throws ExecutionException, InterruptedException, TimeoutException {
+        log.info("synAccount start:{}", accountCode);
+        List<PositionMarketPriceVo> marketPriceList = new ArrayList<>();
+//        String currency = accountCurrency.getCurrency();
+        CompletableFuture<Object> future = new CompletableFuture<>();
+        ibkrSynConfig.FUTURE_MAP.put(accountCode, future);
+
+        // updateAccountValue
+        // updatePortfolio
+        // updateAccountTime
+        // accountDownloadEnd
+        log.info("synAccount reqAccountUpdates true:{}", accountCode);
+        m_client.reqAccountUpdates(true, accountCode);
+//            Map<String,Object> result  = (Map<String,Object>)future.get(ibkrSynConfig.timeout, TimeUnit.MILLISECONDS);
+        Map<String,Object> result  = (Map<String,Object>)future.get();
+
+        log.info("synAccount reqAccountUpdates false:{}", accountCode);
+        m_client.reqAccountUpdates(false, accountCode);
+        // 持仓信息
+        List<PositionCallbackVo> positions = (List<PositionCallbackVo>)result.remove("position");
+
+        String yesterday = DateUtil.localDateToString(LocalDate.now().minusDays(1));
+
+        for (PositionCallbackVo positionCallbackVo : positions) {
+            // 维护最新持仓
+            Position position = new Position();
+            BeanUtils.copyProperties(positionCallbackVo, position);
+            position.setPositionQty(positionCallbackVo.getPosition());
+            position.setAvgCost(BigDecimal.valueOf(positionCallbackVo.getAvgCost()));
+            position.setUnrealizedPnl(BigDecimal.valueOf(positionCallbackVo.getUnrealizedPnl()));
+            position.setMarketPrice(BigDecimal.valueOf(positionCallbackVo.getMarketPrice()));
+            position.setMarketValue(BigDecimal.valueOf(positionCallbackVo.getMarketValue()));
+            position.setRealizedPnl(BigDecimal.valueOf(positionCallbackVo.getRealizedPnl()));
+            position.setConid(positionCallbackVo.getConid());
+            position.setSecType(positionCallbackVo.getSecType());
+            position.setMultiplier(positionCallbackVo.getMultiplier());
+
+            // 只有第一次通过需要维护这几个字段，后面都是根据交易信息来计算得到的
+            if (count == 0) {
+                position.setPositionDate(yesterday);
+                position.setCalPositionQty(positionCallbackVo.getPosition());
+                // 有合约乘数的合约
+                BigDecimal calAvgCost = BigDecimal.valueOf(positionCallbackVo.getAvgCost());
+                if (SetTypeEnum.haveMultiplier(positionCallbackVo.getSecType())) {
+                    calAvgCost = calAvgCost.divide(new BigDecimal(positionCallbackVo.getMultiplier()), 4, RoundingMode.HALF_EVEN);
+                }
+                position.setCalAvgCost(calAvgCost);
+                position.setCalUnrealizedPnl(BigDecimal.valueOf(positionCallbackVo.getUnrealizedPnl()));
+                position.setCalRealizedPnl(BigDecimal.valueOf(positionCallbackVo.getRealizedPnl()));
+                position.setCalDailyUnrealizedPnl(position.getCalUnrealizedPnl());
+                position.setAccCommissionAndFees(BigDecimal.ZERO);
 
                 // 维护历史持仓情况
-                PositionHistory positionHistory = new PositionHistory(positionCallbackVo);
-                positionHistory.setPositionDate(DateUtil.localDateToString(now));
+                PositionHistory positionHistory = new PositionHistory(position, position.getPositionDate());
                 positionHistoryService.saveOrUpdatePositionHistory(positionHistory);
+            } else {
+//                    position.setCalPositionQty(BigDecimal.ZERO);
+//                    position.setCalAvgCost(BigDecimal.ZERO);
+//                    position.setCalUnrealizedPnl(BigDecimal.ZERO);
+//                    position.setCalRealizedPnl(BigDecimal.ZERO);
+//                    position.setAccCommissionAndFees(BigDecimal.ZERO);
 
-                com.ib.client.Contract ibContract = positionCallbackVo.getContract();
+                // 维护历史持仓情况
+//                    PositionHistory positionHistory = new PositionHistory(positionCallbackVo);
+//                    positionHistory.setPositionDate(DateUtil.localDateToString(now));
+//                    positionHistoryService.saveOrUpdatePositionHistory(positionHistory);
+            }
 
+            positionService.saveOrUpdatePosition(position);
+
+            com.ib.client.Contract ibContract = positionCallbackVo.getContract();
+
+            if (SetTypeEnum.haveMultiplier(position.getSecType())) {
                 PositionMarketPriceVo positionMarketPriceVo = new PositionMarketPriceVo();
                 positionMarketPriceVo.setMarketPrice(BigDecimal.valueOf(positionCallbackVo.getMarketPrice()));
                 positionMarketPriceVo.setConid(ibContract.conid());
                 positionMarketPriceVo.setSymbol(ibContract.symbol());
                 positionMarketPriceVo.setSecType(ibContract.secType().getApiString());
                 marketPriceList.add(positionMarketPriceVo);
-
-                // 维护账号下的合约信息
-                AccountContract accountContract = new AccountContract(ibContract);
-                accountContract.setAccountCode(accountCode);
-                accountContractService.saveOrUpdateAccountContract(accountContract);
-
-                // 维护合约信息
-                Contract contract = new Contract(ibContract);
-                contractService.saveOrUpdateByConid(contract);
-
-                // 维护合约市场信息
-                ContractMarket contractMarket = new ContractMarket(ibContract);
-                contractMarketService.saveOrUpdateByConid(contractMarket);
-
-                // 第一次同步持仓，需要将持仓的信息转化为交易的信息，方便后面计算收益和成本
-                if (count  == 0) {
-                    PositionExecution positionExecution = new PositionExecution();
-                    positionExecution.setConid(position.getConid());
-                    positionExecution.setAccountCode(position.getAccountCode());
-                    positionExecution.setSymbol(position.getSymbol());
-                    positionExecution.setClientId(0);
-                    positionExecution.setOrderId(99);
-                    positionExecution.setTime(DateUtil.localDateTimeToString(LocalDateTime.now()));
-                    positionExecution.setExchange(contract.getExchange());
-                    positionExecution.setExecId(UUID.randomUUID().toString());
-                    if (position.getPositionQty().compareTo(BigDecimal.ZERO) == 1) {
-                        positionExecution.setSide(TradeSideEnum.BOT.name());
-                    } else if (position.getPositionQty().compareTo(BigDecimal.ZERO) == -1){
-                        positionExecution.setSide(TradeSideEnum.SLD.name());
-                    }
-                    positionExecution.setShares(position.getPositionQty().abs());
-                    positionExecution.setPermId(position.getId());
-
-                    positionExecution.setCumQty(position.getPositionQty());
-
-                    positionExecution.setCommissionAndFees(BigDecimal.ZERO);
-                    positionExecution.setCurrency(contract.getCurrency());
-                    positionExecution.setRealizedPnl(BigDecimal.ZERO);
-                    positionExecution.setExecutionDate(DateUtil.localDateToString(LocalDate.now(), "yyyy-MM-dd"));
-                    BigDecimal shares = null;
-                    if (TradeSideEnum.SLD.name().equals(positionExecution.getSide())) {
-                        shares = positionExecution.getShares().negate();
-                    } else if (TradeSideEnum.BOT.name().equals(positionExecution.getSide())){
-                        shares = positionExecution.getShares();
-                    }
-                    positionExecution.setRemainQty(shares);
-                    positionExecution.setAllocateRemainQty(shares);
-                    positionExecution.setOptType(PositionExecutionOptTypeEnum.IN.name());
-                    positionExecution.setCalMarketPrice(position.getMarketPrice()); // 市场价格
-                    // 买入价格
-                    if (SetTypeEnum.OPT.getCode().equals(contract.getSecType()) || SetTypeEnum.FOP.getCode().equals(contract.getSecType())) {
-                        positionExecution.setPrice(position.getAvgCost().divide(new BigDecimal(contract.getMultiplier()), 4, RoundingMode.HALF_EVEN));
-                        positionExecution.setAvgPrice(positionExecution.getPrice());
-                    } else {
-                        positionExecution.setPrice(position.getAvgCost());
-                        positionExecution.setAvgPrice(position.getAvgCost());
-                    }
-
-                    if (StringUtils.isNotEmpty(positionExecution.getSide())) {
-                        positionExecutionService.save(positionExecution);
-                    }
-
-                    position.setPositionExecutionId(positionExecution.getId());
-                    positionService.updateById(position);
-                }
-
-
-                log.info("synAccount synSinglePnl:{}", accountCode);
-                this.synSinglePnl(accountCode,"" , positionCallbackVo.getConid(),position);
             }
 
-            // 将key中带-P,-S后缀的key移除掉
-            result.entrySet().removeIf(data -> data.getKey().contains("-P") || data.getKey().contains("-S"));
+            // 维护账号下的合约信息
+            AccountContract accountContract = new AccountContract(ibContract);
+            accountContract.setAccountCode(accountCode);
+            accountContractService.saveOrUpdateAccountContract(accountContract);
 
-            Map<String,Object> singleKeyMap = new HashMap<>();
-            Map<String,Object> multiKeyMap = new HashMap<>();
-            Map<String,Object> currencyMap = new HashMap<>();
+            // 维护合约信息
+            Contract contract = new Contract(ibContract);
+            contractService.saveOrUpdateByConid(contract);
 
-            for (String s : result.keySet()) {
-                String[] s1 = s.split("_");
+            // 维护合约市场信息
+            ContractMarket contractMarket = new ContractMarket(ibContract);
+            contractMarketService.saveOrUpdateByConid(contractMarket);
 
-                if (AccountKey.singleKey.contains(s1[0])) {
-                    singleKeyMap.put(s1[0], result.get(s));
+            // 第一次同步持仓，需要将持仓的信息转化为交易的信息，方便后面计算收益和成本
+            if (count  == 0) {
+                PositionExecution positionExecution = new PositionExecution();
+                positionExecution.setConid(position.getConid());
+                positionExecution.setAccountCode(position.getAccountCode());
+                positionExecution.setSymbol(position.getSymbol());
+                positionExecution.setClientId(0);
+                positionExecution.setOrderId(99);
+                positionExecution.setTime(yesterday);
+                positionExecution.setExecutionTime(yesterday);
+                positionExecution.setExchange(contract.getExchange());
+                positionExecution.setExecId(UUID.randomUUID().toString());
+                if (position.getPositionQty().compareTo(BigDecimal.ZERO) == 1) {
+                    positionExecution.setSide(TradeSideEnum.BOT.name());
+                } else if (position.getPositionQty().compareTo(BigDecimal.ZERO) == -1){
+                    positionExecution.setSide(TradeSideEnum.SLD.name());
                 }
-                if (AccountKey.multiKey.contains(s1[0])) {
-                    multiKeyMap.put(s, result.get(s));
-                    currencyMap.put(s1[1], null);
+                positionExecution.setShares(position.getPositionQty().abs());
+                positionExecution.setPermId(position.getId());
+                positionExecution.setCumQty(position.getPositionQty());
+                positionExecution.setCommissionAndFees(BigDecimal.ZERO);
+                positionExecution.setCurrency(contract.getCurrency());
+                positionExecution.setRealizedPnl(BigDecimal.ZERO);
+                positionExecution.setExecutionDate(yesterday);
+                BigDecimal shares = positionExecution.getShares();
+                positionExecution.setRemainQty(shares);
+                positionExecution.setAllocateRemainQty(shares);
+                positionExecution.setOptType(PositionExecutionOptTypeEnum.IN.name());
+                positionExecution.setCalMarketPrice(position.getMarketPrice()); // 市场价格
+                // 买入价格
+                if (SetTypeEnum.haveMultiplier(contract.getSecType())) {
+                    positionExecution.setPrice(position.getAvgCost().divide(new BigDecimal(contract.getMultiplier()), 4, RoundingMode.HALF_EVEN));
+                    positionExecution.setAvgPrice(positionExecution.getPrice());
+                } else {
+                    positionExecution.setPrice(position.getAvgCost());
+                    positionExecution.setAvgPrice(position.getAvgCost());
                 }
+                positionExecution.setCalExecutionUnrealizedPnl(position.getUnrealizedPnl());
+                positionExecution.setStatus(1);
+
+                if (StringUtils.isNotEmpty(positionExecution.getSide())) {
+                    positionExecutionService.save(positionExecution);
+                }
+
+                position.setPositionExecutionId(positionExecution.getId());
+                positionService.updateById(position);
             }
-            log.info("synAccount handleAccountSummary:{}", accountCode);
-            this.handleAccountSummary(accountCode, singleKeyMap);
 
-            log.info("synAccount handleAccountSummaryCurrency:{}", accountCode);
-            this.handleAccountSummaryCurrency(accountCode, currencyMap, multiKeyMap);
-
-            if (positions.size() > 0) {
-                log.info("synAccount synPnl:{}", accountCode);
-                this.synPnl(accountCode, "");
-            }
-
-
+            log.info("synAccount synSinglePnl:{}", accountCode);
+            this.synSinglePnl(accountCode,"" , positionCallbackVo.getConid(),position);
         }
 
-        if (init) {
-            systemConfigService.saveOrUpdateByKey(Constant.sys_init_time, DateUtil.localDateTimeToString(LocalDateTime.now()));
+        // 由于期权等无法取到市场历史数据的合约，将持仓中的市场价保存到市场数据中
+        for (PositionMarketPriceVo positionMarketPriceVo : marketPriceList) {
+            ContractMarketHistory contractMarketHistory = new ContractMarketHistory();
+            contractMarketHistory.setDailyDate(DateUtil.localDateToString(LocalDate.now().minusDays(1))); // 在非交易时间段才能执行
+            contractMarketHistory.setConid(positionMarketPriceVo.getConid());
+            contractMarketHistory.setSymbol(positionMarketPriceVo.getSymbol());
+            contractMarketHistory.setPositionMarketPrice(positionMarketPriceVo.getMarketPrice());
+            contractMarketHistoryService.saveOrUpdateContractMarket(contractMarketHistory);
         }
-        // 同步交易信息TODO
-//        this.synExecutions();
-        log.info("synAccount end");
 
-        return marketPriceList;
+        // 将key中带-P,-S后缀的key移除掉
+        result.entrySet().removeIf(data -> data.getKey().contains("-P") || data.getKey().contains("-S"));
+
+        Map<String,Object> singleKeyMap = new HashMap<>();
+        Map<String,Object> multiKeyMap = new HashMap<>();
+        Map<String,Object> currencyMap = new HashMap<>();
+
+        for (String s : result.keySet()) {
+            String[] s1 = s.split("_");
+
+            if (AccountKey.singleKey.contains(s1[0])) {
+                singleKeyMap.put(s1[0], result.get(s));
+            }
+            if (AccountKey.multiKey.contains(s1[0])) {
+                multiKeyMap.put(s, result.get(s));
+                currencyMap.put(s1[1], null);
+            }
+        }
+        log.info("synAccount handleAccountSummary:{}", accountCode);
+        this.handleAccountSummary(accountCode, singleKeyMap);
+
+        log.info("synAccount handleAccountSummaryCurrency:{}", accountCode);
+        this.handleAccountSummaryCurrency(accountCode, currencyMap, multiKeyMap);
+
+        if (positions.size() > 0) {
+            log.info("synAccount synPnl:{}", accountCode);
+            this.synPnl(accountCode, "");
+        }
     }
 
     public void handleAccountSummaryCurrency(String accountCode, Map<String,Object> currencyMap, Map<String,Object> multiKeyMap){
@@ -500,7 +535,7 @@ public class IbReconnectTask {
 
     public void synContractMarket() throws ExecutionException, InterruptedException, TimeoutException {
         LambdaQueryWrapper<ContractMarket> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.notIn(ContractMarket::getSecType, "OPT","FUT"); // 排除期权,期货
+        queryWrapper.notIn(ContractMarket::getSecType, "OPT","FUT", "FOP"); // 排除期权,期货
         queryWrapper.orderByAsc(ContractMarket::getId);
         List<ContractMarket> list = contractMarketService.list(queryWrapper);
 
@@ -519,7 +554,7 @@ public class IbReconnectTask {
             com.ib.client.Contract ibContract = new com.ib.client.Contract();
             Integer conid = contractMarket.getConid();
 //            ibContract.conid(conid);
-            System.out.println(contractMarket.getSymbol());
+            log.info(contractMarket.getSymbol());
             ibContract.symbol(contractMarket.getSymbol());
             ibContract.exchange(contractMarket.getExchange());
             ibContract.secType(contractMarket.getSecType());
@@ -572,7 +607,7 @@ public class IbReconnectTask {
                 contractMarketHistoryService.saveOrUpdateContractMarket(history);
                 if (StringUtils.isEmpty(dailyDate)) {
                     dailyDate = time;
-                } else if (time.compareTo(dailyDate) == 1){
+                } else if (time.compareTo(dailyDate) > 1){
                     dailyDate = time;
                 }
             }
@@ -855,7 +890,7 @@ public class IbReconnectTask {
         // 2. 执行过滤器
         ExecutionFilter filter = new ExecutionFilter();
 //        filter.time(filterTime);
-        filter.lastNDays(7);
+        filter.lastNDays(7); // 最大是7
 
         // execDetails
         // execDetailsEnd
@@ -881,7 +916,12 @@ public class IbReconnectTask {
 
         executions.sort(Comparator.comparing(ExecutionCallbackVo::getTime));
 
-        executions = executions.stream().filter(data -> data.getTime().compareTo("20260630 10:26:57 US/Eastern") >=0).collect(Collectors.toList());
+        String sysInitTime = systemConfigService.getValueByKey(Constant.sys_init_time);
+        if (StringUtils.isNotEmpty(sysInitTime)) {
+            String s = TradeTimeConvertUtil.convertToUsEasternStr(sysInitTime, "Asia/Shanghai");
+
+            executions = executions.stream().filter(data -> data.getTime().compareTo(s) >=0).collect(Collectors.toList());
+        }
 
         log.info(JSONObject.toJSONString(executions));
         // 将commissionAndFeesReports按execId建立索引
@@ -891,11 +931,8 @@ public class IbReconnectTask {
         }
 
         for (ExecutionCallbackVo execution : executions) {
-            int conid = execution.getConid();
-            Position position = positionService.getPositionByConid(execution.getAcctNumber(), conid);
-
             CommissionAndFeesReportCallbackVo commissionReport = commissionMap.get(execution.getExecId());
-            PositionExecution positionExecution = new PositionExecution(execution, commissionReport, position);
+            PositionExecution positionExecution = new PositionExecution(execution, commissionReport);
 
             positionExecutionService.saveOrUpdateByExecId(positionExecution);
         }
@@ -1053,7 +1090,7 @@ public class IbReconnectTask {
             tradeCalendar.setType(1);
             tradeCalendar.setTradeDate(time);
 
-            tradeCalendarService.save(tradeCalendar);
+            tradeCalendarService.saveOrUpdateTradeCalendar(tradeCalendar);
         }
 
         LambdaQueryWrapper<TradeCalendar> lambdaQueryWrapper = new LambdaQueryWrapper<>();

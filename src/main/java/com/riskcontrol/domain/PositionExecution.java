@@ -38,9 +38,13 @@ public class PositionExecution extends BaseEntity {
     @TableField(value = "exec_id")
     private String execId;
 
-    @Schema(description = "成交时间字符串")
+    @Schema(description = "将成交时间统一转成US/Central的时间")
     @TableField(value = "time")
     private String time;
+
+    @Schema(description = "成交时间字符串")
+    @TableField(value = "execution_time")
+    private String executionTime;
 
     @Schema(description = "账户号")
     @TableField(value = "account_code")
@@ -166,13 +170,14 @@ public class PositionExecution extends BaseEntity {
 
     }
 
-    public PositionExecution(ExecutionCallbackVo execution, CommissionAndFeesReportCallbackVo commissionReport, Position position){
+    public PositionExecution(ExecutionCallbackVo execution, CommissionAndFeesReportCallbackVo commissionReport){
         this.conid = execution.getConid();
         this.symbol = execution.getSymbol();
         this.orderId = execution.getOrderId();
         this.clientId = execution.getClientId();
         this.execId = execution.getExecId();
         this.time = execution.getTime();
+        this.executionTime = execution.getExecutionTime();
         this.accountCode = execution.getAcctNumber();
         this.exchange =execution.getExchange();
         this.side = execution.getSide();

@@ -28,10 +28,11 @@ public class ContractMarketHistoryServiceImpl extends ServiceImpl<ContractMarket
         queryWrapper.eq(ContractMarketHistory::getDailyDate, contractMarket.getDailyDate());
         queryWrapper.eq(ContractMarketHistory::getConid, contractMarket.getConid());
 
-        long count = this.count(queryWrapper);
-        if (count > 0) {
+        ContractMarketHistory one = this.getOne(queryWrapper);
+        if (one != null) {
             // 存在则更新
-            return this.update(contractMarket, queryWrapper);
+            return true;
+//            return this.update(contractMarket, queryWrapper);
         } else {
             // 不存在则新增
             return this.save(contractMarket);

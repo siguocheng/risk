@@ -13,4 +13,6 @@ public interface ITradeCalendarService extends IService<TradeCalendar> {
 
     String getPreTradeDate(String tradeDate);
 
+    void saveOrUpdateTradeCalendar(TradeCalendar tradeCalendar);
+
 }
