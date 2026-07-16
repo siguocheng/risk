@@ -16,6 +16,7 @@ import com.riskcontrol.domain.vo.role.RoleQuery;
 import com.riskcontrol.domain.vo.trader.InvestmentStrategySelectVo;
 import com.riskcontrol.domain.vo.trader.TraderSelectQuery;
 import com.riskcontrol.domain.vo.user.UserQuery;
+import com.riskcontrol.domain.ExchangeZone;
 import com.riskcontrol.service.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -176,6 +177,9 @@ public class SelectController {
     @Resource
     IContractSectorService contractSectorService;
 
+    @Resource
+    IExchangeZoneService exchangeZoneService;
+
     @Operation(summary = "取得对标指数")
     @PostMapping("/pc/reference-index")
     public ResultBean<List<SelectVo>> referenceIndex(@RequestBody ReferenceIndexQuery query) {
@@ -231,6 +235,24 @@ public class SelectController {
             SelectVo data = new SelectVo();
             data.setLabel(contractSector.getSector());
             data.setValue(contractSector.getSector());
+            result.add(data);
+        }
+
+        return new ResultBean<>(result);
+    }
+
+    @Operation(summary = "取得地区")
+    @GetMapping("/pc/zone")
+    public ResultBean<List<SelectVo>> getZoneList() {
+        LambdaQueryWrapper<ExchangeZone> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.select(ExchangeZone::getZone, ExchangeZone::getZoneValue).groupBy(ExchangeZone::getZone, ExchangeZone::getZoneValue);
+        List<ExchangeZone> list = exchangeZoneService.list(queryWrapper);
+
+        List<SelectVo> result = new ArrayList<>();
+        for (ExchangeZone exchangeZone : list) {
+            SelectVo data = new SelectVo();
+            data.setLabel(exchangeZone.getZone());
+            data.setValue(exchangeZone.getZoneValue());
             result.add(data);
         }
 
