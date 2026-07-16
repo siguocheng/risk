@@ -286,9 +286,13 @@ public class IbkrWrapper implements EWrapper {
     public void execDetailsEnd(int reqId) {
         printCurrentMethod();
         CompletableFuture<Object> future = ibkrSynConfig.FUTURE_MAP.remove(reqId);
+
         List<Object> dataList1 = listDataMap.remove(reqId);
         List<Object> dataList2 = listDataMap.remove(ReqIdConstant.commissionAndFeesReportReqId);
-        dataList1.addAll(dataList2);
+        if (dataList1 != null) {
+            dataList1.addAll(dataList2);
+        }
+
         if(future != null){
             future.complete(dataList1);
         }

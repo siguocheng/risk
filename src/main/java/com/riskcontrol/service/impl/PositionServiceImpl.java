@@ -232,9 +232,9 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
             throw new BusinessException("分配数量超过交易数量");
         }
 
-        avgRealizedPln = safeDivide(positionExecution.getCalExecutionRealizedPnl(), shares, 2, RoundingMode.DOWN);
-        avgUnRealizedPln = safeDivide(positionExecution.getCalExecutionUnrealizedPnl(), shares, 2, RoundingMode.DOWN);
-        avgCommissionAnFees = safeDivide(positionExecution.getCommissionAndFees(), shares, 2, RoundingMode.DOWN);
+        avgRealizedPln = safeDivide(positionExecution.getCalExecutionRealizedPnl(), shares, 4, RoundingMode.HALF_EVEN);
+        avgUnRealizedPln = safeDivide(positionExecution.getCalExecutionUnrealizedPnl(), shares, 4, RoundingMode.HALF_EVEN);
+        avgCommissionAnFees = safeDivide(positionExecution.getCommissionAndFees(), shares, 4, RoundingMode.HALF_EVEN);
 
         List<PositionRelation> positionRelationList = new ArrayList<>();
 
@@ -245,8 +245,8 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
             throw new BusinessException("持仓历史记录不存在");
         }
 
-        BigDecimal avgCalUnrealizedPnlPosition = safeDivide(positionHistory.getCalUnrealizedPnl(), positionHistory.getCalPositionQty(), 2, RoundingMode.DOWN);
-        BigDecimal avgCalDailyUnrealizedPnlPosition = safeDivide(positionHistory.getCalDailyUnrealizedPnl(), positionHistory.getCalPositionQty(), 2, RoundingMode.DOWN);
+        BigDecimal avgCalUnrealizedPnlPosition = safeDivide(positionHistory.getCalUnrealizedPnl(), positionHistory.getCalPositionQty(), 4, RoundingMode.HALF_EVEN);
+        BigDecimal avgCalDailyUnrealizedPnlPosition = safeDivide(positionHistory.getCalDailyUnrealizedPnl(), positionHistory.getCalPositionQty(), 4, RoundingMode.HALF_EVEN);
 
         LambdaQueryWrapper<PositionRelation> wrapper1 = new LambdaQueryWrapper<>();
         wrapper1.eq(PositionRelation::getAccountCode, positionExecution.getAccountCode())

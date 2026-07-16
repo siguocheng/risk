@@ -377,7 +377,7 @@ public class CalPositionExecutionTask {
         if (totalRemainQty.compareTo(BigDecimal.ZERO) == 0) {
             return BigDecimal.ZERO;
         }
-        return costBasis.divide(totalRemainQty.multiply(multiplier), 4, RoundingMode.HALF_UP);
+        return costBasis.divide(totalRemainQty.multiply(multiplier), 4, RoundingMode.HALF_EVEN);
     }
 
     private BigDecimal sumRemainInLotsUnrealized(String accountCode, int conid, BigDecimal marketPrice, BigDecimal multiplier) {

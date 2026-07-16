@@ -279,7 +279,7 @@ public class IbReconnectTask {
                     positionExecution.setCalMarketPrice(position.getMarketPrice()); // 市场价格
                     // 买入价格
                     if (SetTypeEnum.OPT.getCode().equals(contract.getSecType()) || SetTypeEnum.FOP.getCode().equals(contract.getSecType())) {
-                        positionExecution.setPrice(position.getAvgCost().divide(new BigDecimal(contract.getMultiplier()), 4, RoundingMode.HALF_UP));
+                        positionExecution.setPrice(position.getAvgCost().divide(new BigDecimal(contract.getMultiplier()), 4, RoundingMode.HALF_EVEN));
                         positionExecution.setAvgPrice(positionExecution.getPrice());
                     } else {
                         positionExecution.setPrice(position.getAvgCost());
@@ -862,6 +862,10 @@ public class IbReconnectTask {
         m_client.reqExecutions(reqId, filter);
 
         Object obj = future.get(ibkrSynConfig.timeout, TimeUnit.MILLISECONDS);
+        if (obj == null) {
+            log.info("没有交易信息");
+            return;
+        }
         List<Object> result = (List<Object>) obj;
 
         List<ExecutionCallbackVo> executions = new ArrayList<>();

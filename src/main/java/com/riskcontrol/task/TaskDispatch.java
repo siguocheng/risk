@@ -8,6 +8,7 @@ import com.riskcontrol.service.ITaskJobLogService;
 import com.riskcontrol.util.DateUtil;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -32,6 +33,7 @@ public class TaskDispatch {
     ITaskJobLogService taskJobLogService;
 
 
+    @Scheduled(cron="0 0 8 * * ?")
     public void execute(){
 
         String uuid = UUID.randomUUID().toString();
@@ -62,6 +64,7 @@ public class TaskDispatch {
             log.info("{} 同步市场end", uuid);
         } catch (Exception e) {
             log.error("{} 同步市场异常", e);
+            flag = false;
             saveTaskLog("同步市场", e.getMessage(), uuid);
         }
 
@@ -85,6 +88,7 @@ public class TaskDispatch {
             saveTaskLog("同步持仓", "成功", uuid);
             log.info("{} 同步持仓end", uuid);
         } catch (Exception e) {
+            flag = false;
             saveTaskLog("同步持仓", e.getMessage(), uuid);
             log.error("{} 同步持仓异常", e);
         }
@@ -101,6 +105,7 @@ public class TaskDispatch {
             saveTaskLog("同步交易", "成功", uuid);
             log.info("{} 同步交易end", uuid);
         } catch (Exception e) {
+            flag = false;
             log.error("{} 同步交易异常", e);
             saveTaskLog("同步交易", e.getMessage(), uuid);
         }
@@ -120,13 +125,16 @@ public class TaskDispatch {
         }
     }
 
-
+    @Scheduled(cron="0 0 7 * * ?")
     public void synTradeDate() {
         try {
             log.info("同步交易日start");
             ibReconnectTask.synTradeDate();
+            saveTaskLog("同步交易日", "成功", "");
             log.info("同步交易日end");
         } catch (Exception e) {
+
+            saveTaskLog("同步交易日", e.getMessage(), "");
             log.error("同步交易日异常", e);
         }
     }
