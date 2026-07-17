@@ -9,7 +9,7 @@ public enum SetTypeEnum {
     /**
      * 期权 Option
      */
-    OPT("OPT", "个股期权", "权益衍生品"),
+    OPT("OPT", "期权", "权益衍生品"),
     /**
      * 债券 Bond
      */
@@ -59,6 +59,18 @@ public enum SetTypeEnum {
 
     public String getDesc() {
         return desc;
+    }
+
+    public static SetTypeEnum getByName(String name) {
+        if (name == null || name.isEmpty()) {
+            return null;
+        }
+        for (SetTypeEnum value : SetTypeEnum.values()) {
+            if (value.getName().equals(name)) {
+                return value;
+            }
+        }
+        return null;
     }
 
     /**

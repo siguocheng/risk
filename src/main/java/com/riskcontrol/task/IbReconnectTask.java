@@ -290,6 +290,7 @@ public class IbReconnectTask {
                 positionExecution.setConid(position.getConid());
                 positionExecution.setAccountCode(position.getAccountCode());
                 positionExecution.setSymbol(position.getSymbol());
+                positionExecution.setSecType(position.getSecType());
                 positionExecution.setClientId(0);
                 positionExecution.setOrderId(99);
                 positionExecution.setTime(yesterday);

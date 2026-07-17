@@ -30,6 +30,8 @@ public class ExecutionCallbackVo {
     private Liquidities lastLiquidity;
     private boolean pendingPriceRevision;
     private String submitter;
+    private String secType;
+    private String multiplier;
     private OptionExerciseType optExerciseOrLapseType;
 
     public ExecutionCallbackVo(){
@@ -39,6 +41,8 @@ public class ExecutionCallbackVo {
     public ExecutionCallbackVo(Contract contract, Execution execution){
         this.conid = contract.conid();
         this.symbol = contract.symbol();
+        this.secType = contract.getSecType();
+        this.multiplier = contract.multiplier();
         this.orderId = execution.orderId();
         this.orderId = execution.orderId();
         this.clientId = execution.clientId();

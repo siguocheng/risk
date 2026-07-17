@@ -8,4 +8,6 @@ import java.math.BigDecimal;
 public interface ITraderCapitalService extends IService<TraderCapital> {
 
     BigDecimal getCapitalByTraderDate(String traderName, String dailyDate);
+
+    void saveOrUpdateTraderCapital(TraderCapital traderCapital);
 }

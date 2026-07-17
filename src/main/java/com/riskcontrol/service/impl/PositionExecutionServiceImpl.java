@@ -17,10 +17,10 @@ import com.riskcontrol.service.IPositionAllocateHistoryService;
 import com.riskcontrol.service.IPositionExecutionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
-import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.util.Collections;
@@ -65,10 +65,12 @@ public class PositionExecutionServiceImpl extends ServiceImpl<PositionExecutionM
         if (!CollectionUtils.isEmpty(query.getConids())) {
             queryWrapper.in(PositionExecution::getConid, query.getConids());
         }
+        if (StringUtils.isNotEmpty(query.getSecType())) {
+            queryWrapper.eq(PositionExecution::getSecType, query.getSecType());
+        }
         queryWrapper.orderByAsc(PositionExecution::getTime);
 
         IPage<PositionExecution> entityPage = this.page(page, queryWrapper); // 取得符合条件的交易
-
 
         IPage<PositionExecutionPage> pageList = entityPage.convert(entity -> {
             PositionExecutionPage vo = new PositionExecutionPage();

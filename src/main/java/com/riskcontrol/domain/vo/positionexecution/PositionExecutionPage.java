@@ -45,6 +45,9 @@ public class PositionExecutionPage {
     @Schema(description = "成交单价")
     private BigDecimal price;
 
+    @Schema(description = "市场价")
+    private BigDecimal calMarketPrice;
+
     @Schema(description = "佣金及各项费用")
     private BigDecimal commissionAndFees;
 

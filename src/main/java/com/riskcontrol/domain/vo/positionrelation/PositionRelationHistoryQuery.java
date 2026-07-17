@@ -1,6 +1,7 @@
 package com.riskcontrol.domain.vo.positionrelation;
 
 import com.riskcontrol.domain.bo.BasePageQuery;
+import com.riskcontrol.enums.SetTypeEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
@@ -32,4 +33,16 @@ public class PositionRelationHistoryQuery extends BasePageQuery {
 
     @Schema(description = "资产类型")
     private String secType;
+
+    @Schema(description = "区域")
+    private String zoneType;
+
+    public String getSecType(){
+        SetTypeEnum byName = SetTypeEnum.getByName(secType);
+        if (byName != null) {
+            return byName.getCode();
+        } else {
+            return secType;
+        }
+    }
 }

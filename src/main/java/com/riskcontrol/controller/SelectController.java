@@ -242,7 +242,7 @@ public class SelectController {
     }
 
     @Operation(summary = "取得地区")
-    @GetMapping("/pc/zone")
+    @PostMapping("/pc/zone")
     public ResultBean<List<SelectVo>> getZoneList() {
         LambdaQueryWrapper<ExchangeZone> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.select(ExchangeZone::getZone, ExchangeZone::getZoneValue).groupBy(ExchangeZone::getZone, ExchangeZone::getZoneValue);
@@ -251,8 +251,8 @@ public class SelectController {
         List<SelectVo> result = new ArrayList<>();
         for (ExchangeZone exchangeZone : list) {
             SelectVo data = new SelectVo();
-            data.setLabel(exchangeZone.getZone());
-            data.setValue(exchangeZone.getZoneValue());
+            data.setLabel(exchangeZone.getZoneValue());
+            data.setValue(exchangeZone.getZone());
             result.add(data);
         }
 

@@ -9,14 +9,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
 public class TraderCapitalServiceImpl extends ServiceImpl<TraderCapitalMapper, TraderCapital> implements ITraderCapitalService {
 
-    static Map<String, BigDecimal> map = new HashMap<>();
+    static Map<String, BigDecimal> map = new ConcurrentHashMap<>();
 
     @Override
     public BigDecimal getCapitalByTraderDate(String traderName, String dailyDate) {
@@ -36,5 +36,24 @@ public class TraderCapitalServiceImpl extends ServiceImpl<TraderCapitalMapper, T
         }
 
         return capital;
+    }
+
+    @Override
+    public void saveOrUpdateTraderCapital(TraderCapital traderCapital) {
+        String key = traderCapital.getDailyDate() + "-" + traderCapital.getTraderName();
+
+        LambdaQueryWrapper<TraderCapital> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(TraderCapital::getTraderName, traderCapital.getTraderName());
+        queryWrapper.eq(TraderCapital::getDailyDate, traderCapital.getDailyDate());
+
+        TraderCapital existing = this.getOne(queryWrapper);
+        if (existing != null) {
+            traderCapital.setId(existing.getId());
+            this.updateById(traderCapital);
+        } else {
+            this.save(traderCapital);
+        }
+
+        map.put(key, traderCapital.getCapital());
     }
 }

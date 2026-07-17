@@ -2,6 +2,7 @@ package com.riskcontrol.domain.vo.positionexecution;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.riskcontrol.domain.bo.BasePageQuery;
+import com.riskcontrol.enums.SetTypeEnum;
 import com.riskcontrol.util.DateUtil;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -44,4 +45,16 @@ public class PositionExecutionQuery extends BasePageQuery {
 
     @Schema(description = "板块")
     private List<String> sectors;
+
+    @Schema(description = "资产类型")
+    private String secType;
+
+    public String getSecType(){
+        SetTypeEnum byName = SetTypeEnum.getByName(secType);
+        if (byName != null) {
+            return byName.getCode();
+        } else {
+            return secType;
+        }
+    }
 }

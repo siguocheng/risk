@@ -47,6 +47,12 @@ public class CalPositionExecutionTask {
     @Resource
     ITradeCalendarService tradeCalendarService;
 
+    @Resource
+    ITraderService traderService;
+
+    @Resource
+    ITraderCapitalService traderCapitalService;
+
 
     @Transactional(rollbackFor = Exception.class)
     public void cal(){
@@ -161,6 +167,22 @@ public class CalPositionExecutionTask {
                 }
             }
         }
+
+        this.handleTraderCapital();
+    }
+
+    private void handleTraderCapital(){
+        String yesterday = DateUtil.localDateToString(LocalDate.now().minusDays(1));
+        List<Trader> list = traderService.list();
+        for (Trader trader : list) {
+            TraderCapital traderCapital = new TraderCapital();
+            traderCapital.setCapital(trader.getCapital());
+            traderCapital.setTraderName(trader.getTraderName());
+            traderCapital.setDailyDate(yesterday);
+
+            traderCapitalService.saveOrUpdateTraderCapital(traderCapital);
+        }
+
     }
 
     @Transactional(rollbackFor = Exception.class)

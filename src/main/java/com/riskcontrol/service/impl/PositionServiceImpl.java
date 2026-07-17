@@ -210,6 +210,9 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
             }
         }
 
+        String accountCode = positionExecution.getAccountCode();
+        int conid = positionExecution.getConid();
+
         this.checkBeforeExecutionDate(positionExecution);
 
         BigDecimal avgRealizedPln = BigDecimal.ZERO;
@@ -257,8 +260,8 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
         if (one != null) {
             if (!one.getDailyDate().equals(executionDate)) {
                 LambdaQueryWrapper<PositionRelation> updateWrapper = new LambdaQueryWrapper<>();
-                updateWrapper.eq(PositionRelation::getAccountCode, positionExecution.getAccountCode())
-                        .eq(PositionRelation::getConid, positionExecution.getConid());
+                updateWrapper.eq(PositionRelation::getAccountCode, accountCode)
+                        .eq(PositionRelation::getConid, conid);
                 List<PositionRelation> list = positionRelationService.list(updateWrapper);
                 for (PositionRelation positionRelation : list) {
                     positionRelation.setDailyDate(executionDate);
@@ -272,14 +275,14 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
             BeanUtils.copyProperties(detail, allocateHistory);
             String strategyName = detail.getStrategyName();
             String traderName = detail.getTraderName();
-            String accountCode = detail.getAccountCode();
-            Integer conid = detail.getConid();
             BigDecimal allocateQty = getOrDefault(detail.getAllocateQty(), BigDecimal.ZERO);
 
             BigDecimal accRealizedPln = avgRealizedPln.multiply(allocateQty);
             BigDecimal accUnRealizedPln = avgUnRealizedPln.multiply(allocateQty);
             BigDecimal accCommissionAnFees = avgCommissionAnFees.multiply(allocateQty);
 
+            allocateHistory.setAccountCode(accountCode);
+            allocateHistory.setConid(conid);
             allocateHistory.setPositionExecutionId(request.getId());
             allocateHistory.setRealizedPnl(accRealizedPln);
             allocateHistory.setUnrealizedPnl(accUnRealizedPln);

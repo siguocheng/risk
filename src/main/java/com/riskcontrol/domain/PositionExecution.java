@@ -166,6 +166,10 @@ public class PositionExecution extends BaseEntity {
     @TableField(value = "cal_market_price")
     private BigDecimal calMarketPrice;
 
+    @Schema(description = "资产类型")
+    @TableField(value = "sec_type")
+    private String secType;
+
     public PositionExecution(){
 
     }
@@ -173,6 +177,7 @@ public class PositionExecution extends BaseEntity {
     public PositionExecution(ExecutionCallbackVo execution, CommissionAndFeesReportCallbackVo commissionReport){
         this.conid = execution.getConid();
         this.symbol = execution.getSymbol();
+        this.secType = execution.getSecType();
         this.orderId = execution.getOrderId();
         this.clientId = execution.getClientId();
         this.execId = execution.getExecId();

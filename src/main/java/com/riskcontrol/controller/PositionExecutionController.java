@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @Tag(description = "成交明细", name = "成交明细")
 @RestController
-@RequestMapping("/contract-execution")
+@RequestMapping("/position-execution")
 public class PositionExecutionController extends BaseController {
 
     @Resource
