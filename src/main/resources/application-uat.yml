@@ -32,7 +32,7 @@ ibkr:
   host: 127.0.0.1
   port: 4002
   clientid: 1
-  timeout: 5000
+  timeout: 30000
 
 mybatis-plus:
   mapper-locations: classpath:/com/riskcontrol/mapper/**.xml

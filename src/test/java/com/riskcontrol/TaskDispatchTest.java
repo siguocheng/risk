@@ -13,7 +13,6 @@ public class TaskDispatchTest {
 
     @Test
     public void test(){
-        taskDispatch.synTradeDate();
         taskDispatch.execute();
     }
 }

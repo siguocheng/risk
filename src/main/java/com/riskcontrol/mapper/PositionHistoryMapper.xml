@@ -25,4 +25,54 @@
         unrealized_pnl, market_price, market_value, realized_pnl, deleted, create_id, 
         create_time, modified_id, modified_time
     </sql>
+
+    <select id="queryPage" resultType="com.riskcontrol.domain.vo.position.PositionHistoryPage">
+        SELECT
+            ph.id,
+            ph.position_date,
+            ph.conid,
+            ph.symbol,
+            ph.account_code,
+            ph.model_code,
+            ph.position_qty,
+            ph.avg_cost,
+            ph.unrealized_pnl,
+            ph.market_price,
+            ph.market_value,
+            ph.realized_pnl,
+            ph.daily_pnl,
+            ph.modified_time,
+            ph.sec_type,
+            ph.multiplier
+        FROM
+            position_history ph
+        LEFT JOIN contract c ON ph.conid = c.conid
+        WHERE
+            1=1
+            <if test="query.positionDate != null and query.positionDate != ''">
+                AND ph.position_date = #{query.positionDate}
+            </if>
+            <if test="query.accountCodes != null and query.accountCodes.size() > 0">
+                AND ph.account_code IN
+                <foreach collection="query.accountCodes" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="query.conids != null and query.conids.size() > 0">
+                AND ph.conid IN
+                <foreach collection="query.conids" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="query.modelCodes != null and query.modelCodes.size() > 0">
+                AND ph.model_code IN
+                <foreach collection="query.modelCodes" item="item" open="(" separator="," close=")">
+                    #{item}
+                </foreach>
+            </if>
+            <if test="query.symbol != null and query.symbol != ''">
+                AND ph.symbol LIKE CONCAT('%', #{query.symbol}, '%')
+            </if>
+        ORDER BY ph.position_date DESC
+    </select>
 </mapper>

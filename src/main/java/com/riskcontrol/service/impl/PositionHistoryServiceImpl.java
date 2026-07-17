@@ -1,9 +1,12 @@
 package com.riskcontrol.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.riskcontrol.dao.PositionHistoryMapper;
 import com.riskcontrol.domain.PositionHistory;
+import com.riskcontrol.domain.vo.position.PositionHistoryPage;
+import com.riskcontrol.domain.vo.position.PositionHistoryQuery;
 import com.riskcontrol.service.IPositionHistoryService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -29,23 +32,25 @@ public class PositionHistoryServiceImpl extends ServiceImpl<PositionHistoryMappe
 
         long count = this.count(queryWrapper);
         if (count > 0) {
-            // 存在则更新
             return this.update(positionHistory, queryWrapper);
         } else {
             positionHistory.setId(null);
-            // 不存在则新增
             return this.save(positionHistory);
         }
     }
 
     @Override
     public PositionHistory getPositionHistoryByKey(String positionDate, Integer conid, String accountCode) {
-
         LambdaQueryWrapper<PositionHistory> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(PositionHistory::getAccountCode, accountCode)
                 .eq(PositionHistory::getConid, conid)
                 .eq(PositionHistory::getPositionDate, positionDate);
 
         return this.getOne(queryWrapper);
+    }
+
+    @Override
+    public IPage<PositionHistoryPage> queryPage(PositionHistoryQuery query) {
+        return this.baseMapper.queryPage(query.build(), query);
     }
 }

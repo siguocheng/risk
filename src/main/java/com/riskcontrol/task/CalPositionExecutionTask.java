@@ -110,7 +110,7 @@ public class CalPositionExecutionTask {
                     } else {
                         log.info("cal conid :{} SecType:{}", conid, contract.getSecType());
                         Boolean ret;
-                        if (contract.getSecType().equals(SetTypeEnum.OPT.getCode())) {
+                        if (contract.getSecType().equals(SetTypeEnum.OPT.getCode()) ) {
                             ret = this.handleNoDayTradesOpt(positionExecutionsDateConid, accountCode, date, contract);
                         } else {
                             ret = this.handleNoDayTrades(positionExecutionsDateConid, accountCode, date, conid);
@@ -121,13 +121,44 @@ public class CalPositionExecutionTask {
                     }
                 }
 
+                // 处理没有交易的持仓，计算未实现收益和当日未实现收益
                 LambdaQueryWrapper<Position> queryWrapper = new LambdaQueryWrapper<>();
                 queryWrapper.ne(Position::getPositionDate, date);
 
                 List<Position> positionHistoryNoTrade = positionService.list(queryWrapper);
 
                 // 计算未实现收益和当日已实现收益
+                for (Position position : positionHistoryNoTrade) {
+                    position.setPositionDate(date);
 
+                    BigDecimal marketPrice = resolveMarketClosePrice(position.getConid(), date);
+                    if (marketPrice == null) {
+                        continue;
+                    }
+                    String preTradeDate = tradeCalendarService.getPreTradeDate(date);
+                    BigDecimal preMarketPrice = resolveMarketClosePrice(position.getConid(), preTradeDate);
+
+                    if (preMarketPrice == null) {
+                        continue;
+                    }
+
+                    BigDecimal multiplier = BigDecimal.ONE;
+                    if (StringUtils.isNotEmpty(position.getMultiplier())) {
+                        multiplier = new BigDecimal(position.getMultiplier());
+                    }
+
+
+                    BigDecimal calDailyUnrealizedPnl = marketPrice.subtract(preMarketPrice).multiply(position.getCalPositionQty()).multiply(multiplier);
+
+                    BigDecimal calUnrealizedPnl = marketPrice.subtract(position.getCalAvgCost()).multiply(position.getCalPositionQty()).multiply(multiplier);
+                    position.setCalDailyUnrealizedPnl(calDailyUnrealizedPnl);
+                    position.setCalUnrealizedPnl(calUnrealizedPnl);
+
+                    positionService.updateById(position);
+
+                    PositionHistory positionHistory = new PositionHistory(position, position.getPositionDate());
+                    positionHistoryService.saveOrUpdatePositionHistory(positionHistory);
+                }
             }
         }
     }
@@ -143,6 +174,9 @@ public class CalPositionExecutionTask {
         initPositionCalFields(position);
 
         BigDecimal multiplier = BigDecimal.ONE;
+        if (StringUtils.isNotEmpty(position.getMultiplier())) {
+            multiplier = new BigDecimal(position.getMultiplier());
+        }
         BigDecimal calDailyRealizedPnl = BigDecimal.ZERO;
         BigDecimal marketPrice = resolveMarketClosePrice(conid, date);
         if (marketPrice == null) {
@@ -304,7 +338,7 @@ public class CalPositionExecutionTask {
 
             PositionExecutionInOut positionExecutionInOut = new PositionExecutionInOut();
             positionExecutionInOut.setPositionExecutionInId(inLot.getId());
-            positionExecutionInOut.setPositionExecutionOutId(position.getId());
+            positionExecutionInOut.setPositionExecutionOutId(trade.getId());
             positionExecutionInOut.setQty(matchQty);
             positionExecutionInOutService.saveOrUpdatePositionExecutionInOut(positionExecutionInOut);
         }

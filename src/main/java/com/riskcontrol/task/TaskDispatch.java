@@ -41,6 +41,21 @@ public class TaskDispatch {
 
         boolean flag = true;
 
+        try {
+            log.info("同步交易日start");
+            ibReconnectTask.synTradeDate();
+            saveTaskLog("同步交易日", "成功", "");
+            log.info("同步交易日end");
+        } catch (Exception e) {
+            flag = false;
+            saveTaskLog("同步交易日", e.getMessage(), "");
+            log.error("同步交易日异常", e);
+        }
+
+        if (!flag) {
+            return;
+        }
+
         // 同步账号
         try {
             log.info("{} 同步账号start", uuid);

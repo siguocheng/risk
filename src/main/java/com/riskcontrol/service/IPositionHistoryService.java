@@ -1,7 +1,10 @@
 package com.riskcontrol.service;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.riskcontrol.domain.PositionHistory;
+import com.riskcontrol.domain.vo.position.PositionHistoryPage;
+import com.riskcontrol.domain.vo.position.PositionHistoryQuery;
 
 /**
  * 持仓列表历史Service接口
@@ -20,4 +23,6 @@ public interface IPositionHistoryService extends IService<PositionHistory> {
     boolean saveOrUpdatePositionHistory(PositionHistory positionHistory);
 
     PositionHistory getPositionHistoryByKey(String positionDate, Integer conid, String accountCode);
+
+    IPage<PositionHistoryPage> queryPage(PositionHistoryQuery query);
 }

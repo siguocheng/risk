@@ -203,8 +203,8 @@ public class IbReconnectTask {
         // accountDownloadEnd
         log.info("synAccount reqAccountUpdates true:{}", accountCode);
         m_client.reqAccountUpdates(true, accountCode);
-//            Map<String,Object> result  = (Map<String,Object>)future.get(ibkrSynConfig.timeout, TimeUnit.MILLISECONDS);
-        Map<String,Object> result  = (Map<String,Object>)future.get();
+        Map<String,Object> result  = (Map<String,Object>)future.get(ibkrSynConfig.timeout, TimeUnit.MILLISECONDS);
+//        Map<String,Object> result  = (Map<String,Object>)future.get();
 
         log.info("synAccount reqAccountUpdates false:{}", accountCode);
         m_client.reqAccountUpdates(false, accountCode);
@@ -233,7 +233,7 @@ public class IbReconnectTask {
                 position.setCalPositionQty(positionCallbackVo.getPosition());
                 // 有合约乘数的合约
                 BigDecimal calAvgCost = BigDecimal.valueOf(positionCallbackVo.getAvgCost());
-                if (SetTypeEnum.haveMultiplier(positionCallbackVo.getSecType())) {
+                if (StringUtils.isNotEmpty(positionCallbackVo.getMultiplier())) {
                     calAvgCost = calAvgCost.divide(new BigDecimal(positionCallbackVo.getMultiplier()), 4, RoundingMode.HALF_EVEN);
                 }
                 position.setCalAvgCost(calAvgCost);
@@ -314,7 +314,7 @@ public class IbReconnectTask {
                 positionExecution.setOptType(PositionExecutionOptTypeEnum.IN.name());
                 positionExecution.setCalMarketPrice(position.getMarketPrice()); // 市场价格
                 // 买入价格
-                if (SetTypeEnum.haveMultiplier(contract.getSecType())) {
+                if (StringUtils.isNotEmpty(contract.getMultiplier())) {
                     positionExecution.setPrice(position.getAvgCost().divide(new BigDecimal(contract.getMultiplier()), 4, RoundingMode.HALF_EVEN));
                     positionExecution.setAvgPrice(positionExecution.getPrice());
                 } else {
@@ -1049,7 +1049,7 @@ public class IbReconnectTask {
         LocalDate yesterday = LocalDate.now();
 
         String endDateTime = DateUtil.toIbkrUtcEndTime(yesterday);          // 空 = 取最新数据 20260608 23:59:59
-        String durationStr = "1 Y";       // 回溯 1 个月 1 D(1 天)、1 W(1 周)、1 M(1 月)、1 Y(1 年)
+        String durationStr = "1 W";       // 回溯 1 个月 1 D(1 天)、1 W(1 周)、1 M(1 月)、1 Y(1 年)
         String barSize = "1 day";         // 日K线 1 secs / 1 min / 5 mins / 1 hour / 1 day
         String whatToShow = "TRADES";     // 取成交价格 MIDPOINT(中间价)、BID、ASK、TRADES(成交)
         int useRTH = 1;                   // 1仅常规交易时段 0包含盘前盘后交易时段
@@ -1094,8 +1094,10 @@ public class IbReconnectTask {
         }
 
         LambdaQueryWrapper<TradeCalendar> lambdaQueryWrapper = new LambdaQueryWrapper<>();
-        lambdaQueryWrapper.orderByAsc(TradeCalendar::getTradeDate);
+        lambdaQueryWrapper.last("limit 10");
+        lambdaQueryWrapper.orderByDesc(TradeCalendar::getTradeDate);
         List<TradeCalendar> list = tradeCalendarService.list(lambdaQueryWrapper);
+        Collections.reverse(list);
 
         Long preId = null;
         for (TradeCalendar tradeCalendar : list) {

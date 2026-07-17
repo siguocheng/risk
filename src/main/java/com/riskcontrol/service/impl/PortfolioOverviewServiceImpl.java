@@ -4,10 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.riskcontrol.constant.Constant;
 import com.riskcontrol.dao.PositionRelationHistoryMapper;
 import com.riskcontrol.dao.PositionRelationMapper;
-import com.riskcontrol.domain.Contract;
-import com.riskcontrol.domain.ContractMarketHistory;
-import com.riskcontrol.domain.PositionRelationHistory;
-import com.riskcontrol.domain.Trader;
+import com.riskcontrol.domain.*;
 import com.riskcontrol.domain.bo.PortfolioOverviewBo;
 import com.riskcontrol.domain.vo.*;
 import com.riskcontrol.domain.vo.dashboard.PressureTestVo;
@@ -18,17 +15,16 @@ import com.riskcontrol.domain.vo.dashboard.VarVo;
 import com.riskcontrol.enums.SetTypeEnum;
 import com.riskcontrol.service.*;
 import com.riskcontrol.util.DateUtil;
+import com.riskcontrol.util.TwrCalculator;
 import lombok.RequiredArgsConstructor;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -49,6 +45,8 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
 
     private final ISystemConfigService systemConfigService;
 
+    private final ITraderCapitalService traderCapitalService;
+
 
     @Override
     public PortfolioOverviewData queryPortfolioOverview(PortfolioOverviewBo portfolioOverviewBo) {
@@ -66,8 +64,10 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
             portfolioOverviewBo.setReferenceIndexRate(rate);
         }
 
+        Map<String, BigDecimal> growthRateMap = this.calGrowthRate(portfolioOverviewBo); // 增长率
+
         // 整合列表数据
-        List<PortfolioOverviewVo> portfolioOverviewList = this.getPortfolioOverviewList(portfolioOverviewBo);
+        List<PortfolioOverviewVo> portfolioOverviewList = this.getPortfolioOverviewList(portfolioOverviewBo, growthRateMap);
 
         if (portfolioOverviewList.size() > 0) {
             BigDecimal profitAmount = BigDecimal.ZERO; // 总的收益额
@@ -76,7 +76,8 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
                 profitAmount = profitAmount.add(portfolioOverviewVo.getPnl());
                 yearCapital = yearCapital.add(portfolioOverviewVo.getYearCapital());
             }
-            BigDecimal growthRate = profitAmount.divide(yearCapital, 4, RoundingMode.HALF_UP); // 增长率
+//            BigDecimal growthRate = profitAmount.divide(yearCapital, 4, RoundingMode.HALF_UP); // 增长率
+            BigDecimal growthRate = growthRateMap.get("ALL"); // 增长率
 
             viewData.setProfitAmount(profitAmount);
             viewData.setGrowthRate(growthRate);
@@ -87,6 +88,111 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
         viewData.setPortfolioOverviewList(portfolioOverviewList);
         return viewData;
     }
+
+    private Map<String, BigDecimal> calGrowthRate(PortfolioOverviewBo portfolioOverviewBo){
+
+        Map<String, BigDecimal> rateMap = new HashMap<>();
+
+        LambdaQueryWrapper<PositionRelationHistory> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.orderByDesc(PositionRelationHistory::getDailyDate);
+        List<PositionRelationHistory> historyList = positionRelationHistoryService.list(queryWrapper);
+
+        Map<String, List<PositionRelationHistory>> historyListDateMap = historyList.stream().collect(Collectors.groupingBy(PositionRelationHistory::getDailyDate));
+
+        List<TraderDailyDateMarketValueVo> valueList = new ArrayList<>();
+        for (String dailyDate : historyListDateMap.keySet()) {
+            List<PositionRelationHistory> positionRelationHistories = historyListDateMap.get(dailyDate);
+
+            Map<String, List<PositionRelationHistory>> historyListDateTradeMap = positionRelationHistories.stream().collect(Collectors.groupingBy(PositionRelationHistory::getTraderName));
+
+            for (String trader : historyListDateTradeMap.keySet()) {
+
+                // 取得当前时间交易员的本金
+                BigDecimal capital = traderCapitalService.getCapitalByTraderDate(trader, dailyDate);
+
+                List<PositionRelationHistory> positionRelationHistoriesTrader = historyListDateTradeMap.get(trader);
+
+                BigDecimal totalCostValue = BigDecimal.ZERO;
+                BigDecimal totalMarketValue = BigDecimal.ZERO;
+
+                for (PositionRelationHistory positionRelationHistory : positionRelationHistoriesTrader) {
+                    Contract contract = contractService.getByConid(positionRelationHistory.getConid());
+
+                    BigDecimal multiplier = BigDecimal.ONE;
+
+                    if (StringUtils.isNotEmpty(contract.getMultiplier())) {
+                        multiplier = new BigDecimal(contract.getMultiplier());
+                    }
+
+                    if (positionRelationHistory.getAvgCost() != null && positionRelationHistory.getPositionQty() != null) {
+                        BigDecimal costValue = positionRelationHistory.getAvgCost().multiply(positionRelationHistory.getPositionQty()).multiply(multiplier);
+                        totalCostValue = totalCostValue.add(costValue);
+                    }
+                    if (positionRelationHistory.getMarketPrice() != null && positionRelationHistory.getPositionQty() != null) {
+                        BigDecimal marketValue = positionRelationHistory.getMarketPrice().multiply(positionRelationHistory.getPositionQty()).multiply(multiplier);
+                        totalMarketValue = totalMarketValue.add(marketValue);
+                    }
+                }
+                BigDecimal dailyValue = capital.subtract(totalCostValue).add(totalMarketValue);
+
+                TraderDailyDateMarketValueVo traderDailyDateMarketValueVo = new TraderDailyDateMarketValueVo(trader, dailyDate, dailyValue);
+                valueList.add(traderDailyDateMarketValueVo);
+            }
+        }
+
+        Map<String, List<TraderDailyDateMarketValueVo>> valueListTrader = valueList.stream().collect(Collectors.groupingBy(TraderDailyDateMarketValueVo::getTraderName));
+
+        for (String traderName : valueListTrader.keySet()) {
+            List<TraderDailyDateMarketValueVo> traderDailyDateMarketValueVos = valueListTrader.get(traderName);
+            traderDailyDateMarketValueVos.sort(Comparator.comparing(TraderDailyDateMarketValueVo::getDailyDate));
+
+            if (traderDailyDateMarketValueVos.size() == 1) {
+                continue;
+            }
+            List<PeriodSegment> periodSegmentTrader = new ArrayList<>();
+            for (int i = 0; i < traderDailyDateMarketValueVos.size(); i++) {
+                if (i == traderDailyDateMarketValueVos.size() -1) {
+
+                } else {
+                    TraderDailyDateMarketValueVo curValue = traderDailyDateMarketValueVos.get(i);
+                    TraderDailyDateMarketValueVo postValue = traderDailyDateMarketValueVos.get(i+1);
+
+                    PeriodSegment periodSegment = new PeriodSegment(curValue.getMarketValue(), postValue.getMarketValue(), BigDecimal.ZERO);
+                    periodSegmentTrader.add(periodSegment);
+                }
+            }
+            BigDecimal traderRate = TwrCalculator.calculateTotalTwr(periodSegmentTrader);
+
+            rateMap.put(traderName, traderRate);
+        }
+        
+        Map<String, List<TraderDailyDateMarketValueVo>> valueListDailyDate = valueList.stream().collect(Collectors.groupingBy(TraderDailyDateMarketValueVo::getDailyDate, TreeMap::new, Collectors.toList()));;
+
+        List<PeriodSegment> periodSegmentAll = new ArrayList<>();
+        BigDecimal preValue = null;
+        for (String dailyDate : valueListDailyDate.keySet()) {
+            List<TraderDailyDateMarketValueVo> traderDailyDateMarketValueVos = valueListDailyDate.get(dailyDate);
+            BigDecimal curValue = BigDecimal.ZERO;
+            for (TraderDailyDateMarketValueVo traderDailyDateMarketValueVo : traderDailyDateMarketValueVos) {
+                BigDecimal marketValue = traderDailyDateMarketValueVo.getMarketValue();
+                curValue = curValue.add(marketValue);
+            }
+
+            if (preValue == null) {
+                preValue = curValue;
+            } else {
+                PeriodSegment periodSegment = new PeriodSegment(preValue, curValue, BigDecimal.ZERO);
+                periodSegmentAll.add(periodSegment);
+            }
+        }
+
+        BigDecimal allRate = TwrCalculator.calculateTotalTwr(periodSegmentAll);
+
+        rateMap.put("ALL", allRate);
+
+        return rateMap;
+    }
+
 
     private void handleStartEndDate(PortfolioOverviewBo portfolioOverviewBo){
         if (portfolioOverviewBo.getDateType() != null) {
@@ -154,7 +260,7 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
         return chartList;
     }
 
-    private List<PortfolioOverviewVo> getPortfolioOverviewList(PortfolioOverviewBo portfolioOverviewBo){
+    private List<PortfolioOverviewVo> getPortfolioOverviewList(PortfolioOverviewBo portfolioOverviewBo, Map<String, BigDecimal> growthRateMap){
 
 //        if (portfolioOverviewBo.getDateType() != null) {
 //            portfolioOverviewBo.setDailyDate(DateUtil.localDateToString(LocalDate.now()));
@@ -224,7 +330,8 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
             data.setUnrealizedPnl(unrealizedPnl);
             data.setPnl(data.getRealizedPnl().add(data.getUnrealizedPnl()));
             data.setCost(sumCost);
-            data.setGrowthRate(grossPositionValue.subtract(yearCapital).divide(yearCapital, 4, RoundingMode.HALF_UP));
+//            data.setGrowthRate(grossPositionValue.subtract(yearCapital).divide(yearCapital, 4, RoundingMode.HALF_UP));
+            data.setGrowthRate(growthRateMap.get(s));
             data.setDeltaGrowthRate(deltaExposure.subtract(yearCapital).divide(yearCapital, 4, RoundingMode.HALF_UP));
             data.setExcessReturn(portfolioOverviewBo.getReferenceIndexRate().subtract(data.getGrowthRate()));
 
@@ -412,12 +519,21 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
                 BigDecimal totalCostValue = BigDecimal.ZERO;
                 BigDecimal totalMarketValue = BigDecimal.ZERO;
                 for (PositionRelationHistory history : dayHistories) {
+
+                    Contract contract = contractService.getByConid(history.getConid());
+
+                    BigDecimal multiplier = BigDecimal.ONE;
+
+                    if (StringUtils.isNotEmpty(contract.getMultiplier())) {
+                        multiplier = new BigDecimal(contract.getMultiplier());
+                    }
+
                     if (history.getAvgCost() != null && history.getPositionQty() != null) {
-                        BigDecimal costValue = history.getAvgCost().multiply(history.getPositionQty());
+                        BigDecimal costValue = history.getAvgCost().multiply(history.getPositionQty()).multiply(multiplier);
                         totalCostValue = totalCostValue.add(costValue);
                     }
                     if (history.getMarketPrice() != null && history.getPositionQty() != null) {
-                        BigDecimal marketValue = history.getMarketPrice().multiply(history.getPositionQty());
+                        BigDecimal marketValue = history.getMarketPrice().multiply(history.getPositionQty()).multiply(multiplier);
                         totalMarketValue = totalMarketValue.add(marketValue);
                     }
                 }
