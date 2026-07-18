@@ -89,6 +89,14 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
         return viewData;
     }
 
+    private BigDecimal getTraderCapital(String trader, String dailyDate){
+        BigDecimal capital = traderCapitalService.getCapitalByTraderDate(trader, dailyDate);
+        if (capital == null) {
+            capital = traderService.getDetailByTrader(trader).getCapital();
+        }
+        return capital;
+    }
+
     private Map<String, BigDecimal> calGrowthRate(PortfolioOverviewBo portfolioOverviewBo){
 
         Map<String, BigDecimal> rateMap = new HashMap<>();
@@ -108,7 +116,7 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
             for (String trader : historyListDateTradeMap.keySet()) {
 
                 // 取得当前时间交易员的本金
-                BigDecimal capital = traderCapitalService.getCapitalByTraderDate(trader, dailyDate);
+                BigDecimal capital = this.getTraderCapital(trader, dailyDate);
 
                 List<PositionRelationHistory> positionRelationHistoriesTrader = historyListDateTradeMap.get(trader);
 

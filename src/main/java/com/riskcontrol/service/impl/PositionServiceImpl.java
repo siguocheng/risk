@@ -96,7 +96,8 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
         Integer operateType = request.getOperateType();
 
         if (operateType == 1) {
-            return this.allocatePositionByPosition(request);
+//            return this.allocatePositionByPosition(request);
+            return true;
         } else if (operateType == 2) {
             return this.allocatePositionByExecution(request);
         } else {
@@ -200,7 +201,8 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
         return true;
     }
 
-    private Boolean allocatePositionByExecution(PositionAllocateRequest request) {
+    @Transactional(rollbackFor = Exception.class)
+    public Boolean allocatePositionByExecution(PositionAllocateRequest request) {
         PositionExecution positionExecution = positionExecutionService.getById(request.getId());
         if (positionExecution == null) {
             throw new BusinessException("交易记录不存在");

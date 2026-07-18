@@ -108,7 +108,8 @@ public class PositionRelationHistoryServiceImpl extends ServiceImpl<PositionRela
 
     @Override
     public IPage<PositionRelationHistoryPage> queryPage(PositionRelationHistoryQuery query) {
-        return this.baseMapper.queryPage(query.build(), query);
+        IPage<PositionRelationHistoryPage> page = query.build();
+        return this.baseMapper.queryPage(page, query);
     }
 
     @Override

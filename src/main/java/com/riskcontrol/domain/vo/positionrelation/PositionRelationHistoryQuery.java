@@ -37,6 +37,8 @@ public class PositionRelationHistoryQuery extends BasePageQuery {
     @Schema(description = "区域")
     private String zoneType;
 
+    private Integer dateType;
+
     public String getSecType(){
         SetTypeEnum byName = SetTypeEnum.getByName(secType);
         if (byName != null) {

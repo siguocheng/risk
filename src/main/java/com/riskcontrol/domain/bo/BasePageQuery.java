@@ -49,10 +49,10 @@ public class BasePageQuery {
             pageNum = DEFAULT_PAGE_NUM;
         }
         Page<T> page = new Page<>(pageNum, pageSize);
-        List<OrderItem> orderItems = buildOrderItem();
-        if (CollUtil.isNotEmpty(orderItems)) {
-            page.addOrder(orderItems);
-        }
+//        List<OrderItem> orderItems = buildOrderItem();
+//        if (CollUtil.isNotEmpty(orderItems)) {
+//            page.addOrder(orderItems);
+//        }
         return page;
     }
 
