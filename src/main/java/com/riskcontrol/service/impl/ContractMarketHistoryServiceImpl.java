@@ -30,12 +30,30 @@ public class ContractMarketHistoryServiceImpl extends ServiceImpl<ContractMarket
 
         ContractMarketHistory one = this.getOne(queryWrapper);
         if (one != null) {
-            // 存在则更新
-            return true;
-//            return this.update(contractMarket, queryWrapper);
+            if (contractMarket.getDelta() != null) {
+                one.setDelta(contractMarket.getDelta());
+            }
+            if (contractMarket.getImpliedVol() != null) {
+                one.setImpliedVol(contractMarket.getImpliedVol());
+            }
+            if (contractMarket.getGamma() != null) {
+                one.setGamma(contractMarket.getGamma());
+            }
+            if (contractMarket.getVega() != null) {
+                one.setVega(contractMarket.getVega());
+            }
+            if (contractMarket.getTheta() != null) {
+                one.setTheta(contractMarket.getTheta());
+            }
+            if (contractMarket.getPriceClose() != null) {
+                one.setPriceClose(contractMarket.getPriceClose());
+            }
+            if (contractMarket.getPositionMarketPrice() != null) {
+                one.setPositionMarketPrice(contractMarket.getPositionMarketPrice());
+            }
+            return this.updateById(one);
         } else {
-            // 不存在则新增
-            return this.save(contractMarket);
+            return false;
         }
     }
 
@@ -91,6 +109,25 @@ public class ContractMarketHistoryServiceImpl extends ServiceImpl<ContractMarket
 
         }
 
+        return null;
+    }
+
+    @Override
+    public BigDecimal getStkPriceCloseBySymbolAndDate(String symbol, String dailyDate) {
+        LambdaQueryWrapper<ContractMarketHistory> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(ContractMarketHistory::getSymbol, symbol);
+        queryWrapper.eq(ContractMarketHistory::getSecType, "STK");
+        queryWrapper.eq(ContractMarketHistory::getDailyDate, dailyDate);
+        queryWrapper.last("limit 1");
+
+        ContractMarketHistory contractMarketHistory = this.getOne(queryWrapper);
+        if (contractMarketHistory != null) {
+            if (contractMarketHistory.getPriceClose() != null) {
+                return contractMarketHistory.getPriceClose();
+            } else {
+                return contractMarketHistory.getPositionMarketPrice();
+            }
+        }
         return null;
     }
 }

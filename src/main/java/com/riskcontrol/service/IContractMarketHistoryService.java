@@ -20,4 +20,6 @@ public interface IContractMarketHistoryService extends IService<ContractMarketHi
     List<ContractMarketHistory> listContractMarketHistoryByConidAndDate(List<Integer> conids, String startDate, String endDate);
 
     BigDecimal getMarketPriceByConidAndDate(int conid, String dailyDate);
+
+    BigDecimal getStkPriceCloseBySymbolAndDate(String symbol, String dailyDate);
 }

@@ -405,7 +405,8 @@ public class CalPositionExecutionTask {
         openLot.setExecutionDate(trade.getExecutionDate());
         openLot.setStatus(1);
         openLot.setOrderId(trade.getId().intValue());
-        openLot.setExecId(trade.getExecId());
+        openLot.setExecId(trade.getExecId() + "1");
+        openLot.setSecType(position.getSecType());
         handleNoDayTradesOptIn(position, openLot, multiplier, marketPrice);
         positionExecutionService.save(openLot);
     }

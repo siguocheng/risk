@@ -9,6 +9,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 /**
  * 合约Service业务层处理
  *
@@ -37,5 +39,10 @@ public class ContractMarketServiceImpl extends ServiceImpl<ContractMarketMapper,
         } else {
             return this.save(contractMarket);
         }
+    }
+
+    @Override
+    public List<ContractMarket> listOptWithoutStk() {
+        return this.getBaseMapper().listOptWithoutStk();
     }
 }

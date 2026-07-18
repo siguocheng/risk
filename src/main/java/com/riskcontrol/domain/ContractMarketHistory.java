@@ -81,4 +81,7 @@ public class ContractMarketHistory extends BaseEntity{
     @TableField(value = "position_market_price")
     private BigDecimal positionMarketPrice;
 
+    @Schema(description = "类型 STK=股票、OPT=期权、FUT=期货、FX=外汇")
+    @TableField(value = "sec_type")
+    private String secType;
 }

@@ -15,4 +15,11 @@ public class TaskDispatchTest {
     public void test(){
         taskDispatch.execute();
     }
+
+    public static void main(String[] args) {
+        String a = "2025-09-29";
+        String b = "2026-07-02";
+
+        System.out.println(a.compareTo(b));
+    }
 }

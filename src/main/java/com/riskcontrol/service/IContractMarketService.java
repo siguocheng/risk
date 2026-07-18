@@ -3,6 +3,8 @@ package com.riskcontrol.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.riskcontrol.domain.ContractMarket;
 
+import java.util.List;
+
 /**
  * 合约Service接口
  *
@@ -14,4 +16,6 @@ public interface IContractMarketService extends IService<ContractMarket> {
     ContractMarket getByConid(Integer conid);
 
     boolean saveOrUpdateByConid(ContractMarket contractMarket);
+
+    List<ContractMarket> listOptWithoutStk();
 }

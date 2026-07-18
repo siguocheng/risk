@@ -10,6 +10,7 @@
         <result column="currency" jdbcType="VARCHAR" property="currency" />
         <result column="contract_market_last_date" jdbcType="DATE" property="contractMarketLastDate" />
         <result column="reference_index" jdbcType="INTEGER" property="referenceIndex" />
+        <result column="local_symbol" jdbcType="VARCHAR" property="localSymbol" />
         <result column="deleted" jdbcType="TINYINT" property="deleted" />
         <result column="create_id" jdbcType="BIGINT" property="createId" />
         <result column="create_time" jdbcType="TIMESTAMP" property="createTime" />
@@ -19,6 +20,26 @@
 
     <sql id="Base_Column_List">
         id, conid, symbol, sec_type, exchange, currency, contract_market_last_date, 
-        reference_index, deleted, create_id, create_time, modified_id, modified_time
+        reference_index, local_symbol, deleted, create_id, create_time, modified_id, modified_time
     </sql>
+
+    <select id="listOptWithoutStk" resultMap="BaseResultMap">
+        SELECT
+        <include refid="Base_Column_List"/>
+        FROM
+        contract_market cm
+        WHERE
+        cm.sec_type = 'OPT'
+        AND cm.deleted = 0
+        AND NOT EXISTS (
+            SELECT
+            1
+            FROM
+            contract_market
+            WHERE
+            contract_market.sec_type = 'STK'
+            AND contract_market.deleted = 0
+            AND cm.symbol = contract_market.symbol
+        )
+    </select>
 </mapper>

@@ -3,6 +3,8 @@ package com.riskcontrol.dao;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.riskcontrol.domain.ContractMarket;
 
+import java.util.List;
+
 /**
  * 合约Mapper接口
  *
@@ -11,4 +13,5 @@ import com.riskcontrol.domain.ContractMarket;
  */
 public interface ContractMarketMapper extends BaseMapper<ContractMarket> {
 
+    List<ContractMarket> listOptWithoutStk();
 }
