@@ -72,8 +72,6 @@ public class TaskDispatch {
             return;
         }
 
-
-
         // 同步持仓数据
         try {
             log.info("{} 同步持仓start", uuid);

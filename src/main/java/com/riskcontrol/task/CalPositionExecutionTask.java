@@ -65,6 +65,8 @@ public class CalPositionExecutionTask {
             // 取得账号下的交易信息
             List<PositionExecution> positionExecutionsAccountCode = this.listPositionExecution(accountCode);
             if (positionExecutionsAccountCode.isEmpty()) {
+//                String lastTradeDate = tradeCalendarService.getLastTradeDate();
+//                this.handleNoTradePosition(lastTradeDate, accountCode);
                 continue;
             }
 
@@ -127,48 +129,54 @@ public class CalPositionExecutionTask {
                     }
                 }
 
-                // 处理没有交易的持仓，计算未实现收益和当日未实现收益
-                LambdaQueryWrapper<Position> queryWrapper = new LambdaQueryWrapper<>();
-                queryWrapper.ne(Position::getPositionDate, date);
-
-                List<Position> positionHistoryNoTrade = positionService.list(queryWrapper);
-
-                // 计算未实现收益和当日已实现收益
-                for (Position position : positionHistoryNoTrade) {
-                    position.setPositionDate(date);
-
-                    BigDecimal marketPrice = resolveMarketClosePrice(position.getConid(), date);
-                    if (marketPrice == null) {
-                        continue;
-                    }
-                    String preTradeDate = tradeCalendarService.getPreTradeDate(date);
-                    BigDecimal preMarketPrice = resolveMarketClosePrice(position.getConid(), preTradeDate);
-
-                    if (preMarketPrice == null) {
-                        continue;
-                    }
-
-                    BigDecimal multiplier = BigDecimal.ONE;
-                    if (StringUtils.isNotEmpty(position.getMultiplier())) {
-                        multiplier = new BigDecimal(position.getMultiplier());
-                    }
-
-
-                    BigDecimal calDailyUnrealizedPnl = marketPrice.subtract(preMarketPrice).multiply(position.getCalPositionQty()).multiply(multiplier);
-
-                    BigDecimal calUnrealizedPnl = marketPrice.subtract(position.getCalAvgCost()).multiply(position.getCalPositionQty()).multiply(multiplier);
-                    position.setCalDailyUnrealizedPnl(calDailyUnrealizedPnl);
-                    position.setCalUnrealizedPnl(calUnrealizedPnl);
-
-                    positionService.updateById(position);
-
-                    PositionHistory positionHistory = new PositionHistory(position, position.getPositionDate());
-                    positionHistoryService.saveOrUpdatePositionHistory(positionHistory);
-                }
+                this.handleNoTradePosition(date, accountCode);
             }
         }
 
+
+
         this.handleTraderCapital();
+    }
+
+    private void handleNoTradePosition(String date, String accountCode){
+        // 处理没有交易的持仓，计算未实现收益和当日未实现收益
+        LambdaQueryWrapper<Position> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.ne(Position::getPositionDate, date);
+        queryWrapper.ne(Position::getAccountCode, accountCode);
+
+        List<Position> positionHistoryNoTrade = positionService.list(queryWrapper);
+
+        // 计算未实现收益和当日已实现收益
+        for (Position position : positionHistoryNoTrade) {
+            position.setPositionDate(date);
+
+            BigDecimal marketPrice = resolveMarketClosePrice(position.getConid(), date);
+            if (marketPrice == null) {
+                continue;
+            }
+            String preTradeDate = tradeCalendarService.getPreTradeDate(date);
+            BigDecimal preMarketPrice = resolveMarketClosePrice(position.getConid(), preTradeDate);
+
+            if (preMarketPrice == null) {
+                continue;
+            }
+
+            BigDecimal multiplier = BigDecimal.ONE;
+            if (StringUtils.isNotEmpty(position.getMultiplier())) {
+                multiplier = new BigDecimal(position.getMultiplier());
+            }
+
+            BigDecimal calDailyUnrealizedPnl = marketPrice.subtract(preMarketPrice).multiply(position.getCalPositionQty()).multiply(multiplier);
+
+            BigDecimal calUnrealizedPnl = marketPrice.subtract(position.getCalAvgCost()).multiply(position.getCalPositionQty()).multiply(multiplier);
+            position.setCalDailyUnrealizedPnl(calDailyUnrealizedPnl);
+            position.setCalUnrealizedPnl(calUnrealizedPnl);
+
+            positionService.updateById(position);
+
+            PositionHistory positionHistory = new PositionHistory(position, position.getPositionDate());
+            positionHistoryService.saveOrUpdatePositionHistory(positionHistory);
+        }
     }
 
     private void handleTraderCapital(){

@@ -46,4 +46,12 @@ public class TradeCalendarServiceImpl extends ServiceImpl<TradeCalendarMapper, T
         }
 
     }
+
+    @Override
+    public String getLastTradeDate() {
+        TradeCalendar current = this.getOne(new LambdaQueryWrapper<TradeCalendar>()
+                .eq(TradeCalendar::getType, 1).last("limit 1").orderByDesc(TradeCalendar::getTradeDate));
+
+        return current.getTradeDate();
+    }
 }

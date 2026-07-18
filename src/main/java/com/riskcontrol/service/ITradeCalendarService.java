@@ -15,4 +15,5 @@ public interface ITradeCalendarService extends IService<TradeCalendar> {
 
     void saveOrUpdateTradeCalendar(TradeCalendar tradeCalendar);
 
+    String getLastTradeDate();
 }
