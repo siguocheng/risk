@@ -203,9 +203,6 @@ public class PositionExecution extends BaseEntity {
         this.executionDate = DateUtil.localDateToString(DateUtil.stringToLocalDate(execution.getTime().substring(0,8), "yyyyMMdd"));
         this.remainQty = shares;
         this.allocateRemainQty = shares;
-
-        this.status = 0;
-
         if (commissionReport != null) {
             this.commissionAndFees = BigDecimal.valueOf(commissionReport.getCommissionAndFees());
             this.currency = commissionReport.getCurrency();

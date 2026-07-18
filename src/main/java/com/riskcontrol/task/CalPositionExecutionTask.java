@@ -605,9 +605,9 @@ public class CalPositionExecutionTask {
         Position position = positionService.getPositionByConid(accountCode, conid);
         initPositionCalFields(position);
 
-        BigDecimal marketPrice = resolveMarketClosePrice(conid, date);
-        String preTradeDate = tradeCalendarService.getPreTradeDate(date);
-        BigDecimal preMarketPrice = resolveMarketClosePrice(conid, preTradeDate);
+        BigDecimal marketPrice = resolveMarketClosePrice(conid, date); // 当前交易日的市场价
+        String preTradeDate = tradeCalendarService.getPreTradeDate(date); // 上一个交易日
+        BigDecimal preMarketPrice = resolveMarketClosePrice(conid, preTradeDate); // 上一个交易日的市场价
 
         if (marketPrice != null) {
 

@@ -608,7 +608,7 @@ public class IbReconnectTask {
                 contractMarketHistoryService.saveOrUpdateContractMarket(history);
                 if (StringUtils.isEmpty(dailyDate)) {
                     dailyDate = time;
-                } else if (time.compareTo(dailyDate) > 1){
+                } else if (time.compareTo(dailyDate) > 0){
                     dailyDate = time;
                 }
             }

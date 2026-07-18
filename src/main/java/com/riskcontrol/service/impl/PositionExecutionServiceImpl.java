@@ -50,6 +50,7 @@ public class PositionExecutionServiceImpl extends ServiceImpl<PositionExecutionM
         if (count > 0) {
             return this.update(positionExecution, queryWrapper);
         } else {
+            positionExecution.setStatus(0);
             return this.save(positionExecution);
         }
     }
