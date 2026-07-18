@@ -34,11 +34,11 @@ public class PositionExecutionQuery extends BasePageQuery {
 
     @Schema(description = "开始时间，默认当年第一天")
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private String startDate = DateUtil.localDateToString(LocalDate.now().with(TemporalAdjusters.firstDayOfMonth()));
+    private String startDate;
 
     @Schema(description = "结束时间，默认是当天")
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private String endDate = DateUtil.localDateToString(LocalDate.now());
+    private String endDate;
 
     @Schema(description = "标的")
     private List<Integer> conids;
@@ -48,6 +48,8 @@ public class PositionExecutionQuery extends BasePageQuery {
 
     @Schema(description = "资产类型")
     private String secType;
+
+    private Integer dateType;
 
     public String getSecType(){
         SetTypeEnum byName = SetTypeEnum.getByName(secType);

@@ -209,21 +209,25 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
 
     private void handleStartEndDate(PortfolioOverviewBo portfolioOverviewBo){
         if (portfolioOverviewBo.getDateType() != null) {
+            // 当日或者近7日
             if (portfolioOverviewBo.getDateType() == 1 || portfolioOverviewBo.getDateType() == 7) {
                 portfolioOverviewBo.setEndDate(DateUtil.localDateToString(LocalDate.now()));
                 portfolioOverviewBo.setStartDate(DateUtil.localDateToString(LocalDate.now().minusDays(30)));
-            } else if (portfolioOverviewBo.getDateType() == 11) {
+            }
+            // 当年1月1日开始
+            else if (portfolioOverviewBo.getDateType() == 11) {
                 portfolioOverviewBo.setEndDate(DateUtil.localDateToString(LocalDate.now()));
                 portfolioOverviewBo.setStartDate(DateUtil.localDateToString(LocalDate.now().with(TemporalAdjusters.firstDayOfYear())));
-            } else if (portfolioOverviewBo.getDateType() == 365) {
+            }
+            // 近1年
+            else if (portfolioOverviewBo.getDateType() == 365) {
                 portfolioOverviewBo.setEndDate(DateUtil.localDateToString(LocalDate.now()));
                 portfolioOverviewBo.setStartDate(DateUtil.localDateToString(LocalDate.now().minusDays(365)));
-            } else if (portfolioOverviewBo.getDateType() == 30) {
+            }
+            // 近30天
+            else if (portfolioOverviewBo.getDateType() == 30) {
                 portfolioOverviewBo.setEndDate(DateUtil.localDateToString(LocalDate.now()));
                 portfolioOverviewBo.setStartDate(DateUtil.localDateToString(LocalDate.now().minusDays(180)));
-            } else if (portfolioOverviewBo.getDateType() == 365) {
-                portfolioOverviewBo.setEndDate(DateUtil.localDateToString(LocalDate.now()));
-                portfolioOverviewBo.setStartDate(DateUtil.localDateToString(LocalDate.now().minusDays(365)));
             }
         }
     }
@@ -333,7 +337,7 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
             }
 
             // 现金=投入本金-每一个持仓的总成本价-佣金及各项费用
-            availableFunds = data.getYearCapital().subtract(sumPositionCost);
+            availableFunds = data.getYearCapital().subtract(sumPositionCost).subtract(sumCost);
 
             data.setGrossPositionValue(grossPositionValue);
             data.setDeltaExposure(deltaExposure);

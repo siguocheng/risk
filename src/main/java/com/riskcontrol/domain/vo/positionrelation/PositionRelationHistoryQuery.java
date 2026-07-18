@@ -1,5 +1,6 @@
 package com.riskcontrol.domain.vo.positionrelation;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.riskcontrol.domain.bo.BasePageQuery;
 import com.riskcontrol.enums.SetTypeEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -38,6 +39,14 @@ public class PositionRelationHistoryQuery extends BasePageQuery {
     private String zoneType;
 
     private Integer dateType;
+
+    @Schema(description = "开始时间，默认当年第一天")
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private String startDate;
+
+    @Schema(description = "结束时间，默认是当天")
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private String endDate;
 
     public String getSecType(){
         SetTypeEnum byName = SetTypeEnum.getByName(secType);

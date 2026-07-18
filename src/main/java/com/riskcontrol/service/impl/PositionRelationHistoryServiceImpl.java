@@ -10,6 +10,7 @@ import com.riskcontrol.domain.vo.dashboard.AssetSecTypeRatio;
 import com.riskcontrol.domain.vo.dashboard.DailyProfitQuery;
 import com.riskcontrol.domain.vo.dashboard.DailyProfitTop10;
 import com.riskcontrol.domain.vo.dashboard.RiskControlQuery;
+import com.riskcontrol.domain.vo.positionexecution.PositionExecutionQuery;
 import com.riskcontrol.domain.vo.positionrelation.PositionRelationHistoryPage;
 import com.riskcontrol.domain.vo.positionrelation.PositionRelationHistoryQuery;
 import com.riskcontrol.service.IPositionRelationHistoryService;
@@ -22,6 +23,8 @@ import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.List;
 
 /**
@@ -109,7 +112,36 @@ public class PositionRelationHistoryServiceImpl extends ServiceImpl<PositionRela
     @Override
     public IPage<PositionRelationHistoryPage> queryPage(PositionRelationHistoryQuery query) {
         IPage<PositionRelationHistoryPage> page = query.build();
+        this.handleStartEndDate(query);
         return this.baseMapper.queryPage(page, query);
+    }
+
+    private void handleStartEndDate(PositionRelationHistoryQuery query){
+        if (query.getDateType() != null) {
+            // 当日或者近7日
+            if (query.getDateType() == 1) {
+                query.setEndDate(DateUtil.localDateToString(LocalDate.now()));
+                query.setStartDate(DateUtil.localDateToString(LocalDate.now()));
+            } else if (query.getDateType() == 7) {
+                query.setEndDate(DateUtil.localDateToString(LocalDate.now()));
+                query.setStartDate(DateUtil.localDateToString(LocalDate.now().minusDays(6)));
+            }
+            // 当年1月1日开始
+            else if (query.getDateType() == 11) {
+                query.setEndDate(DateUtil.localDateToString(LocalDate.now()));
+                query.setStartDate(DateUtil.localDateToString(LocalDate.now().with(TemporalAdjusters.firstDayOfYear())));
+            }
+            // 近1年
+            else if (query.getDateType() == 365) {
+                query.setEndDate(DateUtil.localDateToString(LocalDate.now()));
+                query.setStartDate(DateUtil.localDateToString(LocalDate.now().minusDays(365)));
+            }
+            // 近30天
+            else if (query.getDateType() == 30) {
+                query.setEndDate(DateUtil.localDateToString(LocalDate.now()));
+                query.setStartDate(DateUtil.localDateToString(LocalDate.now().minusDays(30)));
+            }
+        }
     }
 
     @Override

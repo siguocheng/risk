@@ -91,6 +91,12 @@
             <if test="query.secType != null and query.secType != ''">
                 AND c.sec_type = #{query.secType}
             </if>
+            <if test="query.startDate != null and query.startDate != ''">
+                AND prh.daily_date >= #{query.startDate}
+            </if>
+            <if test="query.endDate != null and query.endDate != ''">
+                AND prh.daily_date &lt;= #{query.endDate}
+            </if>
         ORDER BY prh.daily_date DESC
     </select>
 
