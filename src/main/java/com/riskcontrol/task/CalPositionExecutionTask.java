@@ -142,7 +142,7 @@ public class CalPositionExecutionTask {
         // 处理没有交易的持仓，计算未实现收益和当日未实现收益
         LambdaQueryWrapper<Position> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.ne(Position::getPositionDate, date);
-        queryWrapper.ne(Position::getAccountCode, accountCode);
+        queryWrapper.eq(Position::getAccountCode, accountCode);
 
         List<Position> positionHistoryNoTrade = positionService.list(queryWrapper);
 
@@ -171,6 +171,7 @@ public class CalPositionExecutionTask {
             BigDecimal calUnrealizedPnl = marketPrice.subtract(position.getCalAvgCost()).multiply(position.getCalPositionQty()).multiply(multiplier);
             position.setCalDailyUnrealizedPnl(calDailyUnrealizedPnl);
             position.setCalUnrealizedPnl(calUnrealizedPnl);
+            position.setCalDailyRealizedPnl(BigDecimal.ZERO);
 
             positionService.updateById(position);
 
