@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 /**
  * 账户币种Service业务层处理
  *
@@ -36,5 +38,15 @@ public class AccountSummaryServiceImpl extends ServiceImpl<AccountSummaryMapper,
             // 不存在则新增
             return this.save(accountSummary);
         }
+    }
+
+    @Override
+    public List<AccountSummary> queryAccountSummary(List<String> accountCodes) {
+        LambdaQueryWrapper<AccountSummary> queryWrapper = new LambdaQueryWrapper<>();
+        if (accountCodes != null && accountCodes.size() > 0) {
+            queryWrapper.in(AccountSummary::getAccountCode, accountCodes);
+        }
+
+        return this.list(queryWrapper);
     }
 }

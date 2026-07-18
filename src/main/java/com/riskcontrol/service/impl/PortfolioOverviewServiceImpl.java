@@ -19,6 +19,7 @@ import com.riskcontrol.util.TwrCalculator;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -46,6 +47,10 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
     private final ISystemConfigService systemConfigService;
 
     private final ITraderCapitalService traderCapitalService;
+
+    private final IAccountSummaryService accountSummaryService;
+
+    private final IPositionHistoryService positionHistoryService;
 
 
     @Override
@@ -458,18 +463,18 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
 
         result.setVix(this.getLastVix());
         VarVo var = new VarVo ();
-        var.setAmount(new BigDecimal("666.66"));
+        var.setAmount(new BigDecimal("0"));
         var.setConfidence(0.99);
         var.setDay(3);
-        var.setTotalAssetRatio(new BigDecimal("0.032"));
+        var.setTotalAssetRatio(new BigDecimal("0"));
 
         PressureTestVo pressureTestVo1 = new PressureTestVo();
         pressureTestVo1.setScene("2020格斯场景");
-        pressureTestVo1.setAmount(new BigDecimal("92000000"));
+        pressureTestVo1.setAmount(new BigDecimal("0"));
 
         PressureTestVo pressureTestVo2 = new PressureTestVo();
         pressureTestVo2.setScene("加息暴跌场景");
-        pressureTestVo2.setAmount(new BigDecimal("75000000"));
+        pressureTestVo2.setAmount(new BigDecimal("0"));
 
         List<PressureTestVo> pressureTestVo = new ArrayList<>();
         pressureTestVo.add(pressureTestVo1);
@@ -477,10 +482,28 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
 
 
         result.setVar(var);
-        result.setEs(new BigDecimal("7777"));
-        result.setMaxDrawdown(new BigDecimal("0.187"));
-        result.setIv(new BigDecimal("0.243"));
-        result.setMarginRatio(new BigDecimal("0.78"));
+        result.setEs(new BigDecimal("0"));
+        result.setIv(new BigDecimal("0"));
+
+        // 计算最大回撤
+        BigDecimal maxDrawdown = this.calculateMaxDrawdownAccount(query.getAccountCodes());
+        result.setMaxDrawdown(maxDrawdown);
+
+        // 计算保证金使用率
+        List<BigDecimal> marginRatios = new ArrayList<>();
+        BigDecimal marginRatioSum = BigDecimal.ZERO;
+        List<AccountSummary> accountSummarys = accountSummaryService.queryAccountSummary(query.getAccountCodes());
+
+        for (AccountSummary accountSummary : accountSummarys) {
+            if (accountSummary != null && accountSummary.getCushion() != null) {
+                marginRatios.add(accountSummary.getCushion());
+                marginRatioSum = marginRatioSum.add(accountSummary.getCushion());
+            }
+        }
+
+        if (!marginRatios.isEmpty()) {
+            result.setMarginRatio(BigDecimal.ONE.subtract(marginRatioSum.divide(new BigDecimal(marginRatios.size()), 2, RoundingMode.HALF_UP)).multiply(new BigDecimal(100)));
+        }
 
         return result;
     }
@@ -784,5 +807,53 @@ public class PortfolioOverviewServiceImpl implements IPortfolioOverviewService {
         }
 
         return deltaExposure;
+    }
+
+    private BigDecimal getOrDefault(BigDecimal value, BigDecimal defaultValue) {
+        return value != null ? value : defaultValue;
+    }
+
+    private BigDecimal calculateMaxDrawdownAccount(List<String> accountCodes) {
+        if (CollectionUtils.isEmpty(accountCodes)) {
+            return BigDecimal.ZERO;
+        }
+
+        LambdaQueryWrapper<PositionHistory> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.in(PositionHistory::getAccountCode, accountCodes);
+        queryWrapper.orderByAsc(PositionHistory::getPositionDate);
+        List<PositionHistory> positionHistoryList = positionHistoryService.list(queryWrapper);
+
+        if (positionHistoryList.isEmpty()) {
+            return BigDecimal.ZERO;
+        }
+
+        Map<String, BigDecimal> dailyMarketValueMap = new TreeMap<>();
+        for (PositionHistory history : positionHistoryList) {
+            String date = history.getPositionDate();
+            BigDecimal marketValue = getOrDefault(history.getMarketValue(), BigDecimal.ZERO);
+            dailyMarketValueMap.merge(date, marketValue, BigDecimal::add);
+        }
+
+        List<BigDecimal> values = new ArrayList<>(dailyMarketValueMap.values());
+        if (values.size() < 2) {
+            return BigDecimal.ZERO;
+        }
+
+        BigDecimal peak = values.get(0);
+        BigDecimal maxDrawdown = BigDecimal.ZERO;
+
+        for (BigDecimal value : values) {
+            if (value.compareTo(peak) > 0) {
+                peak = value;
+            }
+            if (peak.compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal drawdown = peak.subtract(value).divide(peak, 4, RoundingMode.HALF_UP);
+                if (drawdown.compareTo(maxDrawdown) > 0) {
+                    maxDrawdown = drawdown;
+                }
+            }
+        }
+
+        return maxDrawdown;
     }
 }
