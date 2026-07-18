@@ -70,7 +70,23 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
                 for (PositionExecution execution : positionExecutions) {
                     BigDecimal allocateRemainQty = execution.getAllocateRemainQty();
                     if (allocateRemainQty != null && allocateRemainQty.compareTo(BigDecimal.ZERO) == 1) {
-                        throw new BusinessException("当前交易日之前存在未分配完的数量，请先完成历史交易日的分配");
+                        throw new BusinessException("当前账号下的合约在交易日之前存在未分配完的数量，请先完成历史交易日的分配");
+                    }
+                }
+                return;
+            }
+        }
+
+        for (int i = 1; i <= MAX_HISTORY_CHECK_DAYS; i++) {
+            LocalDate checkDate = currentDate.plusDays(i);
+            String executionDate = DateUtil.localDateToString(checkDate);
+
+            List<PositionExecution> positionExecutions = positionExecutionService.listPositionExecutionByKey(accountCode, conid, executionDate);
+            if (positionExecutions.size() > 0) {
+                for (PositionExecution execution : positionExecutions) {
+                    BigDecimal allocateRemainQty = execution.getAllocateRemainQty();
+                    if (allocateRemainQty != null && !allocateRemainQty.equals(execution.getShares())) {
+                        throw new BusinessException("当前账号下的合约在交易日之后已存在分配过的交易，无法修改调整当前合约数量");
                     }
                 }
                 return;
@@ -215,6 +231,7 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
         String accountCode = positionExecution.getAccountCode();
         int conid = positionExecution.getConid();
 
+        // 验证当前账号前一天的相同合约是否已完成分配
         this.checkBeforeExecutionDate(positionExecution);
 
         BigDecimal avgRealizedPln = BigDecimal.ZERO;
@@ -329,6 +346,19 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
             }
 
             positionRelationList.add(positionRelation);
+        }
+
+        BigDecimal positionHistoryQty = getOrDefault(positionHistory.getCalPositionQty(), BigDecimal.ZERO).abs();
+        LambdaQueryWrapper<PositionRelation> checkWrapper = new LambdaQueryWrapper<>();
+        checkWrapper.eq(PositionRelation::getAccountCode, accountCode)
+                .eq(PositionRelation::getConid, conid);
+        List<PositionRelation> checkList = positionRelationService.list(checkWrapper);
+        for (PositionRelation pr : checkList) {
+            BigDecimal traderPositionQty = getOrDefault(pr.getPositionQty(), BigDecimal.ZERO).abs();
+            if (traderPositionQty.compareTo(positionHistoryQty) > 0) {
+                throw new BusinessException(String.format("交易员[%s]分配后的持仓数量[%s]绝对值超过持仓历史数量[%s]绝对值",
+                        pr.getTraderName(), traderPositionQty, positionHistoryQty));
+            }
         }
 
         positionExecution.setAllocateRemainQty(shares.subtract(accAllocateQty));
