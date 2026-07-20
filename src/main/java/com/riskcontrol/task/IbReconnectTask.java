@@ -343,6 +343,7 @@ public class IbReconnectTask {
             contractMarketHistory.setDailyDate(DateUtil.localDateToString(LocalDate.now().minusDays(1))); // 在非交易时间段才能执行
             contractMarketHistory.setConid(positionMarketPriceVo.getConid());
             contractMarketHistory.setSymbol(positionMarketPriceVo.getSymbol());
+            contractMarketHistory.setSecType(positionMarketPriceVo.getSecType());
             contractMarketHistory.setPositionMarketPrice(positionMarketPriceVo.getMarketPrice());
             contractMarketHistoryService.saveOrUpdateContractMarket(contractMarketHistory);
         }
@@ -536,9 +537,21 @@ public class IbReconnectTask {
 
     public void synContractMarket() throws ExecutionException, InterruptedException, TimeoutException {
         LambdaQueryWrapper<ContractMarket> queryWrapper = new LambdaQueryWrapper<>();
+
         queryWrapper.notIn(ContractMarket::getSecType, "OPT","FUT", "FOP"); // 排除期权,期货
+
+//        queryWrapper.notIn(ContractMarket::getSecType, "FUT", "FOP"); // 排除期权,期货
+//        queryWrapper.eq(ContractMarket::getConid, 899461096);
         queryWrapper.orderByAsc(ContractMarket::getId);
         List<ContractMarket> list = contractMarketService.list(queryWrapper);
+
+//        for (ContractMarket contractMarket : list) {
+//            if (contractMarket.getSecType().equals("OPT")){
+//                contractMarket.setSecType("STK");
+//                contractMarket.setLocalSymbol(contractMarket.getSymbol());
+//                contractMarket.setExchange("SMART");
+//            }
+//        }
 
         LocalDate yesterday = LocalDate.now();
 
@@ -600,6 +613,7 @@ public class IbReconnectTask {
                 history.setPriceLow(BigDecimalUtil.doubleToDecimal(barData.getLow()));
                 history.setPriceClose(BigDecimalUtil.doubleToDecimal(barData.getClose()));
                 history.setPriceWap(BigDecimalUtil.doubleToDecimal(barData.getWap()));
+                history.setSecType(contractMarket.getSecType());
 
                 history.setDealCount(barData.getCount());
                 history.setDealVolume(barData.getVolume());
