@@ -93,6 +93,10 @@ public class Position extends BaseEntity implements Serializable {
     @TableField(value = "cal_daily_unrealized_pnl")
     private BigDecimal calDailyUnrealizedPnl;
 
+    @Schema(description = "当日未实现收益mtm")
+    @TableField(value = "cal_daily_unrealized_pnl_mtm")
+    private BigDecimal calDailyUnrealizedPnlMtm;
+
     @Schema(description = "计算日已实现收益")
     @TableField(value = "cal_daily_realized_pnl")
     private BigDecimal calDailyRealizedPnl;

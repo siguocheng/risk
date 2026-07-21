@@ -118,6 +118,10 @@ public class PositionHistory extends BaseEntity implements Serializable {
     @TableField(value = "multiplier")
     private String multiplier;
 
+    @Schema(description = "当日未实现收益mtm")
+    @TableField(value = "cal_daily_unrealized_pnl_mtm")
+    private BigDecimal calDailyUnrealizedPnlMtm;
+
     public PositionHistory(){
 
     }

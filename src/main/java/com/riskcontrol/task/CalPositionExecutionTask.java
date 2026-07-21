@@ -204,28 +204,32 @@ public class CalPositionExecutionTask {
         Position position = positionService.getPositionByConid(accountCode, conid);
         initPositionCalFields(position);
 
-        BigDecimal multiplier = BigDecimal.ONE;
+        BigDecimal multiplier = BigDecimal.ONE; // 合约乘数（每手合约对应标的数量）
         if (StringUtils.isNotEmpty(position.getMultiplier())) {
             multiplier = new BigDecimal(position.getMultiplier());
         }
-        BigDecimal calDailyRealizedPnl = BigDecimal.ZERO;
-        BigDecimal marketPrice = resolveMarketClosePrice(conid, date);
+
+        BigDecimal marketPrice = resolveMarketClosePrice(conid, date); // 市场价
         if (marketPrice == null) {
             ret = false;
             return ret;
         }
 
-        BigDecimal commissionAndFeesSum = BigDecimal.ZERO;
+        BigDecimal calDailyRealizedPnl = BigDecimal.ZERO; // 当日已实现收益
+        BigDecimal commissionAndFeesSum = BigDecimal.ZERO; // 佣金及各项费用
         for (PositionExecution trade : trades) {
-            String optType = resolveOptType(position, trade);
+            String optType = resolveOptType(position, trade); // 判断是什么操作，入库还是出库
+            // 入库操作
             if (PositionExecutionOptTypeEnum.IN.name().equals(optType)) {
                 handleNoDayTradesOptIn(position, trade, multiplier, marketPrice);
-            } else {
+            }
+            // 出库操作
+            else {
                 BigDecimal pnl = handleNoDayTradesOptOut(position, trade, multiplier, marketPrice);
                 calDailyRealizedPnl = calDailyRealizedPnl.add(pnl);
             }
             trade.setCalMarketPrice(marketPrice);
-            trade.setStatus(1);
+            trade.setStatus(1); // 核算状态
             positionExecutionService.updateById(trade);
             if (trade.getCommissionAndFees() != null) {
                 commissionAndFeesSum = commissionAndFeesSum.add(trade.getCommissionAndFees());
@@ -525,11 +529,15 @@ public class CalPositionExecutionTask {
             position.setCalDailyRealizedPnl(calDailyRealizedPnl);
             position.setPositionDate(date);
         }
+
+        BigDecimal calUnrealizedPnlPre = position.getCalUnrealizedPnl();
+
         position.setCalRealizedPnl(nvl(position.getCalRealizedPnl()).add(calDailyRealizedPnl));
 
         BigDecimal todayClose = resolveMarketClosePrice(conid, date);
-        position.setCalDailyUnrealizedPnl(sumDailyUnrealizedPnl(accountCode, conid, date, todayClose, multiplier));
         position.setCalUnrealizedPnl(sumRemainInLotsUnrealized(accountCode, conid, todayClose, multiplier));
+        position.setCalDailyUnrealizedPnl(position.getCalUnrealizedPnl().subtract(calUnrealizedPnlPre));
+        position.setCalDailyUnrealizedPnlMtm(sumDailyUnrealizedPnl(accountCode, conid, date, todayClose, multiplier));
 
         BigDecimal costBasis = sumRemainInLotsCostBasis(accountCode, conid, multiplier);
         BigDecimal totalRemainQty = sumRemainInLotsQty(accountCode, conid);
