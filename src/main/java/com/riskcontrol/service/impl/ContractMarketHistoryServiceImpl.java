@@ -1,6 +1,8 @@
 package com.riskcontrol.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.riskcontrol.dao.ContractMarketHistoryMapper;
 import com.riskcontrol.domain.ContractMarketHistory;
@@ -53,7 +55,7 @@ public class ContractMarketHistoryServiceImpl extends ServiceImpl<ContractMarket
             }
             return this.updateById(one);
         } else {
-            return false;
+            return this.save(contractMarket);
         }
     }
 
@@ -129,5 +131,14 @@ public class ContractMarketHistoryServiceImpl extends ServiceImpl<ContractMarket
             }
         }
         return null;
+    }
+
+    @Override
+    public IPage<ContractMarketHistory> queryPageByConid(Integer conid, Integer pageNum, Integer pageSize) {
+        Page<ContractMarketHistory> page = new Page<>(pageNum, pageSize);
+        LambdaQueryWrapper<ContractMarketHistory> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(ContractMarketHistory::getConid, conid);
+        queryWrapper.orderByDesc(ContractMarketHistory::getDailyDate);
+        return this.page(page, queryWrapper);
     }
 }

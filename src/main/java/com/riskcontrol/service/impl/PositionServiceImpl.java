@@ -6,8 +6,13 @@ import com.riskcontrol.dao.PositionMapper;
 import com.riskcontrol.domain.*;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.alibaba.excel.EasyExcel;
+import com.alibaba.excel.context.AnalysisContext;
+import com.alibaba.excel.event.AnalysisEventListener;
 import com.riskcontrol.domain.vo.position.PositionAllocateItem;
 import com.riskcontrol.domain.vo.position.PositionAllocateRequest;
+import com.riskcontrol.domain.vo.position.PositionErrorVo;
+import com.riskcontrol.domain.vo.position.PositionImportVo;
 import com.riskcontrol.domain.vo.position.PositionPage;
 import com.riskcontrol.domain.vo.position.PositionQuery;
 import com.riskcontrol.enums.TradeSideEnum;
@@ -21,11 +26,18 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -39,7 +51,7 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
     private final IPositionAllocateHistoryService positionAllocateHistoryService;
 
     private final IPositionExecutionService positionExecutionService;
-    private final IAccountContractService contractService;
+    private final IContractService contractService;
     private final IPositionHistoryService positionHistoryService;
 
     @Override
@@ -439,12 +451,6 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
             vo.setRemainQty(getOrDefault(vo.getPositionQty(), BigDecimal.ZERO).subtract(sum));
 
-            AccountContract contract = contractService.getContractByConid(vo.getAccountCode(), vo.getConid());
-
-            if (contract != null) {
-                vo.setSymbol(contract.getSymbol());
-            }
-
             return vo;
         });
 
@@ -457,5 +463,92 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
         queryWrapper.eq(Position::getConid, conid);
         queryWrapper.eq(Position::getAccountCode, accountCode);
         return this.getOne(queryWrapper);
+    }
+
+    @Override
+    public String importPosition(InputStream inputStream) {
+        List<PositionImportVo> importList = new ArrayList<>();
+
+        EasyExcel.read(inputStream, PositionImportVo.class, new AnalysisEventListener<PositionImportVo>() {
+            @Override
+            public void invoke(PositionImportVo data, AnalysisContext context) {
+                importList.add(data);
+            }
+
+            @Override
+            public void doAfterAllAnalysed(AnalysisContext context) {
+                log.info("Excel解析完成，共{}条数据", importList.size());
+            }
+        }).sheet().doRead();
+
+        if (CollectionUtils.isEmpty(importList)) {
+            return null;
+        }
+
+        List<Integer> conids = importList.stream()
+                .filter(item -> item.getConid() != null)
+                .map(PositionImportVo::getConid)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<Integer, Contract> conidContractMap = Collections.emptyMap();
+        if (!CollectionUtils.isEmpty(conids)) {
+            LambdaQueryWrapper<Contract> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.in(Contract::getConid, conids);
+            conidContractMap = contractService.list(queryWrapper).stream()
+                    .collect(Collectors.toMap(Contract::getConid, contract -> contract));
+        }
+
+        List<Position> successList = new ArrayList<>();
+        List<PositionErrorVo> errorList = new ArrayList<>();
+
+        for (int i = 0; i < importList.size(); i++) {
+            PositionImportVo vo = importList.get(i);
+            int rowNum = i + 2;
+            StringBuilder errorMsg = new StringBuilder();
+
+            if (vo.getConid() == null) {
+                errorMsg.append("合约不能为空;");
+            } else {
+                Contract contract = conidContractMap.get(vo.getConid());
+                if (contract == null) {
+                    errorMsg.append("合约不存在于合约表;");
+                }
+            }
+
+            if (errorMsg.length() > 0) {
+                PositionErrorVo errorVo = new PositionErrorVo();
+                BeanUtils.copyProperties(vo, errorVo);
+                errorVo.setErrorMsg("第" + rowNum + "行: " + errorMsg.toString());
+                errorList.add(errorVo);
+            } else {
+                Position entity = new Position();
+                entity.setConid(vo.getConid());
+                entity.setSecType(vo.getSecType());
+                entity.setSymbol(vo.getSymbol());
+                successList.add(entity);
+            }
+        }
+
+        for (Position entity : successList) {
+            this.saveOrUpdatePosition(entity);
+        }
+
+        if (!CollectionUtils.isEmpty(errorList)) {
+            String errorFileName = "持仓列表_错误_" + System.currentTimeMillis() + ".xlsx";
+            String tempDir = System.getProperty("java.io.tmpdir");
+            String filePath = tempDir + File.separator + errorFileName;
+
+            try (FileOutputStream fos = new FileOutputStream(filePath)) {
+                EasyExcel.write(fos, PositionErrorVo.class).sheet("错误数据").doWrite(errorList);
+                log.info("错误文件已生成: {}", filePath);
+                return "/position/pc/download-error-file?fileName=" + errorFileName;
+            } catch (IOException e) {
+                log.error("生成错误文件失败", e);
+                return null;
+            }
+        }
+
+        return null;
     }
 }

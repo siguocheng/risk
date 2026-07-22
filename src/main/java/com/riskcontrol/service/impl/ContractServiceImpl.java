@@ -1,9 +1,12 @@
 package com.riskcontrol.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.riskcontrol.dao.ContractMapper;
 import com.riskcontrol.domain.Contract;
+import com.riskcontrol.domain.bo.ContractBo;
 import com.riskcontrol.service.IContractService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,5 +41,13 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
         } else {
             return this.save(contract);
         }
+    }
+
+    @Override
+    public IPage<Contract> queryPage(ContractBo query) {
+        Page<Contract> page = new Page<>(query.getPageNum(), query.getPageSize());
+        LambdaQueryWrapper<Contract> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.orderByDesc(Contract::getId);
+        return this.page(page, queryWrapper);
     }
 }

@@ -27,4 +27,6 @@ public interface IPositionExecutionService extends IService<PositionExecution> {
     IPage<PositionExecutionPage> queryPage(PositionExecutionQuery query);
 
     List<PositionExecution> listPositionExecutionByKey(String accountCode, int conid, String executionDate);
+
+    String importPositionExecution(java.io.InputStream inputStream);
 }

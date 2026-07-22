@@ -165,18 +165,18 @@ public class IbReconnectTask {
 
             String accountCode = accountCurrency.getAccountCode();
 
-            if (count > 0) {
-                LambdaQueryWrapper<Position> queryWrapper1 = new LambdaQueryWrapper<>();
-                queryWrapper1.eq(Position::getAccountCode, accountCode);
-                queryWrapper1.orderByDesc(Position::getPositionDate);
-                queryWrapper1.last("limit 1");
-
-                Position one = positionService.getOne(queryWrapper1);
-                if (one.getPositionDate().equals(DateUtil.localDateToString(LocalDate.now().minusDays(1)))) {
-                    log.info("{}:已同步过昨天的持仓数据", accountCode);
-                    continue;
-                }
-            }
+//            if (count > 0) {
+//                LambdaQueryWrapper<Position> queryWrapper1 = new LambdaQueryWrapper<>();
+//                queryWrapper1.eq(Position::getAccountCode, accountCode);
+//                queryWrapper1.orderByDesc(Position::getPositionDate);
+//                queryWrapper1.last("limit 1");
+//
+//                Position one = positionService.getOne(queryWrapper1);
+//                if (one.getPositionDate().equals(DateUtil.localDateToString(LocalDate.now().minusDays(1)))) {
+//                    log.info("{}:已同步过昨天的持仓数据", accountCode);
+//                    continue;
+//                }
+//            }
 
             this.handlePosition(accountCode, count);
         }

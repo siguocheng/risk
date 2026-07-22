@@ -34,4 +34,6 @@ public interface IPositionService extends IService<Position>  {
     IPage<PositionPage> queryPage(PositionQuery query);
 
     Position getPositionByConid(String accountCode, int conid);
+
+    String importPosition(java.io.InputStream inputStream);
 }

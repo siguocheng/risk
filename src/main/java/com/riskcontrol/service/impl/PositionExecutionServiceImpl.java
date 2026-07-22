@@ -17,6 +17,11 @@ import com.riskcontrol.service.IContractService;
 import com.riskcontrol.service.IPositionAllocateHistoryService;
 import com.riskcontrol.service.IPositionExecutionService;
 import com.riskcontrol.util.DateUtil;
+import com.alibaba.excel.EasyExcel;
+import com.alibaba.excel.context.AnalysisContext;
+import com.alibaba.excel.event.AnalysisEventListener;
+import com.riskcontrol.domain.vo.positionexecution.PositionExecutionErrorVo;
+import com.riskcontrol.domain.vo.positionexecution.PositionExecutionImportVo;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -24,11 +29,18 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.TemporalAdjusters;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 成交明细Service业务层处理
@@ -144,5 +156,114 @@ public class PositionExecutionServiceImpl extends ServiceImpl<PositionExecutionM
                 .eq(PositionExecution::getExecutionDate, executionDate);
 
         return this.list(wrapper);
+    }
+
+    @Override
+    public String importPositionExecution(InputStream inputStream) {
+        List<PositionExecutionImportVo> importList = new ArrayList<>();
+
+        EasyExcel.read(inputStream, PositionExecutionImportVo.class, new AnalysisEventListener<PositionExecutionImportVo>() {
+            @Override
+            public void invoke(PositionExecutionImportVo data, AnalysisContext context) {
+                importList.add(data);
+            }
+
+            @Override
+            public void doAfterAllAnalysed(AnalysisContext context) {
+                log.info("Excel解析完成，共{}条数据", importList.size());
+            }
+        }).sheet().doRead();
+
+        if (CollectionUtils.isEmpty(importList)) {
+            return null;
+        }
+
+        List<Integer> conids = importList.stream()
+                .filter(item -> item.getConid() != null)
+                .map(PositionExecutionImportVo::getConid)
+                .distinct()
+                .collect(Collectors.toList());
+
+        Map<Integer, Contract> conidContractMap = Collections.emptyMap();
+        if (!CollectionUtils.isEmpty(conids)) {
+            LambdaQueryWrapper<Contract> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.in(Contract::getConid, conids);
+            conidContractMap = contractService.list(queryWrapper).stream()
+                    .collect(Collectors.toMap(Contract::getConid, contract -> contract));
+        }
+
+        List<PositionExecution> successList = new ArrayList<>();
+        List<PositionExecutionErrorVo> errorList = new ArrayList<>();
+
+        for (int i = 0; i < importList.size(); i++) {
+            PositionExecutionImportVo vo = importList.get(i);
+            int rowNum = i + 2;
+            StringBuilder errorMsg = new StringBuilder();
+
+            if (vo.getConid() == null) {
+                errorMsg.append("合约不能为空;");
+            } else {
+                Contract contract = conidContractMap.get(vo.getConid());
+                if (contract == null) {
+                    errorMsg.append("合约不存在于合约表;");
+                }
+            }
+
+            if (vo.getTime() == null || vo.getTime().isEmpty()) {
+                errorMsg.append("交易时间不能为空;");
+            }
+
+            if (vo.getShares() == null) {
+                errorMsg.append("成交数量不能为空;");
+            }
+
+            if (vo.getPrice() == null) {
+                errorMsg.append("成交价格不能为空;");
+            }
+
+            if (errorMsg.length() > 0) {
+                PositionExecutionErrorVo errorVo = new PositionExecutionErrorVo();
+                BeanUtils.copyProperties(vo, errorVo);
+                errorVo.setErrorMsg("第" + rowNum + "行: " + errorMsg.toString());
+                errorList.add(errorVo);
+            } else {
+                PositionExecution entity = new PositionExecution();
+                entity.setConid(vo.getConid());
+                entity.setSecType(vo.getSecType());
+                entity.setSymbol(vo.getSymbol());
+                entity.setTime(vo.getTime());
+                entity.setExecutionTime(vo.getTime());
+                if (vo.getTime() != null && vo.getTime().length() >= 8) {
+                    entity.setExecutionDate(DateUtil.localDateToString(DateUtil.stringToLocalDate(vo.getTime().substring(0, 8), "yyyyMMdd")));
+                }
+                entity.setShares(vo.getShares());
+                entity.setPrice(vo.getPrice());
+                entity.setRemainQty(vo.getShares());
+                entity.setAllocateRemainQty(vo.getShares());
+                entity.setStatus(0);
+                successList.add(entity);
+            }
+        }
+
+        for (PositionExecution entity : successList) {
+            this.saveOrUpdateByExecId(entity);
+        }
+
+        if (!CollectionUtils.isEmpty(errorList)) {
+            String errorFileName = "交易数据_错误_" + System.currentTimeMillis() + ".xlsx";
+            String tempDir = System.getProperty("java.io.tmpdir");
+            String filePath = tempDir + File.separator + errorFileName;
+
+            try (FileOutputStream fos = new FileOutputStream(filePath)) {
+                EasyExcel.write(fos, PositionExecutionErrorVo.class).sheet("错误数据").doWrite(errorList);
+                log.info("错误文件已生成: {}", filePath);
+                return "/position-execution/pc/download-error-file?fileName=" + errorFileName;
+            } catch (IOException e) {
+                log.error("生成错误文件失败", e);
+                return null;
+            }
+        }
+
+        return null;
     }
 }

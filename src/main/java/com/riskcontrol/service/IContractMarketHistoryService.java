@@ -1,5 +1,6 @@
 package com.riskcontrol.service;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.riskcontrol.domain.ContractMarketHistory;
 
@@ -22,4 +23,6 @@ public interface IContractMarketHistoryService extends IService<ContractMarketHi
     BigDecimal getMarketPriceByConidAndDate(int conid, String dailyDate);
 
     BigDecimal getStkPriceCloseBySymbolAndDate(String symbol, String dailyDate);
+
+    IPage<ContractMarketHistory> queryPageByConid(Integer conid, Integer pageNum, Integer pageSize);
 }
