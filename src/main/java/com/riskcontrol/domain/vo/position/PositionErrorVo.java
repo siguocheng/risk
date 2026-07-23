@@ -8,19 +8,26 @@ import lombok.Data;
 @ColumnWidth(18)
 public class PositionErrorVo {
 
-    @ExcelProperty(value = "合约", index = 0)
-    @ColumnWidth(25)
-    private Integer conid;
+    @ExcelProperty(value = "来源", index = 0)
+    private String accountCode;
 
-    @ExcelProperty(value = "类型", index = 1)
+    @ExcelProperty(value = "日期(yyyy-MM-dd)", index = 1)
     @ColumnWidth(25)
-    private String secType;
+    private String positionDate;
 
-    @ExcelProperty(value = "代码", index = 2)
+    @ExcelProperty(value = "合约", index = 2)
     @ColumnWidth(25)
     private String symbol;
 
-    @ExcelProperty(value = "错误内容", index = 3)
+    @ExcelProperty(value = "代码", index = 3)
+    @ColumnWidth(25)
+    private String shorName;
+
+    @ExcelProperty(value = "收盘价格", index = 4)
+    @ColumnWidth(25)
+    private String calMarketPrice;
+
+    @ExcelProperty(value = "错误内容", index = 5)
     @ColumnWidth(50)
     private String errorMsg;
 

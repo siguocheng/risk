@@ -150,6 +150,7 @@ public class Contract extends BaseEntity implements Serializable {
         this.description = ibContract.description();
         this.issuerId = ibContract.issuerId();
 
+        this.shortName = symbol;
         // 期权
         if (StringUtils.isNotEmpty(localSymbol) && secType.equals(SetTypeEnum.OPT.getCode())) {
             this.shortName = OccOptionUtil.occToShortName(localSymbol);

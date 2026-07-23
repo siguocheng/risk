@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.util.StreamUtils;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
@@ -61,7 +62,12 @@ public class PositionHistoryController extends BaseController {
     @ResourceMethod(btnCode = "btn-pc-position-import", level = 3)
     public ResultBean<String> importPosition(@RequestParam("file") MultipartFile file) throws IOException {
         String errorUrl = positionService.importPosition(file.getInputStream());
-        return new ResultBean<>(errorUrl);
+        if (StringUtils.isNotEmpty(errorUrl)) {
+            return new ResultBean<>(-66 ,errorUrl);
+        } else {
+            return new ResultBean<>("");
+        }
+
     }
 
     @Operation(summary = "下载错误文件")

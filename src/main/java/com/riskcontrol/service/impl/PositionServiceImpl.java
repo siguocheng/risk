@@ -21,6 +21,7 @@ import com.riskcontrol.service.*;
 import com.riskcontrol.util.DateUtil;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
+import org.springframework.context.ApplicationContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -35,6 +36,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -54,8 +56,9 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
     private final IPositionExecutionService positionExecutionService;
     private final IContractService contractService;
     private final IPositionHistoryService positionHistoryService;
-
+    private final IContractMarketHistoryService contractMarketHistoryService;
     private final ITradeCalendarService tradeCalendarService;
+    private final ApplicationContext applicationContext;
 
     @Override
     public boolean saveOrUpdatePosition(Position position) {
@@ -471,8 +474,16 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
     @Override
     public String importPosition(InputStream inputStream) {
         List<PositionImportVo> importList = new ArrayList<>();
+        List<String> actualHeaders = new ArrayList<>();
 
         EasyExcel.read(inputStream, PositionImportVo.class, new AnalysisEventListener<PositionImportVo>() {
+            @Override
+            public void invokeHeadMap(Map<Integer, String> headMap, AnalysisContext context) {
+                for (int i = 0; i < headMap.size(); i++) {
+                    actualHeaders.add(headMap.get(i));
+                }
+            }
+
             @Override
             public void invoke(PositionImportVo data, AnalysisContext context) {
                 importList.add(data);
@@ -488,8 +499,38 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
             return null;
         }
 
+        List<String> expectedHeaders = Arrays.asList("来源", "日期(yyyy-MM-dd)", "合约", "代码", "收盘价格");
+        for (int i = 0; i < expectedHeaders.size(); i++) {
+            if (i >= actualHeaders.size() || !expectedHeaders.get(i).equals(actualHeaders.get(i))) {
+                throw new RuntimeException("请下载正确的模板");
+//                String errorFileName = "持仓列表_错误_" + System.currentTimeMillis() + ".xlsx";
+//                String tempDir = System.getProperty("java.io.tmpdir");
+//                String filePath = tempDir + File.separator + errorFileName;
+//
+//                PositionErrorVo errorVo = new PositionErrorVo();
+//                errorVo.setErrorMsg("表头格式不正确，请确保表头为：来源、日期(yyyy-MM-dd)、合约、代码、收盘价格");
+//
+//                try (FileOutputStream fos = new FileOutputStream(filePath)) {
+//                    EasyExcel.write(fos, PositionErrorVo.class).sheet("错误数据").doWrite(Collections.singletonList(errorVo));
+//                    log.info("错误文件已生成: {}", filePath);
+//                    return "/position-history/pc/download-error-file?fileName=" + errorFileName;
+//                } catch (IOException e) {
+//                    log.error("生成错误文件失败", e);
+//                    return null;
+//                }
+            }
+        }
+
         List<Position> successList = new ArrayList<>();
         List<PositionErrorVo> errorList = new ArrayList<>();
+
+        LambdaQueryWrapper<Position> minDateQueryWrapper = new LambdaQueryWrapper<>();
+        minDateQueryWrapper.select(Position::getPositionDate).orderByAsc(Position::getPositionDate).last("LIMIT 1");
+        Position minDatePosition = this.getOne(minDateQueryWrapper);
+        LocalDate earliestPositionDate = null;
+        if (minDatePosition != null && StringUtils.isNotEmpty(minDatePosition.getPositionDate())) {
+            earliestPositionDate = DateUtil.stringToLocalDate(minDatePosition.getPositionDate());
+        }
 
         for (int i = 0; i < importList.size(); i++) {
             PositionImportVo vo = importList.get(i);
@@ -512,8 +553,15 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
                 errorMsg.append("代码不能为空;");
             }
 
+            BigDecimal calMarketPrice = null;
             if (StringUtils.isEmpty(vo.getCalMarketPrice())) {
                 errorMsg.append("收盘价格不能为空;");
+            } else {
+                try {
+                    calMarketPrice = new BigDecimal(vo.getCalMarketPrice());
+                } catch (NumberFormatException e) {
+                    errorMsg.append("收盘价格格式不正确;");
+                }
             }
 
             Contract contract = new Contract();
@@ -525,7 +573,16 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
             }
 
             if (StringUtils.isNotEmpty(vo.getPositionDate())) {
-
+                try {
+                    LocalDate importDate = DateUtil.stringToLocalDate(vo.getPositionDate(), "yyyy/MM/dd");
+                    if (earliestPositionDate != null && importDate.isBefore(earliestPositionDate)) {
+                        errorMsg.append("日期不能小于持仓最早日期;");
+                    } else {
+                        vo.setPositionDate(DateUtil.localDateToString(importDate));
+                    }
+                } catch (Exception e) {
+                    errorMsg.append("日期格式不正确;");
+                }
             }
 
             if (errorMsg.length() > 0) {
@@ -538,12 +595,16 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
                 entity.setConid(contract.getConid());
                 entity.setSecType(contract.getSecType());
                 entity.setSymbol(contract.getSymbol());
+                entity.setAccountCode(vo.getAccountCode());
+                entity.setPositionDate(vo.getPositionDate());
+//                entity.setCalMarketPrice(calMarketPrice);
                 successList.add(entity);
             }
         }
 
-        for (Position entity : successList) {
-            this.saveOrUpdatePosition(entity);
+        if (!CollectionUtils.isEmpty(successList)) {
+            PositionServiceImpl self = applicationContext.getBean(PositionServiceImpl.class);
+            self.savePositionAndMarketHistory(successList);
         }
 
         if (!CollectionUtils.isEmpty(errorList)) {
@@ -554,7 +615,7 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
             try (FileOutputStream fos = new FileOutputStream(filePath)) {
                 EasyExcel.write(fos, PositionErrorVo.class).sheet("错误数据").doWrite(errorList);
                 log.info("错误文件已生成: {}", filePath);
-                return "/position/pc/download-error-file?fileName=" + errorFileName;
+                return "/position-history/pc/download-error-file?fileName=" + errorFileName;
             } catch (IOException e) {
                 log.error("生成错误文件失败", e);
                 return null;
@@ -562,5 +623,22 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
         }
 
         return null;
+    }
+
+    @Transactional(rollbackFor = Exception.class)
+    public void savePositionAndMarketHistory(List<Position> successList) {
+        for (Position entity : successList) {
+            this.saveOrUpdatePosition(entity);
+
+            if (entity.getCalMarketPrice() != null) {
+                ContractMarketHistory marketHistory = new ContractMarketHistory();
+                marketHistory.setConid(entity.getConid());
+                marketHistory.setDailyDate(entity.getPositionDate());
+                marketHistory.setPositionMarketPrice(entity.getCalMarketPrice());
+                marketHistory.setSymbol(entity.getSymbol());
+                marketHistory.setSecType(entity.getSecType());
+                contractMarketHistoryService.saveOrUpdateContractMarket(marketHistory);
+            }
+        }
     }
 }

@@ -178,20 +178,6 @@ public class PositionExecutionServiceImpl extends ServiceImpl<PositionExecutionM
             return null;
         }
 
-        List<Integer> conids = importList.stream()
-                .filter(item -> item.getConid() != null)
-                .map(PositionExecutionImportVo::getConid)
-                .distinct()
-                .collect(Collectors.toList());
-
-        Map<Integer, Contract> conidContractMap = Collections.emptyMap();
-        if (!CollectionUtils.isEmpty(conids)) {
-            LambdaQueryWrapper<Contract> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.in(Contract::getConid, conids);
-            conidContractMap = contractService.list(queryWrapper).stream()
-                    .collect(Collectors.toMap(Contract::getConid, contract -> contract));
-        }
-
         List<PositionExecution> successList = new ArrayList<>();
         List<PositionExecutionErrorVo> errorList = new ArrayList<>();
 
@@ -200,13 +186,16 @@ public class PositionExecutionServiceImpl extends ServiceImpl<PositionExecutionM
             int rowNum = i + 2;
             StringBuilder errorMsg = new StringBuilder();
 
-            if (vo.getConid() == null) {
+            if (vo.getAccountCode() == null) {
+                errorMsg.append("来源不能为空;");
+            }
+
+            if (StringUtils.isEmpty(vo.getSymbol())) {
                 errorMsg.append("合约不能为空;");
-            } else {
-                Contract contract = conidContractMap.get(vo.getConid());
-                if (contract == null) {
-                    errorMsg.append("合约不存在于合约表;");
-                }
+            }
+
+            if (StringUtils.isEmpty(vo.getShorName())) {
+                errorMsg.append("代码不能为空;");
             }
 
             if (vo.getTime() == null || vo.getTime().isEmpty()) {
@@ -221,6 +210,14 @@ public class PositionExecutionServiceImpl extends ServiceImpl<PositionExecutionM
                 errorMsg.append("成交价格不能为空;");
             }
 
+            Contract contract = new Contract();
+            if (StringUtils.isNotEmpty(vo.getSymbol()) && StringUtils.isNotEmpty(vo.getShorName())) {
+                contract = contractService.getBySymbolAndShortName(vo.getSymbol(), vo.getShorName());
+                if (contract == null) {
+                    errorMsg.append("当前合约不存在;");
+                }
+            }
+
             if (errorMsg.length() > 0) {
                 PositionExecutionErrorVo errorVo = new PositionExecutionErrorVo();
                 BeanUtils.copyProperties(vo, errorVo);
@@ -228,18 +225,18 @@ public class PositionExecutionServiceImpl extends ServiceImpl<PositionExecutionM
                 errorList.add(errorVo);
             } else {
                 PositionExecution entity = new PositionExecution();
-                entity.setConid(vo.getConid());
-                entity.setSecType(vo.getSecType());
+                entity.setConid(contract.getConid());
+                entity.setSecType(contract.getSecType());
                 entity.setSymbol(vo.getSymbol());
                 entity.setTime(vo.getTime());
                 entity.setExecutionTime(vo.getTime());
                 if (vo.getTime() != null && vo.getTime().length() >= 8) {
                     entity.setExecutionDate(DateUtil.localDateToString(DateUtil.stringToLocalDate(vo.getTime().substring(0, 8), "yyyyMMdd")));
                 }
-                entity.setShares(vo.getShares());
-                entity.setPrice(vo.getPrice());
-                entity.setRemainQty(vo.getShares());
-                entity.setAllocateRemainQty(vo.getShares());
+                entity.setShares(new BigDecimal(vo.getShares()));
+                entity.setPrice(new BigDecimal(vo.getPrice()));
+                entity.setRemainQty(new BigDecimal(vo.getShares()));
+                entity.setAllocateRemainQty(new BigDecimal(vo.getShares()));
                 entity.setStatus(0);
                 successList.add(entity);
             }
