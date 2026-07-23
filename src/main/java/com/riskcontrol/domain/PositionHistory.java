@@ -122,6 +122,10 @@ public class PositionHistory extends BaseEntity implements Serializable {
     @TableField(value = "cal_daily_unrealized_pnl_mtm")
     private BigDecimal calDailyUnrealizedPnlMtm;
 
+    @Schema(description = "市场价格")
+    @TableField(value = "cal_market_price")
+    private BigDecimal calMarketPrice;
+
     public PositionHistory(){
 
     }

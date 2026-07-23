@@ -122,16 +122,16 @@ public class TaskDispatch {
             return;
         }
 
-        try {
-            log.info("{} 核算start", uuid);
-            // 开启核算任务
-            calPositionExecutionTask.cal();
-            saveTaskLog("核算", "成功", uuid);
-            log.info("{} 核算end", uuid);
-        } catch (Exception e) {
-            log.error("{}  核算异常", uuid, e);
-            saveTaskLog("核算", EXCEPTION_MSG, uuid);
-        }
+//        try {
+//            log.info("{} 核算start", uuid);
+//            // 开启核算任务
+//            calPositionExecutionTask.cal();
+//            saveTaskLog("核算", "成功", uuid);
+//            log.info("{} 核算end", uuid);
+//        } catch (Exception e) {
+//            log.error("{}  核算异常", uuid, e);
+//            saveTaskLog("核算", EXCEPTION_MSG, uuid);
+//        }
     }
 
     @Scheduled(cron="0 0 7 * * ?")

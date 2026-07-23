@@ -331,7 +331,7 @@ public class CalPositionExecutionTask {
                 ? trade.getShares()
                 : trade.getShares().negate();
         BigDecimal newQty = oldQty.add(signedQty);
-        position.setCalPositionQty(newQty);
+//        position.setCalPositionQty(newQty);
 
         if (marketPrice != null) {
             BigDecimal unrealized;
@@ -383,11 +383,11 @@ public class CalPositionExecutionTask {
 
         BigDecimal matchedQty = outQty.subtract(remainOutQty);
         BigDecimal calPositionQty = nvl(position.getCalPositionQty());
-        if (closingLong) {
-            position.setCalPositionQty(calPositionQty.subtract(matchedQty));
-        } else {
-            position.setCalPositionQty(calPositionQty.add(matchedQty));
-        }
+//        if (closingLong) {
+//            position.setCalPositionQty(calPositionQty.subtract(matchedQty));
+//        } else {
+//            position.setCalPositionQty(calPositionQty.add(matchedQty));
+//        }
 
         if (remainOutQty.compareTo(BigDecimal.ZERO) > 0) {
             saveOverflowOpenLot(position, trade, remainOutQty, multiplier, marketPrice);
@@ -446,7 +446,11 @@ public class CalPositionExecutionTask {
     private BigDecimal sumRemainInLotsQty(String accountCode, int conid) {
         BigDecimal total = BigDecimal.ZERO;
         for (PositionExecution lot : listRemainInLots(accountCode, conid)) {
-            total = total.add(nvl(lot.getRemainQty()));
+            BigDecimal remainQty = lot.getRemainQty();
+            if (lot.getSide().equals(TradeSideEnum.SLD.name())) {
+                remainQty = remainQty.negate();
+            }
+            total = total.add(remainQty);
         }
         return total;
     }
@@ -538,9 +542,11 @@ public class CalPositionExecutionTask {
         position.setCalUnrealizedPnl(sumRemainInLotsUnrealized(accountCode, conid, todayClose, multiplier));
         position.setCalDailyUnrealizedPnl(position.getCalUnrealizedPnl().subtract(calUnrealizedPnlPre));
         position.setCalDailyUnrealizedPnlMtm(sumDailyUnrealizedPnl(accountCode, conid, date, todayClose, multiplier));
+        position.setCalMarketPrice(todayClose);
 
         BigDecimal costBasis = sumRemainInLotsCostBasis(accountCode, conid, multiplier);
         BigDecimal totalRemainQty = sumRemainInLotsQty(accountCode, conid);
+        position.setCalPositionQty(totalRemainQty);
         position.setCalCostBasis(costBasis);
         position.setCalAvgCost(deriveCalAvgCostFromCostBasis(costBasis, totalRemainQty, multiplier));
     }

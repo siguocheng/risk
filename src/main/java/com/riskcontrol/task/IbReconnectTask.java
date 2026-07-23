@@ -996,7 +996,7 @@ public class IbReconnectTask {
         int reqId = ReqIdConstant.reqContractDetailsReqId;
 
         LambdaQueryWrapper<ContractMarket> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.ne(ContractMarket::getSecType, "OPT"); // 排除期权
+//        queryWrapper.ne(ContractMarket::getSecType, "OPT"); // 排除期权
         queryWrapper.ne(ContractMarket::getSecType, "BOND"); // 排除期权
         queryWrapper.orderByAsc(ContractMarket::getId);
         List<ContractMarket> list = contractMarketService.list(queryWrapper);

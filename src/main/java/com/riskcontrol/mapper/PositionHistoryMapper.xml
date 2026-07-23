@@ -34,16 +34,18 @@
             ph.symbol,
             ph.account_code,
             ph.model_code,
-            ph.position_qty,
-            ph.avg_cost,
-            ph.unrealized_pnl,
-            ph.market_price,
+            ph.cal_position_qty,
+            ph.cal_avg_cost,
+            ph.cal_unrealized_pnl,
+            ph.cal_realized_pnl,
+            ph.cal_market_price,
             ph.market_value,
-            ph.realized_pnl,
-            ph.daily_pnl,
+            ph.cal_daily_unrealized_pnl,
+            ph.cal_daily_realized_pnl,
             ph.modified_time,
             ph.sec_type,
-            ph.multiplier
+            ph.multiplier,
+            ph.acc_commission_and_fees
         FROM
             position_history ph
         LEFT JOIN contract c ON ph.conid = c.conid

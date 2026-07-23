@@ -121,4 +121,8 @@ public class Position extends BaseEntity implements Serializable {
     @TableField(value = "multiplier")
     private String multiplier;
 
+    @Schema(description = "市场价格")
+    @TableField(value = "cal_market_price")
+    private BigDecimal calMarketPrice;
+
 }

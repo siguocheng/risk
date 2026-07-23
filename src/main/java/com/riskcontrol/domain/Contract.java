@@ -4,9 +4,12 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import com.riskcontrol.enums.SetTypeEnum;
+import com.riskcontrol.util.OccOptionUtil;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import org.apache.commons.lang3.StringUtils;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
@@ -101,6 +104,9 @@ public class Contract extends BaseEntity implements Serializable {
     @TableField(value = "contract_market_last_date")
     private LocalDate contractMarketLastDate;
 
+    @Schema(description = "简称")
+    @TableField(value = "short_name")
+    private String shortName;
 
 
     public Contract(){
@@ -143,5 +149,13 @@ public class Contract extends BaseEntity implements Serializable {
         // 这几个业务字段由业务层单独赋值，构造器仅映射IB原生数据
         this.description = ibContract.description();
         this.issuerId = ibContract.issuerId();
+
+        // 期权
+        if (StringUtils.isNotEmpty(localSymbol) && secType.equals(SetTypeEnum.OPT.getCode())) {
+            this.shortName = OccOptionUtil.occToShortName(localSymbol);
+        } else if (secType.equals(SetTypeEnum.FUT.getCode())){
+            this.shortName = OccOptionUtil.futShortName(symbol, lastTradeDate);
+        }
+
     }
 }
