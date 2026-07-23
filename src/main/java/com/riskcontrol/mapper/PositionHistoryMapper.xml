@@ -39,7 +39,6 @@
             ph.cal_unrealized_pnl,
             ph.cal_realized_pnl,
             ph.cal_market_price,
-            ph.market_value,
             ph.cal_daily_unrealized_pnl,
             ph.cal_daily_realized_pnl,
             ph.modified_time,
@@ -75,6 +74,15 @@
             <if test="query.symbol != null and query.symbol != ''">
                 AND ph.symbol LIKE CONCAT('%', #{query.symbol}, '%')
             </if>
-        ORDER BY ph.position_date DESC
+            <if test="query.secType != null and query.secType != ''">
+                AND ph.sec_type =#{query.secType}
+            </if>
+            <if test="query.startDate != null and query.startDate != ''">
+                AND ph.position_date >= #{query.startDate}
+            </if>
+            <if test="query.endDate != null and query.endDate != ''">
+                AND ph.position_date &lt;= #{query.endDate}
+            </if>
+        ORDER BY ph.position_date,ph.conid DESC
     </select>
 </mapper>

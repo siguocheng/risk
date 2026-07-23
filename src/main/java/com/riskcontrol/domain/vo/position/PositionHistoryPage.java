@@ -39,7 +39,7 @@ public class PositionHistoryPage {
     private BigDecimal calMarketPrice;
 
     @Schema(description = "市场值")
-    private BigDecimal marketValue;
+    private BigDecimal calMarketValue;
 
     @Schema(description = "实现盈亏")
     private BigDecimal calRealizedPnl;

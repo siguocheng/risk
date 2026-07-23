@@ -104,7 +104,7 @@ public class Contract extends BaseEntity implements Serializable {
     @TableField(value = "contract_market_last_date")
     private LocalDate contractMarketLastDate;
 
-    @Schema(description = "简称")
+    @Schema(description = "代码")
     @TableField(value = "short_name")
     private String shortName;
 
