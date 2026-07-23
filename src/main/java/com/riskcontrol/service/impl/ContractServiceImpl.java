@@ -31,6 +31,14 @@ public class ContractServiceImpl extends ServiceImpl<ContractMapper, Contract> i
     }
 
     @Override
+    public Contract getBySymbolAndShortName(String symbol, String shortName) {
+        LambdaQueryWrapper<Contract> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Contract::getSymbol, symbol);
+        queryWrapper.eq(Contract::getShortName, shortName);
+        return this.getOne(queryWrapper);
+    }
+
+    @Override
     public boolean saveOrUpdateByConid(Contract contract) {
         LambdaQueryWrapper<Contract> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(Contract::getConid, contract.getConid());

@@ -15,6 +15,8 @@ public interface IContractService extends IService<Contract> {
 
     Contract getByConid(Integer conid);
 
+    Contract getBySymbolAndShortName(String symbol, String shortName);
+
     boolean saveOrUpdateByConid(Contract contract);
 
     IPage<Contract> queryPage(ContractBo query);

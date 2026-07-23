@@ -19,6 +19,7 @@ import com.riskcontrol.enums.TradeSideEnum;
 import com.riskcontrol.exception.BusinessException;
 import com.riskcontrol.service.*;
 import com.riskcontrol.util.DateUtil;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.BeanUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -53,6 +54,8 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
     private final IPositionExecutionService positionExecutionService;
     private final IContractService contractService;
     private final IPositionHistoryService positionHistoryService;
+
+    private final ITradeCalendarService tradeCalendarService;
 
     @Override
     public boolean saveOrUpdatePosition(Position position) {
@@ -485,20 +488,6 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
             return null;
         }
 
-        List<Integer> conids = importList.stream()
-                .filter(item -> item.getConid() != null)
-                .map(PositionImportVo::getConid)
-                .distinct()
-                .collect(Collectors.toList());
-
-        Map<Integer, Contract> conidContractMap = Collections.emptyMap();
-        if (!CollectionUtils.isEmpty(conids)) {
-            LambdaQueryWrapper<Contract> queryWrapper = new LambdaQueryWrapper<>();
-            queryWrapper.in(Contract::getConid, conids);
-            conidContractMap = contractService.list(queryWrapper).stream()
-                    .collect(Collectors.toMap(Contract::getConid, contract -> contract));
-        }
-
         List<Position> successList = new ArrayList<>();
         List<PositionErrorVo> errorList = new ArrayList<>();
 
@@ -507,13 +496,36 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
             int rowNum = i + 2;
             StringBuilder errorMsg = new StringBuilder();
 
-            if (vo.getConid() == null) {
+            if (StringUtils.isEmpty(vo.getAccountCode())) {
+                errorMsg.append("来源不能为空;");
+            }
+
+            if (StringUtils.isEmpty(vo.getPositionDate())) {
+                errorMsg.append("日期不能为空;");
+            }
+
+            if (StringUtils.isEmpty(vo.getSymbol())) {
                 errorMsg.append("合约不能为空;");
-            } else {
-                Contract contract = conidContractMap.get(vo.getConid());
+            }
+
+            if (StringUtils.isEmpty(vo.getShorName())) {
+                errorMsg.append("代码不能为空;");
+            }
+
+            if (StringUtils.isEmpty(vo.getCalMarketPrice())) {
+                errorMsg.append("收盘价格不能为空;");
+            }
+
+            Contract contract = new Contract();
+            if (StringUtils.isNotEmpty(vo.getSymbol()) && StringUtils.isNotEmpty(vo.getShorName())) {
+                contract = contractService.getBySymbolAndShortName(vo.getSymbol(), vo.getShorName());
                 if (contract == null) {
-                    errorMsg.append("合约不存在于合约表;");
+                    errorMsg.append("当前合约不存在;");
                 }
+            }
+
+            if (StringUtils.isNotEmpty(vo.getPositionDate())) {
+
             }
 
             if (errorMsg.length() > 0) {
@@ -523,9 +535,9 @@ public class PositionServiceImpl extends ServiceImpl<PositionMapper, Position> i
                 errorList.add(errorVo);
             } else {
                 Position entity = new Position();
-                entity.setConid(vo.getConid());
-                entity.setSecType(vo.getSecType());
-                entity.setSymbol(vo.getSymbol());
+                entity.setConid(contract.getConid());
+                entity.setSecType(contract.getSecType());
+                entity.setSymbol(contract.getSymbol());
                 successList.add(entity);
             }
         }

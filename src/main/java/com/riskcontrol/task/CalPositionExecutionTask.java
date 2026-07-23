@@ -105,8 +105,8 @@ public class CalPositionExecutionTask {
 
                     Contract contract = contractService.getByConid(conid);
 
-                    // 如果是日内交易
-                    if (isDayTrade) {
+                    // 如果是日内交易,期货只有FIFO
+                    if (isDayTrade && !contract.getSecType().equals(SetTypeEnum.FUT.getCode())) {
                         log.info("cal conid :{} SecType:{}", conid, contract.getSecType());
                         if (StringUtils.isEmpty(contract.getMultiplier())) {
                             contract.setMultiplier("1");
@@ -118,7 +118,7 @@ public class CalPositionExecutionTask {
                     } else {
                         log.info("cal conid :{} SecType:{}", conid, contract.getSecType());
                         Boolean ret;
-                        if (contract.getSecType().equals(SetTypeEnum.OPT.getCode()) ) {
+                        if (contract.getSecType().equals(SetTypeEnum.OPT.getCode())) {
                             ret = this.handleNoDayTradesOpt(positionExecutionsDateConid, accountCode, date, contract);
                         } else {
                             ret = this.handleNoDayTrades(positionExecutionsDateConid, accountCode, date, conid);
@@ -548,7 +548,7 @@ public class CalPositionExecutionTask {
         BigDecimal totalRemainQty = sumRemainInLotsQty(accountCode, conid);
         position.setCalPositionQty(totalRemainQty);
         position.setCalCostBasis(costBasis);
-        position.setCalAvgCost(deriveCalAvgCostFromCostBasis(costBasis, totalRemainQty, multiplier));
+        position.setCalAvgCost(deriveCalAvgCostFromCostBasis(costBasis, totalRemainQty.abs(), multiplier));
     }
 
     private BigDecimal resolveMarketClosePrice(int conid, String date) {
@@ -702,6 +702,7 @@ public class CalPositionExecutionTask {
             position.setCalDailyRealizedPnl(calDailyRealizedPnl);
             position.setPositionDate(date);
         }
+        position.setCalMarketPrice(marketPrice);
         position.setCalRealizedPnl(nvl(position.getCalRealizedPnl()).add(calDailyRealizedPnl));
         position.setCalDailyUnrealizedPnl(marketPrice.subtract(preMarketPrice).multiply(position.getCalPositionQty()).multiply(multiplier));
         position.setCalUnrealizedPnl(marketPrice.subtract(position.getCalAvgCost()).multiply(position.getCalPositionQty()).multiply(multiplier));

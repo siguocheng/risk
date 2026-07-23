@@ -153,9 +153,10 @@ public class Contract extends BaseEntity implements Serializable {
         // 期权
         if (StringUtils.isNotEmpty(localSymbol) && secType.equals(SetTypeEnum.OPT.getCode())) {
             this.shortName = OccOptionUtil.occToShortName(localSymbol);
-        } else if (secType.equals(SetTypeEnum.FUT.getCode())){
-            this.shortName = OccOptionUtil.futShortName(symbol, lastTradeDate);
         }
+//        else if (secType.equals(SetTypeEnum.FUT.getCode())){
+//            this.shortName = OccOptionUtil.futShortName(symbol, lastTradeDate);
+//        }
 
     }
 }

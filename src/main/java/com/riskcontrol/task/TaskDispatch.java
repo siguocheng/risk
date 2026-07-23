@@ -89,16 +89,16 @@ public class TaskDispatch {
         }
 
         // 同步市场数据
-        try {
-            log.info("{} 同步市场start", uuid);
-            ibReconnectTask.synContractMarket();
-            saveTaskLog("同步市场", "成功", uuid);
-            log.info("{} 同步市场end", uuid);
-        } catch (Exception e) {
-            log.error("{} 同步市场异常", uuid, e);
-            flag = false;
-            saveTaskLog("同步市场", EXCEPTION_MSG, uuid);
-        }
+//        try {
+//            log.info("{} 同步市场start", uuid);
+//            ibReconnectTask.synContractMarket();
+//            saveTaskLog("同步市场", "成功", uuid);
+//            log.info("{} 同步市场end", uuid);
+//        } catch (Exception e) {
+//            log.error("{} 同步市场异常", uuid, e);
+//            flag = false;
+//            saveTaskLog("同步市场", EXCEPTION_MSG, uuid);
+//        }
 
         if (!flag) {
             return;
