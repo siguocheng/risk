@@ -345,7 +345,7 @@ public class IbReconnectTask {
             contractMarketHistory.setSymbol(positionMarketPriceVo.getSymbol());
             contractMarketHistory.setSecType(positionMarketPriceVo.getSecType());
             contractMarketHistory.setPositionMarketPrice(positionMarketPriceVo.getMarketPrice());
-            contractMarketHistoryService.saveOrUpdateContractMarket(contractMarketHistory);
+//            contractMarketHistoryService.saveOrUpdateContractMarket(contractMarketHistory);
         }
 
         // 将key中带-P,-S后缀的key移除掉
